@@ -1,6 +1,5 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { GeoAltFill } from "react-bootstrap-icons";
-import { Container,Button,Form,Row,Col,Nav,Navbar,Tab,Tabs,Card } from 'react-bootstrap';
+import { Container,Button,Form,Row,Col,Tab,Tabs,Card } from 'react-bootstrap';
 
 
 
@@ -8,24 +7,14 @@ function Main() {
   
   return (
     <>
-    <Navbar bg="#F3F3F3" expand="lg" className="px-3" style={{ fontSize: "20px" }}>
-      <Navbar.Brand href="#" className="d-flex align-items-center gap-1">
-        <GeoAltFill color="#000" size={18} /> 
-        경기도 성남시 중원구 성남대로2
-      </Navbar.Brand>
-
-      <Nav className="ms-auto d-flex align-items-center gap-3">
-        <Nav.Link href="#">회원가입</Nav.Link>
-        <Nav.Link href="#">로그인</Nav.Link>
-      </Nav>
-    </Navbar>
+    
   
     <Container
       fluid
       className="py-5"
       style={{
         backgroundColor: "#EAF4FF",
-        maxWidth: "1000px",
+        maxWidth: "1024px",
       }}
     >
       <Row className="align-items-center">
