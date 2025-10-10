@@ -1,8 +1,6 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Container,Button,Form,Row,Col,Tab,Tabs,Card } from 'react-bootstrap';
 
-
-
 function Main() {
   
   return (
