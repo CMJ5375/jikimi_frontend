@@ -3,10 +3,6 @@ import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstr
 import { GeoAltFill } from "react-bootstrap-icons";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-<<<<<<< HEAD
-function Main() {
-  
-=======
 /** 간단 테마 */
 const colors = {
   primary: "#3B6CFF",
@@ -48,7 +44,6 @@ export default function MainPage() {
     );
   };
 
->>>>>>> main
   return (
     <div className="bg-white">
       <Container className="py-4">
