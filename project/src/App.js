@@ -3,14 +3,15 @@ import { Routes, Route, Outlet } from 'react-router-dom';
 import Main from './component/Main';
 import Myfooter from './component/Myfooter';
 import Navigation from './component/Navigation';
-import Details from './component/Details';
+import HospitalDetail from './component/HospitalDetail';
+import PharmacyDetail from './component/PharmacyDetail';
 
 function Layout() {
   return (
     <>
     <Navigation/>
     {/* <Main /> */}
-    <Details />
+    <HospitalDetail />
     <Myfooter />
     </>
   )
@@ -21,7 +22,8 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Main />} />
-        <Route path="/details" element={<Details />} />
+        <Route path="/hospitaldetails" element={<HospitalDetail />} />
+        <Route path="/pharmacydetails" element={<PharmacyDetail />} />
       </Route>
     </Routes>
   )
