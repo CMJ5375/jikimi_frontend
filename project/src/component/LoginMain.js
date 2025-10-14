@@ -44,7 +44,7 @@ function LoginMain() {
 
 
             <div className="mb-3">
-              <a href="#" style={{ fontSize: "14px",color:'black'}}>
+              <a href="/finduser" style={{ fontSize: "14px",color:'black'}}>
                 계정을 잊으셨나요?
               </a>
             </div>

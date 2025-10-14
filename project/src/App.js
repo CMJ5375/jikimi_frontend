@@ -6,9 +6,12 @@ import Myfooter from './component/Myfooter'
 import Navigation from './component/Navigation'
 import LoginMain from './component/LoginMain'
 import Register from './component/Register'
-
+import FindUser from './component/FindUser'
+import HospitalDetail from './component/HospitalDetail'
+import PharmacyDetail from './component/PharmacyDetail'
+import Noticeboard from './component/Noticeboard'
 function Layout() {
-  //깃 연동을 위한 임시 주석
+ 
   return (
     <>
       <Navigation />
@@ -26,6 +29,10 @@ export default function App() {
         <Route path='mypage' element={<MyPage />} />
         <Route path="login" element={<LoginMain />} />
         <Route path="register" element={<Register/>} />
+        <Route path='finduser' element={<FindUser/>}/>
+        <Route path="hospitaldetail" element={<HospitalDetail />} />
+        <Route path="pharmacydetail" element={<PharmacyDetail />} />
+        <Route path='noticeboards' element={<Noticeboard/>}/>
       </Route>
     </Routes>
   )
