@@ -3,11 +3,13 @@ import { Routes, Route} from 'react-router-dom';
 import Main from './component/Main';
 import HospitalDetail from './component/HospitalDetail';
 import PharmacyDetail from './component/PharmacyDetail';
-import Layout from './component/Layout';
 import './App.css'
 import MyPage from './component/MyPage'
 import LoginMain from './component/LoginMain'
 import Register from './component/Register'
+import Navigation from './component/Navigation'
+import { Outlet } from 'react-router-dom';
+import Myfooter from './component/Myfooter'
 
 function Layout() {
   //깃 연동을 위한 임시 주석
@@ -19,8 +21,6 @@ function Layout() {
     </>
   )
 }
-import HospitalDetail from './component/HospitalDetail';
-import PharmacyDetail from './component/PharmacyDetail';
 
 export default function App() {
   return (
