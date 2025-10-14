@@ -8,6 +8,7 @@ import LoginMain from './component/LoginMain'
 import Register from './component/Register'
 
 function Layout() {
+  //깃 연동을 위한 임시 주석
   return (
     <>
       <Navigation />
