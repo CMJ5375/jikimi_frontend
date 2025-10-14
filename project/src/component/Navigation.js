@@ -2,12 +2,19 @@ import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { GeoAltFill } from "react-bootstrap-icons";
 import { Nav } from 'react-bootstrap'
+import { useLocation } from "react-router-dom";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import NavDropdown from 'react-bootstrap/NavDropdown';
 
 
 export default function HeaderResponsive() {
+  const location = useLocation();
+
+  // 안내바를 숨기고 싶은 경로들
+  const hideBannerPaths = [""]; //경로 넣기
+
+  const shouldShowBanner = !hideBannerPaths.includes(location.pathname);
   return (
     <header className="border-bottom">
       <div>
@@ -81,11 +88,13 @@ export default function HeaderResponsive() {
           </div>
 
           {/* 파란 안내바 */}
-          <div className="bg-primary text-white">
-            <div className="py-2 text-center">
-              주말 공휴일에도 걱정없이, 지금 열려있는 병원/약국 안내
+          {shouldShowBanner && (
+            <div className="bg-primary text-white">
+              <div className="py-2 text-center">
+                주말 공휴일에도 걱정없이, 지금 열려있는 병원/약국 안내
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
       </div>

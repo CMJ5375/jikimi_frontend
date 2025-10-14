@@ -3,6 +3,7 @@ import { Routes, Route,Outlet } from 'react-router-dom'
 import Main from './component/Main'
 import Myfooter from './component/Myfooter'
 import Navigation from './component/Navigation'
+import LoginMain from './component/LoginMain'
 
 function Layout() {
   return (
