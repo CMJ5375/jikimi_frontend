@@ -29,7 +29,7 @@ export default function HeaderResponsive() {
               </div>
               <div className="d-flex align-items-center gap-3">
                 <a href="#signup" className="link-secondary text-decoration-none">회원가입</a>
-                <a href="#login"  className="link-secondary text-decoration-none">로그인</a>
+                <a href="login"  className="link-secondary text-decoration-none">로그인</a>
               </div>
             </div>
           </div>
@@ -70,7 +70,7 @@ export default function HeaderResponsive() {
             </a>
 
             <div className="d-flex align-items-start">
-              <a href="#login" className="text-dark text-decoration-none d-flex flex-column align-items-center me-4">
+              <a href="login" className="text-dark text-decoration-none d-flex flex-column align-items-center me-4">
                 <i className="bi bi-person fs-1"></i>
                 <small className="mt-1">로그인</small>
               </a>
