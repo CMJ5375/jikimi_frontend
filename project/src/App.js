@@ -6,6 +6,8 @@ import Myfooter from './component/Myfooter'
 import Navigation from './component/Navigation'
 import LoginMain from './component/LoginMain'
 import Register from './component/Register'
+import HospitalDetail from './component/HospitalDetail';
+import PharmacyDetail from './component/PharmacyDetail';
 
 function Layout() {
   return (
@@ -25,6 +27,8 @@ export default function App() {
         <Route path='mypage' element={<MyPage />} />
         <Route path="login" element={<LoginMain />} />
         <Route path="register" element={<Register/>} />
+        <Route path="hospitaldetails" element={<HospitalDetail />} />
+        <Route path="pharmacydetails" element={<PharmacyDetail />} />
       </Route>
     </Routes>
   )
