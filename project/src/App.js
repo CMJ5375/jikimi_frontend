@@ -34,6 +34,8 @@ export default function App() {
         <Route path="register" element={<Register/>} />
         <Route path="hospitaldetails" element={<HospitalDetail />} />
         <Route path="pharmacydetails" element={<PharmacyDetail />} />
+        <Route path='noticeboards' element={<Noticeboard/>}/>
+        <Route path='hospitalDetails' element={<HospitalDetail/>}/>
       </Route>
     </Routes>
   )
