@@ -2,12 +2,19 @@ import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { GeoAltFill } from "react-bootstrap-icons";
 import { Nav } from 'react-bootstrap'
+import { useLocation } from "react-router-dom";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import NavDropdown from 'react-bootstrap/NavDropdown';
 
 
 export default function HeaderResponsive() {
+  const location = useLocation();
+
+  // 안내바를 숨기고 싶은 경로들
+  const hideBannerPaths = [""]; //경로 넣기
+
+  const shouldShowBanner = !hideBannerPaths.includes(location.pathname);
   return (
     <header className="border-bottom">
       <div>
@@ -21,8 +28,8 @@ export default function HeaderResponsive() {
                 <span>경기도 성남시 중원구 성남동</span>
               </div>
               <div className="d-flex align-items-center gap-3">
-                <a href="#signup" className="link-secondary text-decoration-none">회원가입</a>
-                <a href="#login"  className="link-secondary text-decoration-none">로그인</a>
+                <a href="Register" className="link-secondary text-decoration-none">회원가입</a>
+                <a href="login"  className="link-secondary text-decoration-none">로그인</a>
               </div>
             </div>
           </div>
@@ -40,11 +47,8 @@ export default function HeaderResponsive() {
             {/* 메뉴 */}
             <Nav className="me-auto">
               <Nav.Link href="/">게시판</Nav.Link>
-              <NavDropdown title="마이페이지" id="basic-nav-dropdown">
-                <NavDropdown.Item href="/">즐겨찾기</NavDropdown.Item>
-                <NavDropdown.Item href="/">회원정보 수정</NavDropdown.Item>
-                <NavDropdown.Item href="/">내가 쓴 글</NavDropdown.Item>
-              </NavDropdown>
+              <Nav.Link href="/mypage">마이페이지</Nav.Link>
+               
               <NavDropdown title="고객지원" id="basic-nav-dropdown">
                 <NavDropdown.Item href="/">FAQ</NavDropdown.Item>
                 <NavDropdown.Item href="/">공지사항</NavDropdown.Item>
@@ -63,7 +67,7 @@ export default function HeaderResponsive() {
             </a>
 
             <div className="d-flex align-items-start">
-              <a href="#login" className="text-dark text-decoration-none d-flex flex-column align-items-center me-4">
+              <a href="login" className="text-dark text-decoration-none d-flex flex-column align-items-center me-4">
                 <i className="bi bi-person fs-1"></i>
                 <small className="mt-1">로그인</small>
               </a>
@@ -81,11 +85,13 @@ export default function HeaderResponsive() {
           </div>
 
           {/* 파란 안내바 */}
-          <div className="bg-primary text-white">
-            <div className="py-2 text-center">
-              주말 공휴일에도 걱정없이, 지금 열려있는 병원/약국 안내
+          {shouldShowBanner && (
+            <div className="bg-primary text-white">
+              <div className="py-2 text-center">
+                주말 공휴일에도 걱정없이, 지금 열려있는 병원/약국 안내
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
       </div>
