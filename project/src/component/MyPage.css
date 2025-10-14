@@ -1,0 +1,121 @@
+.mypage-wrapper {
+  background-color: #f6f8fc;
+  min-height: 100vh;
+  font-family: "Noto Sans KR", sans-serif;
+}
+
+/* 프로필 */
+.profile-img {
+  width: 80px;
+  height: 80px;
+  background-color: #f1f3f6;
+  color: #c1c5ca;
+  font-size: 36px;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+}
+
+/* 좌측 사이드 */
+.sidebar {
+  background: #f9fafc;
+}
+.sidebar-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  margin-bottom: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+.sidebar-item.active {
+  background: #3b5bff;
+  color: white;
+}
+.menu-count {
+  font-size: 14px;
+  background: #e9ecff;
+  color: #3b5bff;
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+/* 즐겨찾기 탭 */
+.fav-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  padding-top: 1rem;
+}
+.fav-tab {
+  background: none;
+  border: none;
+  font-weight: 600;
+  color: #9aa0a6;
+  font-size: 1.1rem;
+  border-bottom: 4px solid #e5e7eb;
+  padding-bottom: 0.4rem;
+}
+.fav-tab.active {
+  color: #3b5bff;
+  border-bottom: 4px solid #3b5bff;
+}
+.fav-hr {
+  margin-top: 0;
+  opacity: 0.1;
+}
+
+/* 즐겨찾기 리스트 */
+.fav-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.fav-addr {
+  color: #444;
+  font-size: 15px;
+}
+.tag-label {
+  background: #d4d6da;
+  color: #333;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-right: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.fav-divider {
+  opacity: 0.15;
+  margin-top: 1rem;
+  margin-bottom: 0;
+}
+
+/* 페이지네이션 */
+.pagination .page-link {
+  border-radius: 6px !important;
+  border: 1px solid #e5e7eb;
+  color: #4b5563;
+}
+.pagination .page-item.active .page-link {
+  background: #3b5bff;
+  color: white;
+  border-color: #3b5bff;
+}
+
+/* 반응형 */
+@media (max-width: 991px) {
+  .sidebar {
+    display: none;
+  }
+  .menu-count {
+    display: none;
+  }
+}
