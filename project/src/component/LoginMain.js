@@ -1,4 +1,5 @@
 import { Container, Row, Col, Form, Button } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 import '../btn.css';
 function LoginMain() {
   return (
@@ -21,7 +22,7 @@ function LoginMain() {
 
         {/* 로그인 폼 영역 */}
         <Col xs={12} md={8} lg={6} className="order-lg-2">
-          <h3 className="mb-4 fw-bold text-center text-lg-start">로그인</h3>
+          <h3 className="mb-4 fw-bold text-center text-lg-center">로그인</h3>
 
           <Form>
             {/* 아이디/비밀번호 입력 */}
@@ -42,8 +43,8 @@ function LoginMain() {
             </Form.Group>
 
 
-            <div className="mb-3 text-end">
-              <a href="#" style={{ fontSize: "14px", textDecoration: "none" }}>
+            <div className="mb-3">
+              <a href="#" style={{ fontSize: "14px",color:'black'}}>
                 계정을 잊으셨나요?
               </a>
             </div>
@@ -66,9 +67,8 @@ function LoginMain() {
                   </Button>
                 </Col>
                 <Col xs={6}>
-                 <Button
-                  className="w-100 fw-bold custom-outline-blue">
-                  회원가입
+                  <Button className="w-100 fw-bold custom-outline-blue" as={Link} to="/register">
+                    회원가입
                   </Button>
                 </Col>
               </Row>
@@ -87,8 +87,7 @@ function LoginMain() {
               >
                 로그인
               </Button>
-              <Button
-                  className="w-100 fw-bold custom-outline-blue">
+              <Button className="w-100 fw-bold custom-outline-blue" as={Link} to="/register">
                 회원가입
               </Button>
             </div>
@@ -106,8 +105,7 @@ function LoginMain() {
               >
                 로그인
               </Button>
-              <Button
-                  className="w-100 fw-bold custom-outline-blue">
+              <Button className="w-100 fw-bold custom-outline-blue" as={Link} to="/register"> 
                 회원가입
               </Button>
             </div>
