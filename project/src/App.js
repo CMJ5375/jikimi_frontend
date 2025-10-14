@@ -3,12 +3,14 @@ import { Routes, Route, Outlet } from 'react-router-dom';
 import Main from './component/Main';
 import Myfooter from './component/Myfooter';
 import Navigation from './component/Navigation';
+import Details from './component/Details';
 
 function Layout() {
   return (
     <>
     <Navigation/>
     {/* <Main /> */}
+    <Details />
     <Myfooter />
     </>
   )
@@ -19,6 +21,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Main />} />
+        <Route path="/details" element={<Details />} />
       </Route>
     </Routes>
   )
