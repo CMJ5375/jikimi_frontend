@@ -3,16 +3,13 @@ import { Routes, Route} from 'react-router-dom';
 import Main from './component/Main';
 import HospitalDetail from './component/HospitalDetail';
 import PharmacyDetail from './component/PharmacyDetail';
-import Myfooter from './component/Myfooter'
-import Navigation from './component/Navigation'
 import MyPage from './component/MyPage'
 import LoginMain from './component/LoginMain'
 import Register from './component/Register'
-import { Outlet } from 'react-router-dom';
-
-
+import FindUser from './component/FindUser'
+import Noticeboard from './component/Noticeboard'
 function Layout() {
-  //깃 연동을 위한 임시 주석
+ 
   return (
     <>
       <Navigation />
@@ -27,15 +24,20 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Main />} />
-        <Route path="hospitaldetails" element={<HospitalDetail />} />
-        <Route path="pharmacydetails" element={<PharmacyDetail />} />
         <Route path='mypage' element={<MyPage />} />
         <Route path="login" element={<LoginMain />} />
         <Route path="register" element={<Register/>} />
+<<<<<<< HEAD
         <Route path="hospitaldetails" element={<HospitalDetail />} />
         <Route path="pharmacydetails" element={<PharmacyDetail />} />
         <Route path='noticeboards' element={<Noticeboard/>}/>
         <Route path='hospitalDetails' element={<HospitalDetail/>}/>
+=======
+        <Route path='finduser' element={<FindUser/>}/>
+        <Route path="pharmacydetail" element={<PharmacyDetail />} />
+        <Route path="hospitaldetail" element={<HospitalDetail />} />
+        <Route path='noticeboards' element={<Noticeboard/>}/>
+>>>>>>> eede293674d3ab37b6484ad53894b998d1454def
       </Route>
     </Routes>
   )

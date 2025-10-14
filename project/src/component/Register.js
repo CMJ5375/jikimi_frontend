@@ -57,8 +57,8 @@ const Register = () => {
 
 
             <div className="mb-3">
-              <a href="#" style={{ fontSize: "14px",color:'black'}}>
-                계정을 잊으셨나요?
+              <a href="/login" style={{ fontSize: "14px",color:'black'}}>
+                이미 아이디가 있으신가요?
               </a>
             </div>
 
