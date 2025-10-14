@@ -3,6 +3,8 @@ import { Routes, Route} from 'react-router-dom';
 import Main from './component/Main';
 import HospitalDetail from './component/HospitalDetail';
 import PharmacyDetail from './component/PharmacyDetail';
+import Myfooter from './component/Myfooter'
+import Navigation from './component/Navigation'
 import MyPage from './component/MyPage'
 import LoginMain from './component/LoginMain'
 import Register from './component/Register'
