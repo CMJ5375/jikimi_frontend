@@ -8,6 +8,17 @@ import './App.css'
 import MyPage from './component/MyPage'
 import LoginMain from './component/LoginMain'
 import Register from './component/Register'
+
+function Layout() {
+  //깃 연동을 위한 임시 주석
+  return (
+    <>
+      <Navigation />
+      <Outlet /> 
+      <Myfooter />
+    </>
+  )
+}
 import HospitalDetail from './component/HospitalDetail';
 import PharmacyDetail from './component/PharmacyDetail';
 
