@@ -1,5 +1,4 @@
 import './App.css'
-import './btn.css'
 import { Routes, Route,Outlet } from 'react-router-dom'
 import Main from './component/Main'
 import Myfooter from './component/Myfooter'
