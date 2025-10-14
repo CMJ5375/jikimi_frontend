@@ -28,7 +28,7 @@ export default function HeaderResponsive() {
                 <span>경기도 성남시 중원구 성남동</span>
               </div>
               <div className="d-flex align-items-center gap-3">
-                <a href="Register" className="link-secondary text-decoration-none">회원가입</a>
+                <a href="register" className="link-secondary text-decoration-none">회원가입</a>
                 <a href="login"  className="link-secondary text-decoration-none">로그인</a>
               </div>
             </div>

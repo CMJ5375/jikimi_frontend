@@ -4,6 +4,7 @@ import Main from './component/Main'
 import Myfooter from './component/Myfooter'
 import Navigation from './component/Navigation'
 import LoginMain from './component/LoginMain'
+import Register from './component/Register'
 
 function Layout() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
       <Route path="/" element={<Layout />}>
         <Route index element={<Main />} />
         <Route path="login" element={<LoginMain />} />
+        <Route path="register" element={<Register/>} />
       </Route>
     </Routes>
   )

@@ -1,4 +1,5 @@
 import React from 'react'
+import { Container, Row, Col, Form, Button } from 'react-bootstrap';
 import '../btn.css'
 const Register = () => {
   return (
@@ -21,11 +22,10 @@ const Register = () => {
 
         {/* 로그인 폼 영역 */}
         <Col xs={12} md={8} lg={6} className="order-lg-2">
-          <h3 className="mb-4 fw-bold text-center text-lg-start">로그인</h3>
+          <h3 className="mb-4 fw-bold text-center text-lg-center">회원가입</h3>
 
           <Form>
-            {/* 아이디/비밀번호 입력 */}
-            <Form.Group className="mb-3">
+            <Form.Group className="mb-2">
               <Form.Control
                 type="text"
                 placeholder="아이디를 입력해주세요."
@@ -33,7 +33,21 @@ const Register = () => {
               />
             </Form.Group>
 
-            <Form.Group className="mb-3">
+            <Form.Group className="mb-2">
+              <Form.Control
+                type="email"
+                placeholder="이메일을 입력해주세요."
+                className="bg-light rounded-0"
+              />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Control
+                type="password"
+                placeholder="비밀번호를 입력해주세요."
+                className="bg-light rounded-0"
+              />
+            </Form.Group>
+            <Form.Group className="mb-2">
               <Form.Control
                 type="password"
                 placeholder="비밀번호를 입력해주세요."
@@ -42,8 +56,8 @@ const Register = () => {
             </Form.Group>
 
 
-            <div className="mb-3 text-end">
-              <a href="#" style={{ fontSize: "14px", textDecoration: "none" }}>
+            <div className="mb-3">
+              <a href="#" style={{ fontSize: "14px",color:'black'}}>
                 계정을 잊으셨나요?
               </a>
             </div>
@@ -62,14 +76,13 @@ const Register = () => {
                       height: "48px",
                     }}
                   >
-                    로그인
+                    회원가입
                   </Button>
                 </Col>
                 <Col xs={6}>
-                 <Button
-                  className="w-100 fw-bold custom-outline-blue">
-                  회원가입
-                  </Button>
+                    <Button className="w-100 fw-bold custom-outline-blue">
+                        취소
+                    </Button>
                 </Col>
               </Row>
             </div>
@@ -85,11 +98,10 @@ const Register = () => {
                   height: "50px",
                 }}
               >
-                로그인
-              </Button>
-              <Button
-                  className="w-100 fw-bold custom-outline-blue">
                 회원가입
+              </Button>
+              <Button className="w-100 fw-bold custom-outline-blue">
+                취소
               </Button>
             </div>
 
@@ -104,11 +116,10 @@ const Register = () => {
                   height: "50px",
                 }}
               >
-                로그인
-              </Button>
-              <Button
-                  className="w-100 fw-bold custom-outline-blue">
                 회원가입
+              </Button>
+              <Button className="w-100 fw-bold custom-outline-blue" >
+                취소
               </Button>
             </div>
             <div className="text-center my-3 text-muted">또는</div>
