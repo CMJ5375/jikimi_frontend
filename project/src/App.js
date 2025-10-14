@@ -1,6 +1,7 @@
 import './App.css'
-import { Routes, Route} from 'react-router-dom'
+import { Routes, Route,Outlet} from 'react-router-dom'
 import Main from './component/Main'
+import MyPage from './component/MyPage'
 import Myfooter from './component/Myfooter'
 import Navigation from './component/Navigation'
 import LoginMain from './component/LoginMain'
@@ -21,6 +22,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Main />} />
+        <Route path='mypage' element={<MyPage />} />
         <Route path="login" element={<LoginMain />} />
         <Route path="register" element={<Register/>} />
       </Route>
