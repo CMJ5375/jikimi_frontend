@@ -1,11 +1,11 @@
-import { Container, Row, Col, Form, Button } from 'react-bootstrap';
-import '../btn.css';
-function LoginMain() {
+import React from 'react'
+import '../btn.css'
+const Register = () => {
   return (
     <Container className="py-5">
       <Row className="justify-content-center align-items-center">
 
-        {/* PC 전용 - 왼쪽 설명 영역 (lg 이상부터만 보여줌) */}
+        {/* PC 전용  */}
         <Col lg={6} className="d-none d-lg-block text-center order-lg-1">
           <img
             src="/image/loginLogo.png"
@@ -155,4 +155,4 @@ function LoginMain() {
   );
 }
 
-export default LoginMain;
+export default Register

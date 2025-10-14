@@ -28,7 +28,7 @@ export default function HeaderResponsive() {
                 <span>경기도 성남시 중원구 성남동</span>
               </div>
               <div className="d-flex align-items-center gap-3">
-                <a href="#signup" className="link-secondary text-decoration-none">회원가입</a>
+                <a href="Register" className="link-secondary text-decoration-none">회원가입</a>
                 <a href="login"  className="link-secondary text-decoration-none">로그인</a>
               </div>
             </div>
@@ -47,11 +47,8 @@ export default function HeaderResponsive() {
             {/* 메뉴 */}
             <Nav className="me-auto">
               <Nav.Link href="/">게시판</Nav.Link>
-              <NavDropdown title="마이페이지" id="basic-nav-dropdown">
-                <NavDropdown.Item href="/">즐겨찾기</NavDropdown.Item>
-                <NavDropdown.Item href="/">회원정보 수정</NavDropdown.Item>
-                <NavDropdown.Item href="/">내가 쓴 글</NavDropdown.Item>
-              </NavDropdown>
+              <Nav.Link href="/mypage">마이페이지</Nav.Link>
+               
               <NavDropdown title="고객지원" id="basic-nav-dropdown">
                 <NavDropdown.Item href="/">FAQ</NavDropdown.Item>
                 <NavDropdown.Item href="/">공지사항</NavDropdown.Item>
