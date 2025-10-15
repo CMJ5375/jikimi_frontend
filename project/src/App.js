@@ -10,12 +10,16 @@ import FindUser from './component/FindUser'
 import Noticeboard from './component/Noticeboard'
 import Navigation from './component/Navigation';
 import Myfooter from './component/Myfooter';
+import FindUserPW from './component/FindUserPW';
+import { Container } from 'react-bootstrap';
 function Layout() {
  
   return (
     <>
       <Navigation />
-      <Outlet /> 
+      <Container style={{ maxWidth: '1024px' }}>
+        <Outlet />
+      </Container>
       <Myfooter />
     </>
   )
@@ -23,17 +27,20 @@ function Layout() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={<Main />} />
-        <Route path='mypage' element={<MyPage />} />
-        <Route path="login" element={<LoginMain />} />
-        <Route path="register" element={<Register/>} />
-        <Route path='finduser' element={<FindUser/>}/>
-        <Route path="pharmacydetail" element={<PharmacyDetail />} />
-        <Route path="hospitaldetail" element={<HospitalDetail />} />
-        <Route path='noticeboard' element={<Noticeboard/>}/>
-      </Route>
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Main />} />
+          <Route path='mypage' element={<MyPage />} />
+          <Route path="login" element={<LoginMain />} />
+          <Route path="register" element={<Register/>} />
+          <Route path='finduser' element={<FindUser/>}/>
+          <Route path="pharmacydetail" element={<PharmacyDetail />} />
+          <Route path="hospitaldetail" element={<HospitalDetail />} />
+          <Route path='noticeboard' element={<Noticeboard/>}/>
+          <Route path="finduserpw" element={<FindUserPW/>}/>
+        </Route>
+      </Routes>
+    </>
   )
 }
