@@ -1,174 +1,363 @@
-import { useState } from "react";
-import "bootstrap/dist/css/bootstrap.min.css";
+import React, { useState } from "react";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  ListGroup,
+  Button,
+  Nav,
+  Pagination,
+  Form,
+} from "react-bootstrap";
+import {
+  FaBookmark,
+  FaCommentDots,
+  FaStar,
+  FaHeart,
+  FaRegCommentDots,
+} from "react-icons/fa";
 import "./MyPage.css";
 
-export default function MyPage() {
-  const [selectedMenu, setSelectedMenu] = useState("favorites");
-  const [favTab, setFavTab] = useState("hospital");
-  const [page, setPage] = useState(1);
+const MyPage = () => {
+  const [activeMenu, setActiveMenu] = useState("favorite");
+  const [favoriteTab, setFavoriteTab] = useState("hospital");
+  const [postTab, setPostTab] = useState("post");
+  const [activePage, setActivePage] = useState(1);
 
-  // Mock data
-  const hospitalData = [
-    { id: 1, name: "성남소아과", addr: "경기 성남시 수정구 수정로171번길", favorite: true },
-    { id: 2, name: "성남소아과", addr: "경기 성남시 수정구 수정로171번길", favorite: true },
-  ];
-
-  const postCount = 8;
-  const favoriteCount = 5;
-
-  const StarFilled = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="#FFC107" aria-hidden="true">
-      <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-    </svg>
-  );
-
-  const Tag = ({ children }) => <span className="tag-label">{children}</span>;
-
-  const renderFavoritesList = (items) => (
-    <div className="px-3">
-      {items.map((it, idx) => (
-        <div key={it.id} className="py-3">
-          <div className="d-flex align-items-start justify-content-between">
-            <div>
-              <div className="fav-title">{it.name}</div>
-              <div className="d-flex align-items-center">
-                <Tag>도로명</Tag>
-                <span className="fav-addr">{it.addr}</span>
-              </div>
-            </div>
-            {it.favorite && <StarFilled />}
-          </div>
-          {idx !== items.length - 1 && <hr className="fav-divider" />}
-        </div>
-      ))}
-    </div>
-  );
-
-  const Pagination = () => (
-    <nav className="d-flex justify-content-center my-4">
-      <ul className="pagination mb-0">
-        <li className="page-item"><button className="page-link border-0">«</button></li>
-        {[1, 2, 3, 4, 5].map((p) => (
-          <li key={p} className={`page-item ${page === p ? "active" : ""}`}>
-            <button
-              className="page-link"
-              onClick={() => setPage(p)}
-              style={{ width: 36, height: 36 }}
-            >
-              {p}
-            </button>
-          </li>
-        ))}
-        <li className="page-item"><button className="page-link border-0">»</button></li>
-      </ul>
-    </nav>
-  );
-
-  const FavTabs = () => (
-    <div className="fav-tabs text-center">
-      <button
-        className={`fav-tab ${favTab === "hospital" ? "active" : ""}`}
-        onClick={() => setFavTab("hospital")}
-      >
-        병원
-      </button>
-      <button
-        className={`fav-tab ${favTab === "pharmacy" ? "active" : ""}`}
-        onClick={() => setFavTab("pharmacy")}
-      >
-        약국
-      </button>
-    </div>
-  );
-
-  const Sidebar = () => (
-    <div className="sidebar rounded-4 shadow-sm bg-white p-3">
-      {[
-        { key: "favorites", label: "즐겨찾기", count: favoriteCount },
-        { key: "posts", label: "내가 쓴글", count: postCount },
-        { key: "edit", label: "회원정보 수정", count: null },
-      ].map((m) => (
-        <button
-          key={m.key}
-          onClick={() => setSelectedMenu(m.key)}
-          className={`sidebar-item ${selectedMenu === m.key ? "active" : ""}`}
-        >
-          <div className="d-flex align-items-center">
-            <span>{m.label}</span>
-            {m.count !== null && <span className="menu-count ms-2">{m.count}</span>}
-          </div>
-          <span>›</span>
-        </button>
-      ))}
-    </div>
-  );
+  const handlePageChange = (page) => setActivePage(page);
 
   return (
-    <div className="mypage-wrapper">
-      <div className="container py-5">
-        <h3 className="fw-bold text-center mb-5">마이페이지</h3>
+    <Container fluid className="mypage-section py-5">
+      <Container className="mypage-container narrow-container">
 
-        {/* 프로필 영역 */}
-        <div className="profile-section bg-white rounded-4 shadow-sm p-4 mb-4 text-center text-md-start">
-          <div className="d-flex flex-column flex-md-row align-items-center justify-content-between">
-            <div className="d-flex align-items-center mb-3 mb-md-0">
-              <div className="profile-img">＋</div>
-              <div className="ms-3 text-start">
-                <p className="text-secondary small mb-1">일반 회원</p>
-                <h4 className="fw-bold mb-2">limdo 님 환영합니다!</h4>
+        {/* 상단 타이틀 */}
+        <Row className="text-center mb-5">
+          <Col>
+            <h2 className="mypage-title fw-bold">마이페이지</h2>
+          </Col>
+        </Row>
+
+        {/* 프로필 */}
+        <Row className="align-items-center text-center mb-5 gy-4">
+          <Col xs={12}>
+            <div className="profile-box d-flex flex-wrap justify-content-center justify-content-md-start align-items-center gap-4">
+
+              {/* 프로필 이미지 */}
+              <div className="mypage-avatar">
+                <div clssName="avatar-logo">+</div>
               </div>
-            </div>
-            <button className="btn btn-light btn-sm rounded-3 px-4 fw-semibold">프로필 수정</button>
-          </div>
 
-          <div className="d-flex justify-content-center justify-content-md-end mt-3 gap-4">
-            <div className="text-center">
-              <i className="bi bi-bookmark-star-fill fs-5 text-dark"></i>
-              <div className="small text-secondary">즐겨찾기</div>
-              <div className="fw-bold text-primary">{favoriteCount}</div>
-            </div>
-            <div className="text-center">
-              <i className="bi bi-chat-left-text-fill fs-5 text-dark"></i>
-              <div className="small text-secondary">내가 쓴글</div>
-              <div className="fw-bold text-primary">{postCount}</div>
-            </div>
-          </div>
-        </div>
+              {/* 이름/등급/버튼 묶음 */}
+              <div className="text-start">
+                <div className="d-flex align-items-center flex-wrap gap-2 mb-2">
+                  <h4 className="fw-bold mb-0">limdo</h4>
+                  <span className="text-muted">일반 회원</span>
+                </div>
+                <Button variant="light" className="mypage-btn">
+                  프로필 수정
+                </Button>
+              </div>
 
-        <div className="row g-4">
-          {/* 좌측 탭 */}
-          <div className="col-lg-3 d-none d-lg-block">
-            <Sidebar />
-          </div>
+              {/* 즐겨찾기 / 내가 쓴 글 */}
+              <div className="d-flex ms-auto gap-5 justify-content-center stats-box">
+                <div className="text-center">
+                  <FaBookmark className="mypage-icon mb-1" />
+                  <p className="mb-0">즐겨찾기</p>
+                  <span className="fw-bold text-primary">5</span>
+                </div>
+                <div className="text-center">
+                  <FaCommentDots className="mypage-icon mb-1" />
+                  <p className="mb-0">내가 쓴 글</p>
+                  <span className="fw-bold text-primary">8</span>
+                </div>
+              </div>
+
+            </div>
+          </Col>
+        </Row>
+
+
+        {/* 본문 */}
+        <Row className="gy-4">
+          {/* 좌측 메뉴 */}
+          <Col xs={12} lg={3}>
+            <Card className="menu-card border-0 shadow-sm">
+              <ListGroup variant="flush">
+                <ListGroup.Item
+                  action
+                  className={`menu-item ${
+                    activeMenu === "favorite" ? "active-item" : ""
+                  }`}
+                  onClick={() => setActiveMenu("favorite")}
+                >
+                  즐겨찾기
+                </ListGroup.Item>
+                <ListGroup.Item
+                  action
+                  className={`menu-item ${
+                    activeMenu === "mypost" ? "active-item" : ""
+                  }`}
+                  onClick={() => setActiveMenu("mypost")}
+                >
+                  내가 쓴 글
+                </ListGroup.Item>
+                <ListGroup.Item
+                  action
+                  className={`menu-item ${
+                    activeMenu === "profile" ? "active-item" : ""
+                  }`}
+                  onClick={() => setActiveMenu("profile")}
+                >
+                  회원정보 수정
+                </ListGroup.Item>
+              </ListGroup>
+            </Card>
+          </Col>
 
           {/* 우측 콘텐츠 */}
-          <div className="col-12 col-lg-9">
-            {selectedMenu === "favorites" && (
-              <div className="card border-0 shadow-sm rounded-4 p-0">
-                <FavTabs />
-                <hr className="fav-hr" />
-                {favTab === "hospital" && renderFavoritesList(hospitalData)}
-                {favTab === "pharmacy" && (
-                  <div className="py-5 text-center text-secondary">즐겨찾기한 약국이 없습니다.</div>
+          <Col xs={12} lg={9}>
+            <Card className="content-card border-0 shadow-sm">
+              <Card.Body>
+                {/* 즐겨찾기 */}
+                {activeMenu === "favorite" && (
+                  <>
+                    <Nav className="custom-tabs mb-4">
+                      <Nav.Item>
+                        <Nav.Link
+                          className={`tab-link ${
+                            favoriteTab === "hospital" ? "active" : ""
+                          }`}
+                          onClick={() => setFavoriteTab("hospital")}
+                        >
+                          병원
+                        </Nav.Link>
+                      </Nav.Item>
+                      <Nav.Item>
+                        <Nav.Link
+                          className={`tab-link ${
+                            favoriteTab === "pharmacy" ? "active" : ""
+                          }`}
+                          onClick={() => setFavoriteTab("pharmacy")}
+                        >
+                          약국
+                        </Nav.Link>
+                      </Nav.Item>
+                    </Nav>
+
+                    {favoriteTab === "hospital" && (
+                      <>
+                        <div className="hospital-item">
+                          <strong>성남소아과</strong>
+                          <p>
+                            <span className="badge bg-light text-dark me-2">
+                              도로명
+                            </span>
+                            경기 성남시 수정구 수정로171번길
+                          </p>
+                          <FaStar className="favorite-star" />
+                        </div>
+                        <hr />
+                        <div className="hospital-item">
+                          <strong>성남소아과</strong>
+                          <p>
+                            <span className="badge bg-light text-dark me-2">
+                              도로명
+                            </span>
+                            경기 성남시 수정구 수정로171번길
+                          </p>
+                          <FaStar className="favorite-star" />
+                        </div>
+                      </>
+                    )}
+
+                    {favoriteTab === "pharmacy" && (
+                      <>
+                        <div className="hospital-item">
+                          <strong>열린약국</strong>
+                          <p>
+                            <span className="badge bg-light text-dark me-2">
+                              도로명
+                            </span>
+                            경기 성남시 중원구 산성대로 234
+                          </p>
+                          <FaStar className="favorite-star" />
+                        </div>
+                        <hr />
+                        <div className="hospital-item">
+                          <strong>365온누리약국</strong>
+                          <p>
+                            <span className="badge bg-light text-dark me-2">
+                              도로명
+                            </span>
+                            경기 성남시 수정구 복정로 45
+                          </p>
+                          <FaStar className="favorite-star" />
+                        </div>
+                      </>
+                    )}
+
+                    <div className="d-flex justify-content-center mt-4">
+                      <Pagination className="custom-pagination">
+                        {[1, 2, 3, 4, 5].map((page) => (
+                          <Pagination.Item
+                            key={page}
+                            active={activePage === page}
+                            onClick={() => handlePageChange(page)}
+                          >
+                            {page}
+                          </Pagination.Item>
+                        ))}
+                      </Pagination>
+                    </div>
+                  </>
                 )}
-                <Pagination />
-              </div>
-            )}
 
-            {selectedMenu === "posts" && (
-              <div className="card border-0 shadow-sm rounded-4 p-5 text-center text-muted">
-                ✏️ 내가 쓴 글 (총 {postCount}개)
-              </div>
-            )}
+                {/* 내가 쓴 글 */}
+                {activeMenu === "mypost" && (
+                  <>
+                    <Nav className="custom-tabs mb-4">
+                      <Nav.Item>
+                        <Nav.Link
+                          className={`tab-link ${
+                            postTab === "post" ? "active" : ""
+                          }`}
+                          onClick={() => setPostTab("post")}
+                        >
+                          게시글
+                        </Nav.Link>
+                      </Nav.Item>
+                      <Nav.Item>
+                        <Nav.Link
+                          className={`tab-link ${
+                            postTab === "comment" ? "active" : ""
+                          }`}
+                          onClick={() => setPostTab("comment")}
+                        >
+                          댓글
+                        </Nav.Link>
+                      </Nav.Item>
+                    </Nav>
 
-            {selectedMenu === "edit" && (
-              <div className="card border-0 shadow-sm rounded-4 p-5 text-center text-muted">
-                ⚙️ 회원정보 수정 페이지
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+                    {postTab === "post" && (
+                      <>
+                        <div className="hospital-item">
+                          <strong>간경화 진단을 받았습니다..</strong>
+                          <p className="text-muted mb-2">
+                            최근 회식이 잦긴 했는데 이렇게 갑자기...
+                          </p>
+                          <div className="d-flex gap-3 text-muted">
+                            <span>
+                              <FaHeart /> 25
+                            </span>
+                            <span>
+                              <FaRegCommentDots /> 11
+                            </span>
+                          </div>
+                        </div>
+                        <hr />
+                        <div className="hospital-item">
+                          <strong>간경화 진단을 받았습니다..</strong>
+                          <p className="text-muted mb-2">
+                            최근 회식이 잦긴 했는데 이렇게 갑자기...
+                          </p>
+                          <div className="d-flex gap-3 text-muted">
+                            <span>
+                              <FaHeart /> 25
+                            </span>
+                            <span>
+                              <FaRegCommentDots /> 11
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {postTab === "comment" && (
+                      <p className="text-center text-muted mt-5">
+                        작성한 댓글이 없습니다.
+                      </p>
+                    )}
+
+                    <div className="d-flex justify-content-center mt-4">
+                      <Pagination className="custom-pagination">
+                        {[1, 2, 3, 4, 5].map((page) => (
+                          <Pagination.Item
+                            key={page}
+                            active={activePage === page}
+                            onClick={() => handlePageChange(page)}
+                          >
+                            {page}
+                          </Pagination.Item>
+                        ))}
+                      </Pagination>
+                    </div>
+                  </>
+                )}
+
+                {/* 회원정보 수정 */}
+                {activeMenu === "profile" && (
+                  <div className="px-3 px-md-5 py-3">
+                    <Form>
+                      <Form.Group className="mb-3" controlId="formRank">
+                        <Form.Label>등급</Form.Label>
+                        <Form.Control type="text" value="일반 회원" readOnly />
+                      </Form.Group>
+
+                      <Form.Group className="mb-3" controlId="formEmail">
+                        <Form.Label>이메일</Form.Label>
+                        <Form.Control
+                          type="email"
+                          value="limdoyung@naver.com"
+                          readOnly
+                        />
+                      </Form.Group>
+
+                      <Form.Group className="mb-3" controlId="formId">
+                        <Form.Label>아이디</Form.Label>
+                        <Form.Control type="text" value="limdo" readOnly />
+                      </Form.Group>
+
+                      <Form.Group className="mb-3" controlId="formPassword">
+                        <Form.Label>비밀번호</Form.Label>
+                        <Form.Control type="password" value="******" readOnly />
+                      </Form.Group>
+
+                      <Form.Group className="mb-4" controlId="formAge">
+                        <Form.Label>
+                          나이 <span className="text-danger">*</span>
+                        </Form.Label>
+                        <Form.Select>
+                          <option>연령대를 선택하면 관련 안내를 받을 수 있어요.</option>
+                          <option>10대</option>
+                          <option>20대</option>
+                          <option>30대</option>
+                          <option>40대</option>
+                          <option>50대 이상</option>
+                        </Form.Select>
+                      </Form.Group>
+
+                      <div className="text-end">
+                        <Button
+                          variant="primary"
+                          style={{
+                            backgroundColor: "#3341F3",
+                            borderColor: "#3341F3",
+                          }}
+                        >
+                          회원정보 수정
+                        </Button>
+                      </div>
+                    </Form>
+                  </div>
+                )}
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Container>
+    </Container>
   );
-}
+};
+
+export default MyPage;

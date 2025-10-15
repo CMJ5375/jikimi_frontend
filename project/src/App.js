@@ -14,8 +14,10 @@ import PharmacyMain from './component/PharmacyMain';
 import { Container } from 'react-bootstrap';
 
 
+import FindUserPW from './component/FindUserPW';
+import { Container } from 'react-bootstrap';
 function Layout() {
-  //깃 연동을 위한 임시 주석
+ 
   return (
     <>
       <Navigation />

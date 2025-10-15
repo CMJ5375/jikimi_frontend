@@ -92,7 +92,7 @@ export default function MainPage() {
                 src="/image/hospitalBed.png"
                 alt="병원침대"
                 style={{
-                  height: 180,
+                  height: 150,
                   marginBottom: 12,
                   objectFit: "contain",
                 }}
@@ -113,7 +113,7 @@ export default function MainPage() {
             style={{
               background: type === "pharmacy" ? colors.primary : "#f3f4f6",
               cursor: "pointer",
-              minHeight: 180,
+              minHeight: 150,
               transition: "0.2s ease",
             }}
             onClick={() => setType("pharmacy")}

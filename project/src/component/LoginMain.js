@@ -44,7 +44,7 @@ function LoginMain() {
 
 
             <div className="mb-3">
-              <a href="#" style={{ fontSize: "14px",color:'black'}}>
+              <a href="/finduser" style={{ fontSize: "14px",color:'black'}}>
                 계정을 잊으셨나요?
               </a>
             </div>
@@ -52,13 +52,11 @@ function LoginMain() {
 
             {/* 모바일*/}
             <div className="d-block d-md-none mb-3">
-              <Row className="g-2">
+              <Row className="g-2 ">
                 <Col xs={6}>
                   <Button
-                    className="w-100 fw-bold mb-3"
+                    className="w-100 fw-bold mb-3 btn-main-blue"
                     style={{
-                      backgroundColor: "#3341F3",
-                      color: "#fff",
                       fontSize: "16px",
                       height: "48px",
                     }}
@@ -67,7 +65,7 @@ function LoginMain() {
                   </Button>
                 </Col>
                 <Col xs={6}>
-                  <Button className="w-100 fw-bold custom-outline-blue" as={Link} to="/register">
+                  <Button className="w-100 fw-bold btn-outline-blue" as={Link} to="/register">
                     회원가입
                   </Button>
                 </Col>
@@ -77,17 +75,15 @@ function LoginMain() {
             {/* 태블릿 */}
             <div className="d-none d-md-block d-lg-none d-grid gap-2 mb-3">
               <Button
-                className="w-100 fw-bold mb-3 shadow"
+                className="w-100 fw-bold mb-3 shadow btn-main-blue"
                 style={{
-                  backgroundColor: "#3341F3",
-                  color: "#fff",
                   fontSize: "18px",
                   height: "50px",
                 }}
               >
                 로그인
               </Button>
-              <Button className="w-100 fw-bold custom-outline-blue" as={Link} to="/register">
+              <Button className="w-100 fw-bold btn-outline-blue" as={Link} to="/register">
                 회원가입
               </Button>
             </div>
@@ -95,21 +91,24 @@ function LoginMain() {
             {/*PC*/}
             <div className="d-none d-lg-block d-grid gap-2">
               <Button
-                className="w-100 fw-bold shadow mb-3"
+                className="w-100 fw-bold shadow mb-3 btn-main-blue"
                 style={{
-                  backgroundColor: "#3341F3",
-                  color: "#fff",
                   fontSize: "18px",
                   height: "50px",
                 }}
               >
                 로그인
               </Button>
-              <Button className="w-100 fw-bold custom-outline-blue" as={Link} to="/register"> 
+              <Button className="w-100 fw-bold btn-outline-blue" as={Link} to="/register"> 
                 회원가입
               </Button>
             </div>
-            <div className="text-center my-3 text-muted">또는</div>
+            <div className="d-flex align-items-center my-3 divider">
+              <div className="flex-grow-1 border-bottom fw-bold"></div>
+              <span className="mx-3">또는</span>
+              <div className="flex-grow-1 border-bottom"></div>
+            </div>
+
 
             {/* 소셜 로그인 버튼들 */}
             <div className="d-grid gap-2">
