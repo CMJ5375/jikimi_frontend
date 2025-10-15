@@ -6,15 +6,11 @@ import PharmacyDetail from './component/PharmacyDetail';
 import MyPage from './component/MyPage'
 import LoginMain from './component/LoginMain'
 import Register from './component/Register'
-<<<<<<< HEAD
 import { Container } from 'react-bootstrap'
 
-=======
-import FindUser from './component/FindUser'
-import Noticeboard from './component/Noticeboard'
-import Navigation from './component/Navigation';
-import Myfooter from './component/Myfooter';
->>>>>>> project/main
+
+import FindUserPW from './component/FindUserPW';
+import { Container } from 'react-bootstrap';
 function Layout() {
  
   return (

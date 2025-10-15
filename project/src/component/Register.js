@@ -68,10 +68,8 @@ const Register = () => {
               <Row className="g-2">
                 <Col xs={6}>
                   <Button
-                    className="w-100 fw-bold mb-3"
+                    className="w-100 fw-bold mb-3 btn-main-blue"
                     style={{
-                      backgroundColor: "#3341F3",
-                      color: "#fff",
                       fontSize: "16px",
                       height: "48px",
                     }}
@@ -80,7 +78,7 @@ const Register = () => {
                   </Button>
                 </Col>
                 <Col xs={6}>
-                    <Button className="w-100 fw-bold custom-outline-blue">
+                    <Button className="w-100 fw-bold btn-outline-blue">
                         취소
                     </Button>
                 </Col>
@@ -90,17 +88,15 @@ const Register = () => {
             {/* 태블릿 */}
             <div className="d-none d-md-block d-lg-none d-grid gap-2 mb-3">
               <Button
-                className="w-100 fw-bold mb-3 shadow"
+                className="w-100 fw-bold mb-3 shadow btn-main-blue"
                 style={{
-                  backgroundColor: "#3341F3",
-                  color: "#fff",
                   fontSize: "18px",
                   height: "50px",
                 }}
               >
                 회원가입
               </Button>
-              <Button className="w-100 fw-bold custom-outline-blue">
+              <Button className="w-100 fw-bold btn-outline-blue">
                 취소
               </Button>
             </div>
@@ -108,17 +104,15 @@ const Register = () => {
             {/*PC*/}
             <div className="d-none d-lg-block d-grid gap-2">
               <Button
-                className="w-100 fw-bold shadow mb-3"
+                className="w-100 fw-bold shadow mb-3 btn-main-blue"
                 style={{
-                  backgroundColor: "#3341F3",
-                  color: "#fff",
                   fontSize: "18px",
                   height: "50px",
                 }}
               >
                 회원가입
               </Button>
-              <Button className="w-100 fw-bold custom-outline-blue" >
+              <Button className="w-100 fw-bold btn-outline-blue" >
                 취소
               </Button>
             </div>
