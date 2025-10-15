@@ -9,6 +9,9 @@ import PharmacyDetail from './component/PharmacyDetail';
 import MyPage from './component/MyPage'
 import LoginMain from './component/LoginMain'
 import Register from './component/Register'
+import HospitalMain from './component/HospitalMain';
+import PharmacyMain from './component/PharmacyMain';
+import { Container } from 'react-bootstrap';
 
 
 function Layout() {
@@ -16,7 +19,9 @@ function Layout() {
   return (
     <>
       <Navigation />
-      <Outlet /> 
+      <Container style={{ maxWidth: '1024px' }}> {/* 본문만 제한 */}
+        <Outlet />
+      </Container>
       <Myfooter />
     </>
   )
@@ -26,14 +31,13 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
-        <Route index element={<Main />} />
-        <Route path="hospitaldetails" element={<HospitalDetail />} />
-        <Route path="pharmacydetails" element={<PharmacyDetail />} />
+        <Route index element={<HospitalMain />} />
+        <Route path="pharmacy" element={<PharmacyMain />} />
+        <Route path="hospitaldetail" element={<HospitalDetail />} />
+        <Route path="pharmacydetail" element={<PharmacyDetail />} />
         <Route path='mypage' element={<MyPage />} />
         <Route path="login" element={<LoginMain />} />
         <Route path="register" element={<Register/>} />
-        <Route path="hospitaldetails" element={<HospitalDetail />} />
-        <Route path="pharmacydetails" element={<PharmacyDetail />} />
       </Route>
     </Routes>
   )
