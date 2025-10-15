@@ -10,12 +10,17 @@ import FindUser from './component/FindUser'
 import Noticeboard from './component/Noticeboard'
 import Navigation from './component/Navigation';
 import Myfooter from './component/Myfooter';
+import BoardDetail from './component/BoardDetail';
+import BoardCreat from './component/BoardCreat';
+import { Container } from 'react-bootstrap';
 function Layout() {
  
   return (
     <>
       <Navigation />
-      <Outlet /> 
+        <Container style={{ maxWidth: '1024px' }}> {/* 본문만 제한 */}
+          <Outlet />
+        </Container>
       <Myfooter />
     </>
   )
@@ -33,6 +38,8 @@ export default function App() {
         <Route path="pharmacydetail" element={<PharmacyDetail />} />
         <Route path="hospitaldetail" element={<HospitalDetail />} />
         <Route path='noticeboards' element={<Noticeboard/>}/>
+        <Route path='boarddetails' element={<BoardDetail/>}/>
+        <Route path='boardCreats' element={<BoardCreat/>}/>
       </Route>
     </Routes>
   )
