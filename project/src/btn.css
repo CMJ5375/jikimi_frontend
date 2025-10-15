@@ -2,19 +2,80 @@
   --main-blue: #3341F3;
 }
 
-.custom-outline-blue {
+
+.btn-main-blue {
+  background-color: var(--main-blue);
+  color: #fff;
+  font-size: 18px;
+  height: 50px;
+  font-weight: 600;
+  border: none;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-main-blue:hover,
+.btn-main-blue:focus,
+.btn-main-blue:active {
+  background-color: #2a35d6;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(51, 65, 243, 0.3);
+}
+
+.btn-outline-blue {
   font-size: 18px;
   height: 50px;
   color: var(--main-blue);
   border: 2px solid var(--main-blue);
   background-color: transparent;
+  font-weight: 600;
   transition: all 0.2s ease-in-out;
 }
 
-.custom-outline-blue:hover,
-.custom-outline-blue:focus,
-.custom-outline-blue:active {
+.btn-outline-blue:hover,
+.btn-outline-blue:focus,
+.btn-outline-blue:active {
   background-color: var(--main-blue);
   color: white;
   box-shadow: none;
 }
+
+
+.find-tabs {
+  border-bottom: 2px solid #ddd;
+  display: flex;
+  justify-content: center;  /* 중앙 정렬 */
+  width: 100%;
+}
+
+.find-tabs .nav-item {
+  flex: 1; /* 🔹 각 탭이 50% 차지 */
+  text-align: center;
+}
+
+.find-tabs .nav-link {
+  color: black;
+  font-weight: 600;
+  font-size: 18px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  position: relative;
+  padding-bottom: 8px;
+  width: 100%;
+}
+
+.find-tabs .nav-link.active {
+  color: black;
+  font-weight: 700;
+}
+
+.find-tabs .nav-link.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 3px;
+  background-color: #3341F3;
+}
+
