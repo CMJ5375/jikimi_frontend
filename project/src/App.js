@@ -15,9 +15,13 @@ import MyPage from './component/MyPage';
 import LoginMain from './component/LoginMain';
 import Register from './component/Register';
 import FindUser from './component/FindUser';
+import FindUserPW from './component/FindUserPW';
 import Noticeboard from './component/Noticeboard';
 import BoardDetail from './component/BoardDetail';
 import BoardCreat from './component/BoardCreat';       
+import Notice from './component/Notice';
+import Faq from './component/Faq';
+import DataRoom from './component/DataRoom';
 
 function Layout() {
   return (
@@ -48,11 +52,17 @@ export default function App() {
         <Route path="login" element={<LoginMain />} />
         <Route path="register" element={<Register />} />
         <Route path="finduser" element={<FindUser />} />
+        <Route path="finduserpw" element={<FindUserPW />} />
 
         {/* 게시판 */}
         <Route path="noticeboards" element={<Noticeboard />} />
         <Route path="boarddetails" element={<BoardDetail />} />
         <Route path="boardCreats" element={<BoardCreat />} />
+
+        {/* 고객지원 */}
+        <Route path="notice" element={<Notice />} />
+        <Route path="faq" element={<Faq />} />
+        <Route path="dataroom" element={<DataRoom />} />
       </Route>
     </Routes>
   );
