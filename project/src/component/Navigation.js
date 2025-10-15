@@ -2,7 +2,7 @@ import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { GeoAltFill } from "react-bootstrap-icons";
 import { Nav } from 'react-bootstrap'
-import { useLocation } from "react-router-dom";
+import { useLocation,Link } from "react-router-dom";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import NavDropdown from 'react-bootstrap/NavDropdown';
@@ -46,7 +46,7 @@ export default function HeaderResponsive() {
 
             {/* 메뉴 */}
             <Nav className="me-auto">
-              <Nav.Link href="/">게시판</Nav.Link>
+              <Nav.Link href="/noticeboard">게시판</Nav.Link>
               <Nav.Link href="/mypage">마이페이지</Nav.Link>
                
               <NavDropdown title="고객지원" id="basic-nav-dropdown">
@@ -128,52 +128,25 @@ export default function HeaderResponsive() {
           <div className="list-group list-group-flush">
 
             {/* 게시판 */}
-            <a href="#board" className="list-group-item list-group-item-action">
-              게시판
-            </a>
-
-            {/* 마이페이지 (아코디언) */}
-            <div className="accordion mt-2 mb-2" id="accordionMyPage">
-              <div className="accordion-item border-0">
-                <h2 className="accordion-header">
-                  <button
-                    className="accordion-button collapsed fw-semibold px-0 bg-transparent shadow-none"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#collapseMyPage"
-                    aria-expanded="false"
-                    aria-controls="collapseMyPage"
-                  >
-                    마이페이지
-                  </button>
-                </h2>
-                <div
-                  id="collapseMyPage"
-                  className="accordion-collapse collapse"
-                  data-bs-parent="#accordionMyPage"
-                >
-                  <div className="accordion-body py-2 ps-3">
-                    <ul className="list-unstyled mb-0">
-                      <li className="py-1">
-                        <a href="#fav" className="text-secondary text-decoration-none">
-                          즐겨찾기
-                        </a>
-                      </li>
-                      <li className="py-1">
-                        <a href="#profile" className="text-secondary text-decoration-none">
-                          회원정보 수정
-                        </a>
-                      </li>
-                      <li className="py-1">
-                        <a href="#posts" className="text-secondary text-decoration-none">
-                          내가 쓴 글
-                        </a>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
+            <div className="mt-2 mb-2">
+              <Link
+                to="/noticeboard"
+                className="fw-semibold text-dark text-decoration-none d-block px-0"
+              >
+               게시판
+              </Link>
             </div>
+
+            {/* 마이페이지 */}
+            <div className="mt-2 mb-2">
+              <Link
+                to="/mypage"
+                className="fw-semibold text-dark text-decoration-none d-block px-0"
+              >
+                마이페이지
+              </Link>
+            </div>
+
 
             {/* 고객지원 (아코디언) */}
             <div className="accordion mb-2" id="accordionSupport">

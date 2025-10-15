@@ -32,7 +32,7 @@ export default function App() {
         <Route path='finduser' element={<FindUser/>}/>
         <Route path="pharmacydetail" element={<PharmacyDetail />} />
         <Route path="hospitaldetail" element={<HospitalDetail />} />
-        <Route path='noticeboards' element={<Noticeboard/>}/>
+        <Route path='noticeboard' element={<Noticeboard/>}/>
       </Route>
     </Routes>
   )
