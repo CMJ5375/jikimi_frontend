@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./Noticeboard.css";
-import { Pencil, Search } from "react-bootstrap-icons";
+import { ChatDots, HandThumbsUp, Pencil, Plus, Search } from "react-bootstrap-icons";
+import { useNavigate } from "react-router-dom";
 
 export default function BoardPageResponsive() {
+  const EDONG = useNavigate();
   const CATEGORIES = ["전체", "인기글", "병원정보", "약국정보", "질문해요", "자유글"];
   const POSTS = [
     { id: 1, cat: "인기글", hot: true,  title: "간경화 진단을 받았습니다..", date: "2025-09-22", time: "5일 전", author:"영업부장", region:"경기/성남시", excerpt:"최근 회식이 잦긴 했는데 이렇게 갑자기 간경화 진단을 받을 줄은 몰랐습니다. 영업직에 종사한지 10년이 넘었는데 어떻게 해야 좋을지 모...", likes:25, comments:11 },
@@ -47,11 +49,11 @@ export default function BoardPageResponsive() {
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
                     />
-                    <i className="bi bi-search position-absolute top-50 end-0 translate-middle-y me-3 text-secondary"></i>
+                    {/* <Search className="osition-absolute top-50 end-0 translate-middle-y me-3 text-secondary"/> */}
                     </div>
-                    <button className="btn btn-primary rounded-pill px-3">
-                    게시글 작성 <i className="bi bi-pencil ms-1"></i>
-                    </button>
+                    <a href="/boardCreats" className="btn btn-primary rounded-pill px-3">
+                        게시글 작성 <Pencil className="ms-1"/>
+                    </a>
                 </div>
             </div>
 
@@ -67,7 +69,7 @@ export default function BoardPageResponsive() {
             </ul>
 
             {/* 리스트 */}
-            <div className="list-group board-list">
+            <div className="list-group board-list" onClick={()=> EDONG(`/boarddetails`)}>
                 {filtered.map((m) => (
                     <div
                     key={m.id}
@@ -129,7 +131,7 @@ export default function BoardPageResponsive() {
                 <div className="d-flex justify-content-between align-items-start">
                     <span className="mbp-badge">{p.hot ? "인기글" : p.cat}</span>
                     <div className="mbp-ghostmark">
-                    <i className="bi bi-plus-circle fs-5"></i>
+                    <Plus className="fs-5" />
                     </div>
                 </div>
 
@@ -148,8 +150,8 @@ export default function BoardPageResponsive() {
                 <div className="mbp-divider"></div>
 
                 <div className="d-flex align-items-center gap-4 text-secondary">
-                    <span><i className="bi bi-hand-thumbs-up me-1"></i>{p.likes}</span>
-                    <span><i className="bi bi-chat-dots me-1"></i>{p.comments}</span>
+                    <span><HandThumbsUp className="me-1"/>{p.likes}</span>
+                    <span><ChatDots className="me-1"/>{p.comments}</span>
                 </div>
                 </article>
             ))}

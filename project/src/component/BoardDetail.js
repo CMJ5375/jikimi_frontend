@@ -5,7 +5,6 @@ import { Eye, HandThumbsUp, Share, ThreeDots } from "react-bootstrap-icons";
 
 export default function PostDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
 
   const post = {
     id,

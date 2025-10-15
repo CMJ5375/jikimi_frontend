@@ -46,7 +46,11 @@ export default function HeaderResponsive() {
 
             {/* 메뉴 */}
             <Nav className="me-auto">
+<<<<<<< HEAD
+              <Nav.Link href="/noticeboards">게시판</Nav.Link>
+=======
               <Nav.Link href="/noticeboard">게시판</Nav.Link>
+>>>>>>> 73b30f7b046cff0260138375fdc2ea9ebf187ead
               <Nav.Link href="/mypage">마이페이지</Nav.Link>
                
               <NavDropdown title="고객지원" id="basic-nav-dropdown">
