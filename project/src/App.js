@@ -8,9 +8,10 @@ import LoginMain from './component/LoginMain'
 import Register from './component/Register'
 import { Container } from 'react-bootstrap'
 
-
-import FindUserPW from './component/FindUserPW';
-import { Container } from 'react-bootstrap';
+import FindUser from './component/FindUser'
+import Noticeboard from './component/Noticeboard'
+import Navigation from './component/Navigation';
+import Myfooter from './component/Myfooter';
 function Layout() {
  
   return (
