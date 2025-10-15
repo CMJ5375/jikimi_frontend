@@ -14,7 +14,7 @@ export default function Footer() {
               <h6 className="fw-bold mb-1">
                 고객센터 <span className="text-secondary fw-normal fs-6">(평일 09:00~18:00)</span>
               </h6>
-              <h3 className="fw-bold mb-0">+82 031-742-1234</h3>
+              <h4 className="fw-bold mb-0">+82 031-742-1234</h4>
             </div>
           </div>
 
