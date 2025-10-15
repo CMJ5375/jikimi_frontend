@@ -1,14 +1,22 @@
-import './App.css'
-import { Routes, Route,Outlet} from 'react-router-dom'
-import Main from './component/Main'
+import './App.css';
+import { Routes, Route ,Outlet } from 'react-router-dom';
+import Main from './component/Main';
+import HospitalDetail from './component/HospitalDetail';
+import PharmacyDetail from './component/PharmacyDetail';
 import MyPage from './component/MyPage'
-import Myfooter from './component/Myfooter'
-import Navigation from './component/Navigation'
 import LoginMain from './component/LoginMain'
 import Register from './component/Register'
+<<<<<<< HEAD
 import { Container } from 'react-bootstrap'
 
+=======
+import FindUser from './component/FindUser'
+import Noticeboard from './component/Noticeboard'
+import Navigation from './component/Navigation';
+import Myfooter from './component/Myfooter';
+>>>>>>> project/main
 function Layout() {
+ 
   return (
     <>
       <Navigation />
@@ -30,6 +38,10 @@ export default function App() {
         <Route path='mypage' element={<MyPage />} />
         <Route path="login" element={<LoginMain />} />
         <Route path="register" element={<Register/>} />
+        <Route path='finduser' element={<FindUser/>}/>
+        <Route path="pharmacydetail" element={<PharmacyDetail />} />
+        <Route path="hospitaldetail" element={<HospitalDetail />} />
+        <Route path='noticeboard' element={<Noticeboard/>}/>
       </Route>
     </Routes>
   )
