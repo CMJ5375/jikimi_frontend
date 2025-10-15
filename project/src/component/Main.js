@@ -62,10 +62,8 @@ export default function MainPage() {
               을 찾아보세요
             </h3>
           </Col>
-          <Col xs={6}>
-            <div className="col">
-              <img src="/image/map.png" alt="지도" height="150"></img>
-            </div>
+          <Col xs={6} className="text-end">
+            <img src="/image/map.png" alt="지도" height="150"></img>
             {/* <div
               className="rounded-4 w-100 h-100"
               style={{ background: colors.primarySoft, minHeight: 100 }}

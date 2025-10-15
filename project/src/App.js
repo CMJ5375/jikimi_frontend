@@ -1,6 +1,9 @@
 import './App.css';
-import { Routes, Route ,Outlet } from 'react-router-dom';
+import { Routes, Route} from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import Main from './component/Main';
+import Navigation from './component/Navigation'
+import Myfooter from './component/Myfooter'
 import HospitalDetail from './component/HospitalDetail';
 import PharmacyDetail from './component/PharmacyDetail';
 import MyPage from './component/MyPage'
@@ -30,9 +33,10 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
-        <Route index element={<Main />} />
-        <Route path='login' element={<LoginMain />} />
-        <Route path='mypage' element={<MyPage />} />
+        <Route index element={<HospitalMain />} />
+        <Route path="pharmacy" element={<PharmacyMain />} />
+        <Route path="hospitaldetail" element={<HospitalDetail />} />
+        <Route path="pharmacydetail" element={<PharmacyDetail />} />
         <Route path='mypage' element={<MyPage />} />
         <Route path="login" element={<LoginMain />} />
         <Route path="register" element={<Register/>} />
