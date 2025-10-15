@@ -122,7 +122,11 @@ const Register = () => {
                 취소
               </Button>
             </div>
-            <div className="text-center my-3 text-muted">또는</div>
+            <div className="d-flex align-items-center my-3 divider">
+              <div className="flex-grow-1 border-bottom fw-bold"></div>
+              <span className="mx-3">또는</span>
+              <div className="flex-grow-1 border-bottom"></div>
+            </div>
 
             {/* 소셜 로그인 버튼들 */}
             <div className="d-grid gap-2">
