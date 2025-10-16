@@ -1,14 +1,34 @@
 import React, { useState, useMemo } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./Noticeboard.css";
-import { ChatDots, Eye, HandThumbsUp, Pencil, Plus, Search } from "react-bootstrap-icons";
-import { useNavigate } from "react-router-dom";
+import { Eye, HandThumbsUp, Plus, Pencil, Search } from "react-bootstrap-icons";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Button } from 'react-bootstrap';
 
-export default function Notice() {
-  const EDONG = useNavigate();
+const isAdmin = true; // 관리자 여부 (false로 바꾸면 버튼 숨김)
 
-  // 탭은 보여주지만 실제 목록/네비게이션은 '공지사항'만
-  const CATEGORIES = ["공지사항", "FAQ", "자료실"];
+const CATEGORIES = [
+  { name: "공지사항", path: "/notice" },
+  { name: "FAQ", path: "/faq" },
+  { name: "자료실", path: "/dataroom" },
+];
+
+const Notice = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // 현재 경로에 따라 초기 탭 자동 설정
+  const initialTab =
+    location.pathname.includes("notice")
+      ? "공지사항"
+      : location.pathname.includes("faq")
+      ? "FAQ"
+      : location.pathname.includes("dataroom")
+      ? "자료실"
+      : "공지사항";
+
+  const [active, setActive] = useState(initialTab);
+  const [q, setQ] = useState("");
 
   // 데모 데이터
   const POSTS = useMemo(
@@ -59,18 +79,19 @@ export default function Notice() {
     []
   );
 
-  // 기본값을 '공지사항'으로 (요청사항)
-  const [active, setActive] = useState("공지사항");
-  const [q, setQ] = useState("");
+  // 검색어 필터링 (제목, 내용 기준)
+  const filtered = useMemo(() => {
+    return POSTS.filter(
+      (post) =>
+        post.cat === active && // 현재 탭에 해당하는 글만
+        (post.title.toLowerCase().includes(q.toLowerCase()) ||
+          post.excerpt.toLowerCase().includes(q.toLowerCase()))
+    );
+  }, [POSTS, active, q]);
 
-  // 공지사항만 리스트 표시
-  const filtered = POSTS.filter((p) =>
-    q ? p.title.toLowerCase().includes(q.toLowerCase()) : true
-  );
-
-  // 상세 페이지로 이동(+데이터 state로 전달)
+  // 게시글 상세 이동 (예시용)
   const goDetail = (post) => {
-    EDONG("/boarddetails", { state: post });
+    navigate(`/notice/${post.id}`, { state: post });
   };
 
   return (
@@ -82,34 +103,36 @@ export default function Notice() {
 
       <div className="container py-4 d-none d-md-block">
         {/* 타이틀 & 검색/작성 */}
-        <div className="d-flex align-items-center justify-content-between mb-3">
-          <h4 className="fw-bold mb-0">공지사항</h4>
-          <div className="d-flex align-items-center gap-2">
-            <div className="position-relative">
-              <input
-                type="text"
-                className="form-control rounded-pill ps-4 pe-5 board-search"
-                placeholder="검색어를 입력해주세요.."
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-              />
-              {/* <Search className="search-ico text-secondary" /> */}
+            <div className="d-flex align-items-center justify-content-between mb-3">
+                <h4 className="fw-bold mb-0">공지사항</h4>
+                <div className="d-flex align-items-center gap-2">
+                    <div className="position-relative">
+                    <input
+                        type="text"
+                        className="form-control rounded-pill ps-4 pe-5 board-search"
+                        placeholder="검색어를 입력해주세요.."
+                        value={q}
+                        onChange={(e) => setQ(e.target.value)}
+                    />
+                    {/* <Search className="osition-absolute top-50 end-0 translate-middle-y me-3 text-secondary"/> */}
+                    </div>
+                    {isAdmin && (
+                      <Button variant="primary rounded-pill px-3">
+                        게시글 작성 <Pencil className="ms-1" />
+                      </Button>
+                    )}
+                </div>
             </div>
-            {/* <a href="/boardCreats" className="btn btn-primary rounded-pill px-3">
-              게시글 작성 <Pencil className="ms-1" />
-            </a> */}
-          </div>
-        </div>
 
         {/* 탭 */}
         <div className="mbp-tabs border-bottom">
-                {CATEGORIES.map((t) => (
+                {CATEGORIES.map((c) => (
                 <button
-                    key={t}
-                    className={`mbp-tabbtn ${active === t ? "active" : ""}`}
-                    onClick={() => setActive(t)}
+                    key={c}
+                    className={`mbp-tabbtn ${active === c.name ? "active" : ""}`}
+                    onClick={() => {setActive(c.name); navigate(c.path);}}
                 >
-                    {t}
+                    {c.name}
                 </button>
                 ))}
             </div>
@@ -193,14 +216,14 @@ export default function Notice() {
 
           {/* 탭(가로 스크롤) */}
           <div className="mbp-tabs border-bottom">
-            {CATEGORIES.map((t) => (
-              <button
-                key={t}
-                className={`mbp-tabbtn ${active === t ? "active" : ""}`}
-                onClick={() => setActive(t)}
+            {CATEGORIES.map((c) => (
+              <div
+                key={c.name}
+                className={`mbp-tabbtn px-3 ${active === c.name ? "active" : ""}`}
+                onClick={() => {setActive(c.name); navigate(c.path);}}
               >
-                {t}
-              </button>
+                {c.name}
+              </div>
             ))}
           </div>
 
@@ -259,3 +282,5 @@ export default function Notice() {
     </div>
   );
 }
+
+export default Notice
