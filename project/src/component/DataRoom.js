@@ -91,196 +91,197 @@ const DataRoom = () => {
 
   // 게시글 상세 이동 (예시용)
   const goDetail = (post) => {
-    navigate(`/dataroom/${post.id}`, { state: post });
+    // navigate(`/dataroom/${post.id}`, { state: post });
+    navigate(`/dataroom`);
   };
 
   return (
-      <div className="bg-white">
-        {/* ===== PC / 태블릿 이상 ===== */}
-        <div className="bg-primary text-white mb-4 px-3 py-2 text-center d-none d-md-block">
-          <span className="me-2">공지사항 ·</span> 공지사항 입니다.
-        </div>
-  
-        <div className="container py-4 d-none d-md-block">
-          {/* 타이틀 & 검색/작성 */}
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                  <h4 className="fw-bold mb-0">자료실</h4>
-                  <div className="d-flex align-items-center gap-2">
-                      <div className="position-relative">
-                      <input
-                          type="text"
-                          className="form-control rounded-pill ps-4 pe-5 board-search"
-                          placeholder="검색어를 입력해주세요.."
-                          value={q}
-                          onChange={(e) => setQ(e.target.value)}
-                      />
-                      {/* <Search className="osition-absolute top-50 end-0 translate-middle-y me-3 text-secondary"/> */}
-                      </div>
-                      {isAdmin && (
-                        <Button variant="primary rounded-pill px-3">
-                          게시글 작성 <Pencil className="ms-1" />
-                        </Button>
-                      )}
-                  </div>
-              </div>
-  
-          {/* 탭 */}
-          <div className="mbp-tabs border-bottom">
-                  {CATEGORIES.map((c) => (
-                  <button
-                      key={c}
-                      className={`mbp-tabbtn ${active === c.name ? "active" : ""}`}
-                      onClick={() => {setActive(c.name); navigate(c.path);}}
-                  >
-                      {c.name}
-                  </button>
-                  ))}
-              </div>
-  
-          {/* 리스트: 공지사항만 표시 / FAQ·자료실은 안내문 */}
-          {active === "자료실" ? (
-            <div className="list-group board-list mt-3">
-              {filtered.map((m) => (
-                <button
-                  type="button"
-                  key={m.id}
-                  className={`list-group-item list-group-item-action d-flex align-items-center justify-content-between ${
-                    m.hot ? "board-item-hot" : ""
-                  }`}
-                  onClick={() => goDetail(m)}
-                >
-                  <div className="d-flex align-items-center gap-3">
-                    <span
-                      className={`badge rounded-pill px-3 ${
-                        m.hot
-                          ? "bg-primary-soft text-primary"
-                          : "bg-secondary-soft text-secondary"
-                      }`}
-                    >
-                      자료실
-                    </span>
-                    <span className="board-title">
-                      {m.title}
-                      {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
-                    </span>
-                  </div>
-                  <span className="text-secondary small">{m.date}</span>
-                </button>
-              ))}
+    <div className="bg-white">
+      {/* ===== PC / 태블릿 이상 ===== */}
+      <div className="bg-primary text-white mb-4 px-3 py-2 text-center d-none d-md-block">
+        <span className="me-2">공지사항 ·</span> 공지사항 입니다.
+      </div>
+
+      <div className="container py-4 d-none d-md-block">
+        {/* 타이틀 & 검색/작성 */}
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <h4 className="fw-bold mb-0">자료실</h4>
+          <div className="d-flex align-items-center gap-2">
+            <div className="position-relative">
+            <input
+              type="text"
+              className="form-control rounded-pill ps-4 pe-5 board-search"
+              placeholder="검색어를 입력해주세요.."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            {/* <Search className="osition-absolute top-50 end-0 translate-middle-y me-3 text-secondary"/> */}
             </div>
+            {isAdmin && (
+              <Button variant="primary rounded-pill px-3">
+                게시글 작성 <Pencil className="ms-1" />
+              </Button>
+            )}
+        </div>
+        </div>
+
+        {/* 탭 */}
+        <div className="mbp-tabs border-bottom">
+          {CATEGORIES.map((c) => (
+          <button
+              key={c}
+              className={`mbp-tabbtn ${active === c.name ? "active" : ""}`}
+              onClick={() => {setActive(c.name); navigate(c.path);}}
+          >
+              {c.name}
+          </button>
+          ))}
+        </div>
+
+        {/* 리스트: 공지사항만 표시 / FAQ·자료실은 안내문 */}
+        {active === "자료실" ? (
+          <div className="list-group board-list mt-3">
+            {filtered.map((m) => (
+              <button
+                type="button"
+                key={m.id}
+                className={`list-group-item list-group-item-action d-flex align-items-center justify-content-between ${
+                  m.hot ? "board-item-hot" : ""
+                }`}
+                onClick={() => goDetail(m)}
+              >
+                <div className="d-flex align-items-center gap-3">
+                  <span
+                    className={`badge rounded-pill px-3 ${
+                      m.hot
+                        ? "bg-primary-soft text-primary"
+                        : "bg-secondary-soft text-secondary"
+                    }`}
+                  >
+                    자료실
+                  </span>
+                  <span className="board-title">
+                    {m.title}
+                    {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                  </span>
+                </div>
+                <span className="text-secondary small">{m.date}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-secondary py-5 rounded-3 bg-light">
+            {active} 페이지는 준비 중입니다.
+          </div>
+        )}
+
+        {/* 페이지네이션 (모양만) */}
+        <nav className="mt-4">
+          <ul className="pagination justify-content-center">
+            <li className="page-item disabled">
+              <span className="page-link">&laquo;</span>
+            </li>
+            <li className="page-item active">
+              <span className="page-link">1</span>
+            </li>
+            <li className="page-item">
+              <a className="page-link" href="#!">
+                2
+              </a>
+            </li>
+            <li className="page-item">
+              <a className="page-link" href="#!">
+                3
+              </a>
+            </li>
+            <li className="page-item">
+              <a className="page-link" href="#!">
+                &raquo;
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+      {/* ===== 모바일 ===== */}
+      <div className="d-block d-md-none">
+        <div className="mbp-wrap">
+          {/* 헤더 */}
+          <div className="d-flex align-items-center justify-content-between px-3 pt-3 pb-2">
+            <div className="mbp-title">자료실</div>
+            <div className="d-flex align-items-center gap-3">
+              <Search />
+              {isAdmin && (<Pencil />)}
+            </div>
+          </div>
+
+          {/* 탭(가로 스크롤) */}
+          <div className="mbp-tabs border-bottom">
+            {CATEGORIES.map((c) => (
+              <div
+                key={c.name}
+                className={`mbp-tabbtn px-3 ${active === c.name ? "active" : ""}`}
+                onClick={() => {setActive(c.name); navigate(c.path);}}
+              >
+                {c.name}
+              </div>
+            ))}
+          </div>
+
+          {/* 카드 리스트 */}
+          {active === "자료실" ? (
+            filtered.map((p) => (
+              <article
+                className="mbp-card"
+                key={p.id}
+                onClick={() => goDetail(p)}
+              >
+                <div className="d-flex justify-content-between align-items-start">
+                  <span className="mbp-badge">{p.hot ? "자료실" : p.cat}</span>
+                  <div className="mbp-ghostmark">
+                    <Plus className="fs-5" />
+                  </div>
+                </div>
+
+                <h6 className="mbp-title-line">
+                  {p.title}
+                  {p.isNew && <span className="ms-2 text-primary">N</span>}
+                </h6>
+
+                <div className="d-flex justify-content-between">
+                  <div className="mbp-meta">{p.time}</div>
+                  <div className="text-end">
+                    <div className="fw-bold">{p.author}</div>
+                    <span className="mbp-region">{p.region}</span>
+                  </div>
+                </div>
+
+                <p className="mbp-excerpt">{p.excerpt}</p>
+
+                <div className="mbp-divider"></div>
+
+                <div className="d-flex align-items-center gap-4 text-secondary">
+                  <span>
+                    <HandThumbsUp className="me-1" />
+                    {p.likes}
+                  </span>
+                  <span>
+                    {/* <ChatDots className="me-1" /> */}
+                    <Eye className="me-1"/>
+                    {p.comments}
+                  </span>
+                </div>
+              </article>
+            ))
           ) : (
-            <div className="text-center text-secondary py-5 rounded-3 bg-light">
+            <div className="text-center text-secondary py-5">
               {active} 페이지는 준비 중입니다.
             </div>
           )}
-  
-          {/* 페이지네이션 (모양만) */}
-          <nav className="mt-4">
-            <ul className="pagination justify-content-center">
-              <li className="page-item disabled">
-                <span className="page-link">&laquo;</span>
-              </li>
-              <li className="page-item active">
-                <span className="page-link">1</span>
-              </li>
-              <li className="page-item">
-                <a className="page-link" href="#!">
-                  2
-                </a>
-              </li>
-              <li className="page-item">
-                <a className="page-link" href="#!">
-                  3
-                </a>
-              </li>
-              <li className="page-item">
-                <a className="page-link" href="#!">
-                  &raquo;
-                </a>
-              </li>
-            </ul>
-          </nav>
-        </div>
-  
-        {/* ===== 모바일 ===== */}
-        <div className="d-block d-md-none">
-          <div className="mbp-wrap">
-            {/* 헤더 */}
-            <div className="d-flex align-items-center justify-content-between px-3 pt-3 pb-2">
-              <div className="mbp-title">자료실</div>
-              <div className="d-flex align-items-center gap-3">
-                <Search />
-                {isAdmin && (<Pencil />)}
-              </div>
-            </div>
-  
-            {/* 탭(가로 스크롤) */}
-            <div className="mbp-tabs border-bottom">
-              {CATEGORIES.map((c) => (
-                <div
-                  key={c.name}
-                  className={`mbp-tabbtn px-3 ${active === c.name ? "active" : ""}`}
-                  onClick={() => {setActive(c.name); navigate(c.path);}}
-                >
-                  {c.name}
-                </div>
-              ))}
-            </div>
-  
-            {/* 카드 리스트 */}
-            {active === "자료실" ? (
-              filtered.map((p) => (
-                <article
-                  className="mbp-card"
-                  key={p.id}
-                  onClick={() => goDetail(p)}
-                >
-                  <div className="d-flex justify-content-between align-items-start">
-                    <span className="mbp-badge">{p.hot ? "자료실" : p.cat}</span>
-                    <div className="mbp-ghostmark">
-                      <Plus className="fs-5" />
-                    </div>
-                  </div>
-  
-                  <h6 className="mbp-title-line">
-                    {p.title}
-                    {p.isNew && <span className="ms-2 text-primary">N</span>}
-                  </h6>
-  
-                  <div className="d-flex justify-content-between">
-                    <div className="mbp-meta">{p.time}</div>
-                    <div className="text-end">
-                      <div className="fw-bold">{p.author}</div>
-                      <span className="mbp-region">{p.region}</span>
-                    </div>
-                  </div>
-  
-                  <p className="mbp-excerpt">{p.excerpt}</p>
-  
-                  <div className="mbp-divider"></div>
-  
-                  <div className="d-flex align-items-center gap-4 text-secondary">
-                    <span>
-                      <HandThumbsUp className="me-1" />
-                      {p.likes}
-                    </span>
-                    <span>
-                      {/* <ChatDots className="me-1" /> */}
-                      <Eye className="me-1"/>
-                      {p.comments}
-                    </span>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="text-center text-secondary py-5">
-                {active} 페이지는 준비 중입니다.
-              </div>
-            )}
-          </div>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
 export default DataRoom
