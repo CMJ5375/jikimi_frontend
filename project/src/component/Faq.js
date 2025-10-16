@@ -161,7 +161,7 @@ const Faq = () => {
                 <div className="mbp-title">FAQ</div>
                 <div className="d-flex align-items-center gap-3">
                     <Search />
-                    <Pencil />
+                    {isAdmin && (<Pencil />)}
                 </div>
             </div>
 
