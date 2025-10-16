@@ -90,10 +90,10 @@ const DataRoom = () => {
   }, [POSTS, active, q]);
 
   // 게시글 상세 이동 (예시용)
-  const goDetail = (post) => {
-    // navigate(`/dataroom/${post.id}`, { state: post });
-    navigate(`/dataroom`);
-  };
+  // const goDetail = (post) => {
+  //   navigate(`/dataroom/${post.id}`, { state: post });
+  //   navigate(`/dataroom`);
+  // };
 
   return (
     <div className="bg-white">
