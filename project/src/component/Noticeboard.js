@@ -58,15 +58,13 @@ export default function BoardPageResponsive() {
             </div>
 
             {/* 탭 */}
-            <ul className="nav nav-tabs board-tabs mb-3">
+            <div className="mbp-tabs border-bottom mb-3">
                 {CATEGORIES.map((c) => (
-                    <li className="nav-item" key={c}>
-                    <button className={`nav-link ${active === c ? "active" : ""}`} onClick={() => setActive(c)}>
+                    <div key={c} className={`mbp-tabbtn ${active === c ? "active" : ""}`} onClick={() => setActive(c)}>
                         {c}
-                    </button>
-                    </li>
+                    </div>
                 ))}
-            </ul>
+            </div>
 
             {/* 리스트 */}
             <div className="list-group board-list" onClick={()=> EDONG(`/boarddetails`)}>
