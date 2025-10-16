@@ -23,6 +23,7 @@ import Notice from './component/Notice';
 import Faq from './component/Faq';
 import DataRoom from './component/DataRoom';
 import DataRoomDetail from './component/DataRoomDetail';
+import NoticeDetail from './component/NoticeDetail';
 
 function Layout() {
   return (
@@ -62,6 +63,7 @@ export default function App() {
 
         {/* 고객지원 */}
         <Route path="notice" element={<Notice />} />
+        <Route path="noticedetails" element={<NoticeDetail />} />
 
         <Route path="faq" element={<Faq />} />
 
