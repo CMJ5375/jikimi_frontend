@@ -4,6 +4,7 @@ import "./Noticeboard.css";
 import { Eye, HandThumbsUp, Plus, Pencil, Search } from "react-bootstrap-icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from 'react-bootstrap';
+import DataRoomDetail from '../component/DataRoomDetail'
 
 const isAdmin = true; // 관리자 여부 (false로 바꾸면 버튼 숨김)
 
@@ -89,10 +90,10 @@ const DataRoom = () => {
     );
   }, [POSTS, active, q]);
 
-  // 게시글 상세 이동 (예시용)
-  const goDetail = (post) => {
-    navigate(`/dataroom/${post.id}`, { state: post });
-  };
+  // 게시글 상세 이동 (예시용) ***
+  // const goDetail = (post) => {
+  //   navigate(`/dataroom/${post.id}`, { state: post });
+  // };
 
   return (
       <div className="bg-white">
@@ -147,7 +148,8 @@ const DataRoom = () => {
                   className={`list-group-item list-group-item-action d-flex align-items-center justify-content-between ${
                     m.hot ? "board-item-hot" : ""
                   }`}
-                  onClick={() => goDetail(m)}
+                  // onClick={() => goDetail(m)} *****
+                  onClick={()=> navigate(`/dataroomdetails`)}
                 >
                   <div className="d-flex align-items-center gap-3">
                     <span
@@ -233,7 +235,8 @@ const DataRoom = () => {
                 <article
                   className="mbp-card"
                   key={p.id}
-                  onClick={() => goDetail(p)}
+                  // onClick={() => goDetail(p)} *****
+                  onClick={()=> navigate(`/dataroomdetails`)}
                 >
                   <div className="d-flex justify-content-between align-items-start">
                     <span className="mbp-badge">{p.hot ? "자료실" : p.cat}</span>
@@ -265,7 +268,6 @@ const DataRoom = () => {
                       {p.likes}
                     </span>
                     <span>
-                      {/* <ChatDots className="me-1" /> */}
                       <Eye className="me-1"/>
                       {p.comments}
                     </span>
