@@ -63,6 +63,7 @@ export default function App() {
         <Route path="notice" element={<Notice />} />
         <Route path="faq" element={<Faq />} />
         <Route path="dataroom" element={<DataRoom />} />
+        <Route path="dataroomdetails" element={<DataRoomDetail />} />
       </Route>
     </Routes>
   );
