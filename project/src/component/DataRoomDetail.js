@@ -1,10 +1,12 @@
+import React, { useState } from 'react'
 import { useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./DataRoomDetail.css";
-import { Eye, HandThumbsUp, Share } from "react-bootstrap-icons";
+import { Eye, HandThumbsUp, Share, Folder } from "react-bootstrap-icons";
 
-export default function BoardDetail() {
+const DataRoomDetail = () => {
   const { id } = useParams();
+  const [showPopup, setShowPopup] = useState(false);
 
   const post = {
     id,
@@ -14,12 +16,16 @@ export default function BoardDetail() {
     date: "2025.09.22",
     time: "22:01",
     views: 57,
+    chumbu: 1,
     content: `
       최근 회식이 잦긴 했는데 이렇게 갑자기 간경화 진단을 받을 줄은 몰랐어요.
       영업직에 종사한지 10년이 넘었는데 어떻게 해야 좋을지 모르겠어요.
       같은 고민 하시는 분들 있으신가요?
     `,
     likes: 25,
+    attachments: [
+      { name: "간수치_상세표.xlsx", url: "/files/liver_data.xlsx" },
+    ],
   };
 
   return (
@@ -32,12 +38,47 @@ export default function BoardDetail() {
       <div className="d-flex justify-content-between align-items-center text-muted small mb-3">
         <div>
           <span className="fw-semibold text-dark me-2">{post.author}</span>
-          <span>{post.date} {post.time}</span>
+          <span>{post.date} {post.time}</span> <Eye /> {post.views}
         </div>
-        <div><Eye /> {post.views}</div>
       </div>
 
       <hr />
+
+      {/* 첨부파일 줄 */}
+      <div className="text-end position-relative">
+        <div
+          className="d-inline-flex align-items-center gap-1 text-muted small popup-trigger"
+          onClick={() => setShowPopup(!showPopup)}
+          style={{ cursor: "pointer" }}
+        >
+          <Folder size={16} />
+          첨부파일{" "}
+          <span className="text-primary fw-semibold">
+            {post.attachments.length}
+          </span>
+        </div>
+
+        {/* 첨부파일 팝업 */}
+        {showPopup && (
+          <div className="attachment-popup shadow-sm border rounded bg-white p-3 mt-2">
+            {post.attachments.map((file, index) => (
+              <div
+                key={index}
+                className="d-flex justify-content-between align-items-center"
+              >
+                <span className="text-truncate small fw-semibold">{file.name}</span>
+                <span className="text-muted">|</span>
+                <button
+                  className="btn btn-link btn-sm p-0 text-decoration-none text-secondary"
+                  onClick={() => window.open(file.url, "_blank")}
+                >
+                  내PC 저장
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* 본문 */}
       <div className="p-2 mb-4">
@@ -56,3 +97,5 @@ export default function BoardDetail() {
     </div>
   );
 }
+
+export default DataRoomDetail

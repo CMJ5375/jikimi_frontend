@@ -44,6 +44,7 @@ const FindUserPW = () => {
   };
 
   return (
+    <>
     <Container className="py-5">
       <Row className="justify-content-center align-items-center">
         <Col lg={6} className="d-none d-lg-block text-center order-lg-1">
@@ -154,6 +155,7 @@ const FindUserPW = () => {
         </Col>
       </Row>
     </Container>
+    </>
   );
 };
 

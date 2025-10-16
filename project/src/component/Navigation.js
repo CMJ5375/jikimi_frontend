@@ -7,15 +7,15 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import NavDropdown from 'react-bootstrap/NavDropdown';
 
-
-export default function HeaderResponsive() {
+const Navigation = () => {
   const location = useLocation();
 
   // 안내바를 숨기고 싶은 경로들
   const hideBannerPaths = [""]; //경로 넣기
-
   const shouldShowBanner = !hideBannerPaths.includes(location.pathname);
+
   return (
+    <>
     <header className="border-bottom">
       <div>
         {/* ================= PC / 태블릿 이상 ================= */}
@@ -193,5 +193,8 @@ export default function HeaderResponsive() {
         </div>
       </div>
     </header>
+    </>
   );
 }
+
+export default Navigation

@@ -89,12 +89,13 @@ const Notice = () => {
     );
   }, [POSTS, active, q]);
 
-  // 게시글 상세 이동 (예시용)
-  const goDetail = (post) => {
-    navigate(`/notice/${post.id}`, { state: post });
-  };
+  // // 게시글 상세 이동 (예시용) *****
+  // const goDetail = (post) => {
+  //   navigate(`/notice/${post.id}`, { state: post });
+  // };
 
   return (
+    <>
     <div className="bg-white">
       {/* ===== PC / 태블릿 이상 ===== */}
       <div className="bg-primary text-white mb-4 px-3 py-2 text-center d-none d-md-block">
@@ -103,43 +104,43 @@ const Notice = () => {
 
       <div className="container py-4 d-none d-md-block">
         {/* 타이틀 & 검색/작성 */}
-            <div className="d-flex align-items-center justify-content-between mb-3">
-                <h4 className="fw-bold mb-0">공지사항</h4>
-                <div className="d-flex align-items-center gap-2">
-                    <div className="position-relative">
-                    <input
-                        type="text"
-                        className="form-control rounded-pill ps-4 pe-5 board-search"
-                        placeholder="검색어를 입력해주세요.."
-                        value={q}
-                        onChange={(e) => setQ(e.target.value)}
-                    />
-                    {/* <Search className="osition-absolute top-50 end-0 translate-middle-y me-3 text-secondary"/> */}
-                    </div>
-                    {isAdmin && (
-                      <Button variant="primary rounded-pill px-3">
-                        게시글 작성 <Pencil className="ms-1" />
-                      </Button>
-                    )}
-                </div>
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <h4 className="fw-bold mb-0">공지사항</h4>
+          <div className="d-flex align-items-center gap-2">
+            <div className="position-relative">
+            <input
+              type="text"
+              className="form-control rounded-pill ps-4 pe-5 board-search"
+              placeholder="검색어를 입력해주세요.."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            {/* <Search className="osition-absolute top-50 end-0 translate-middle-y me-3 text-secondary"/> */}
             </div>
+            {isAdmin && (
+              <Button variant="primary rounded-pill px-3">
+                게시글 작성 <Pencil className="ms-1" />
+              </Button>
+            )}
+          </div>
+        </div>
 
         {/* 탭 */}
-        <div className="mbp-tabs border-bottom">
-                {CATEGORIES.map((c) => (
-                <button
-                    key={c}
-                    className={`mbp-tabbtn ${active === c.name ? "active" : ""}`}
-                    onClick={() => {setActive(c.name); navigate(c.path);}}
-                >
-                    {c.name}
-                </button>
-                ))}
+        <div className="mbp-tabs border-bottom mb-3">
+          {CATEGORIES.map((c) => (
+            <div
+              key={c.name}
+              className={`mbp-tabbtn ${active === c.name ? "active" : ""}`}
+              onClick={() => {setActive(c.name); navigate(c.path);}}
+            >
+              {c.name}
             </div>
+          ))}
+        </div>
 
         {/* 리스트: 공지사항만 표시 / FAQ·자료실은 안내문 */}
         {active === "공지사항" ? (
-          <div className="list-group board-list mt-3">
+          <div className="list-group board-list">
             {filtered.map((m) => (
               <button
                 type="button"
@@ -147,7 +148,8 @@ const Notice = () => {
                 className={`list-group-item list-group-item-action d-flex align-items-center justify-content-between ${
                   m.hot ? "board-item-hot" : ""
                 }`}
-                onClick={() => goDetail(m)}
+                //onClick={() => goDetail(m)} ******
+                onClick={()=> navigate(`/noticedetails`)}
               >
                 <div className="d-flex align-items-center gap-3">
                   <span
@@ -233,7 +235,8 @@ const Notice = () => {
               <article
                 className="mbp-card"
                 key={p.id}
-                onClick={() => goDetail(p)}
+                //onClick={() => goDetail(p)} ****
+                onClick={()=> navigate(`/noticedetails`)}
               >
                 <div className="d-flex justify-content-between align-items-start">
                   <span className="mbp-badge">{p.hot ? "공지사항" : p.cat}</span>
@@ -280,6 +283,7 @@ const Notice = () => {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

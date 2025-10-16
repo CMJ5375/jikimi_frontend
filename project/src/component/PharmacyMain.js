@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstrap";
-import { GeoAltFill, StarFill, TelephoneFill, CheckCircleFill } from "react-bootstrap-icons";
+import { GeoAltFill, StarFill, TelephoneFill } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
 
 const colors = {
@@ -10,7 +10,8 @@ const colors = {
   mute: "#6c757d",
 };
 
-export default function PharmacyMain() {
+const PharmacyMain = () => {
+
   const [distance, setDistance] = useState("");
   const [keyword, setKeyword] = useState("");
   const [results, setResults] = useState([]);
@@ -33,6 +34,7 @@ export default function PharmacyMain() {
   };
 
   return (
+    <>
     <div className="bg-white">
       <Container className="py-4">
         {/* 상단 소개 영역 */}
@@ -197,5 +199,8 @@ export default function PharmacyMain() {
         )}
       </Container>
     </div>
+    </>
   );
 }
+
+export default PharmacyMain

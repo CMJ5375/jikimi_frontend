@@ -5,7 +5,6 @@ import { Container } from 'react-bootstrap';
 import Navigation from './component/Navigation';
 import Myfooter from './component/Myfooter';
 
-import Main from './component/Main';
 import HospitalMain from './component/HospitalMain';   
 import PharmacyMain from './component/PharmacyMain';   
 
@@ -22,6 +21,8 @@ import BoardCreat from './component/BoardCreat';
 import Notice from './component/Notice';
 import Faq from './component/Faq';
 import DataRoom from './component/DataRoom';
+import DataRoomDetail from './component/DataRoomDetail';
+import NoticeDetail from './component/NoticeDetail';
 
 function Layout() {
   return (
@@ -61,7 +62,10 @@ export default function App() {
 
         {/* 고객지원 */}
         <Route path="notice" element={<Notice />} />
+        <Route path="noticedetails" element={<NoticeDetail />} />
+
         <Route path="faq" element={<Faq />} />
+
         <Route path="dataroom" element={<DataRoom />} />
         <Route path="dataroomdetails" element={<DataRoomDetail />} />
       </Route>

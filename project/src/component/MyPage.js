@@ -28,6 +28,7 @@ const MyPage = () => {
   const handlePageChange = (page) => setActivePage(page);
 
   return (
+    <>
     <Container fluid className="mypage-section py-5">
       <Container className="mypage-container narrow-container">
 
@@ -357,6 +358,7 @@ const MyPage = () => {
         </Row>
       </Container>
     </Container>
+    </>
   );
 };
 
