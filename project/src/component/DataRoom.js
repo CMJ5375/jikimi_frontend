@@ -92,7 +92,6 @@ const DataRoom = () => {
   // 게시글 상세 이동 (예시용)
   // const goDetail = (post) => {
   //   navigate(`/dataroom/${post.id}`, { state: post });
-  //   navigate(`/dataroom`);
   // };
 
   return (
@@ -148,7 +147,8 @@ const DataRoom = () => {
                 className={`list-group-item list-group-item-action d-flex align-items-center justify-content-between ${
                   m.hot ? "board-item-hot" : ""
                 }`}
-                onClick={() => goDetail(m)}
+                // onClick={() => goDetail(m)}
+                onClick={()=> navigate(`/dataroomdetails`)}
               >
                 <div className="d-flex align-items-center gap-3">
                   <span
@@ -234,7 +234,8 @@ const DataRoom = () => {
               <article
                 className="mbp-card"
                 key={p.id}
-                onClick={() => goDetail(p)}
+                // onClick={() => goDetail(p)}
+                onClick={()=> navigate(`/dataroomdetails`)}
               >
                 <div className="d-flex justify-content-between align-items-start">
                   <span className="mbp-badge">{p.hot ? "자료실" : p.cat}</span>

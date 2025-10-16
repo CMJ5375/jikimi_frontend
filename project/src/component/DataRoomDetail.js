@@ -1,7 +1,7 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./DataRoomDetail.css";
-import { Eye, HandThumbsUp, Share, ThreeDots } from "react-bootstrap-icons";
+import { Eye, HandThumbsUp, Share } from "react-bootstrap-icons";
 
 export default function BoardDetail() {
   const { id } = useParams();
@@ -21,22 +21,6 @@ export default function BoardDetail() {
     `,
     likes: 25,
   };
-
-  const comments = [
-    {
-      id: 1,
-      author: "프로단식러",
-      datetime: "2025.09.22 23:57",
-      text:
-        "힘내세요. 저도 간경화 진단 받고나서는 회식 참여 전혀 안했어요. 영업직은 힘들지만 건강이 최우선이에요!",
-    },
-    {
-      id: 2,
-      author: "희망찬직장인",
-      datetime: "2025.09.23 09:15",
-      text: "저도 비슷한 경험이 있었는데 식습관 바꾸고 운동하니 좋아졌어요!",
-    },
-  ];
 
   return (
     <div className="container post-detail">
