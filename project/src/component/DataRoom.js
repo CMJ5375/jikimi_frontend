@@ -212,7 +212,7 @@ const DataRoom = () => {
               <div className="mbp-title">자료실</div>
               <div className="d-flex align-items-center gap-3">
                 <Search />
-                {/* <Pencil /> */}
+                {isAdmin && (<Pencil />)}
               </div>
             </div>
   

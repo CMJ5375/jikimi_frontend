@@ -209,8 +209,8 @@ const Notice = () => {
           <div className="d-flex align-items-center justify-content-between px-3 pt-3 pb-2">
             <div className="mbp-title">공지사항</div>
             <div className="d-flex align-items-center gap-3">
-              <Search />
-              {/* <Pencil /> */}
+                <Search />
+                {isAdmin && (<Pencil />)}
             </div>
           </div>
 
