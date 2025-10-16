@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./DataRoomDetail.css";
-import { Eye, HandThumbsUp, Share, ThreeDots } from "react-bootstrap-icons";
+import { Eye, HandThumbsUp, Share, ThreeDots, Download } from "react-bootstrap-icons";
 
 export default function BoardDetail() {
   const { id } = useParams();
@@ -14,6 +14,7 @@ export default function BoardDetail() {
     date: "2025.09.22",
     time: "22:01",
     views: 57,
+    chumbu: 1,
     content: `
       최근 회식이 잦긴 했는데 이렇게 갑자기 간경화 진단을 받을 줄은 몰랐어요.
       영업직에 종사한지 10년이 넘었는데 어떻게 해야 좋을지 모르겠어요.
@@ -48,9 +49,9 @@ export default function BoardDetail() {
       <div className="d-flex justify-content-between align-items-center text-muted small mb-3">
         <div>
           <span className="fw-semibold text-dark me-2">{post.author}</span>
-          <span>{post.date} {post.time}</span>
+          <span>{post.date} {post.time}</span> <Eye /> {post.views}
         </div>
-        <div><Eye /> {post.views}</div>
+        <div><Download /> {post.chumbu}</div>
       </div>
 
       <hr />
