@@ -1,20 +1,22 @@
-import React from 'react'
+import { useParams, useNavigate } from "react-router-dom";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "./DataRoomDetail.css";
+import { Eye, HandThumbsUp, Share, ThreeDots, Download } from "react-bootstrap-icons";
 
-const NoticeDetail = () => {
-const { id } = useParams();
+export default function BoardDetail() {
+  const { id } = useParams();
 
   const post = {
     id,
     category: "자유글",
-    title: "간경화 진단을 받았습니다..",
+    title: "대전 국가정보 자원관리원 화재 관련 안내",
     author: "영업부장",
     date: "2025.09.22",
     time: "22:01",
-    views: 57,
+    views: 575,
+    chumbu: 1,
     content: `
-      최근 회식이 잦긴 했는데 이렇게 갑자기 간경화 진단을 받을 줄은 몰랐어요.
-      영업직에 종사한지 10년이 넘었는데 어떻게 해야 좋을지 모르겠어요.
-      같은 고민 하시는 분들 있으신가요?
+      대전 국가정보자원 관리원에 화재가 나서 우리가 쓸 api가 지금 일시적으로 중단된 상태라 대비책을 찾아야하며...
     `,
     likes: 25,
   };
@@ -45,9 +47,9 @@ const { id } = useParams();
       <div className="d-flex justify-content-between align-items-center text-muted small mb-3">
         <div>
           <span className="fw-semibold text-dark me-2">{post.author}</span>
-          <span>{post.date} {post.time}</span>
+          <span>{post.date} {post.time}</span> <Eye /> {post.views}
         </div>
-        <div><Eye /> {post.views}</div>
+        <div><Download /> {post.chumbu}</div>
       </div>
 
       <hr />
@@ -69,5 +71,3 @@ const { id } = useParams();
     </div>
   );
 }
-
-export default NoticeDetail

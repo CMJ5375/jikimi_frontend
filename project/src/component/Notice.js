@@ -89,10 +89,10 @@ const Notice = () => {
     );
   }, [POSTS, active, q]);
 
-  // 게시글 상세 이동 (예시용)
-  const goDetail = (post) => {
-    navigate(`/notice/${post.id}`, { state: post });
-  };
+  // // 게시글 상세 이동 (예시용) *****
+  // const goDetail = (post) => {
+  //   navigate(`/notice/${post.id}`, { state: post });
+  // };
 
   return (
     <div className="bg-white">
@@ -147,7 +147,8 @@ const Notice = () => {
                 className={`list-group-item list-group-item-action d-flex align-items-center justify-content-between ${
                   m.hot ? "board-item-hot" : ""
                 }`}
-                onClick={() => goDetail(m)}
+                //onClick={() => goDetail(m)} ******
+                onClick={()=> navigate(`/noticedetails`)}
               >
                 <div className="d-flex align-items-center gap-3">
                   <span
@@ -233,7 +234,8 @@ const Notice = () => {
               <article
                 className="mbp-card"
                 key={p.id}
-                onClick={() => goDetail(p)}
+                //onClick={() => goDetail(p)} ****
+                onClick={()=> navigate(`/noticedetails`)}
               >
                 <div className="d-flex justify-content-between align-items-start">
                   <span className="mbp-badge">{p.hot ? "공지사항" : p.cat}</span>
