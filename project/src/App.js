@@ -5,7 +5,6 @@ import { Container } from 'react-bootstrap';
 import Navigation from './component/Navigation';
 import Myfooter from './component/Myfooter';
 
-import Main from './component/Main';
 import HospitalMain from './component/HospitalMain';   
 import PharmacyMain from './component/PharmacyMain';   
 

@@ -103,39 +103,39 @@ const Notice = () => {
 
       <div className="container py-4 d-none d-md-block">
         {/* 타이틀 & 검색/작성 */}
-            <div className="d-flex align-items-center justify-content-between mb-3">
-                <h4 className="fw-bold mb-0">공지사항</h4>
-                <div className="d-flex align-items-center gap-2">
-                    <div className="position-relative">
-                    <input
-                        type="text"
-                        className="form-control rounded-pill ps-4 pe-5 board-search"
-                        placeholder="검색어를 입력해주세요.."
-                        value={q}
-                        onChange={(e) => setQ(e.target.value)}
-                    />
-                    {/* <Search className="osition-absolute top-50 end-0 translate-middle-y me-3 text-secondary"/> */}
-                    </div>
-                    {isAdmin && (
-                      <Button variant="primary rounded-pill px-3">
-                        게시글 작성 <Pencil className="ms-1" />
-                      </Button>
-                    )}
-                </div>
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <h4 className="fw-bold mb-0">공지사항</h4>
+          <div className="d-flex align-items-center gap-2">
+            <div className="position-relative">
+            <input
+              type="text"
+              className="form-control rounded-pill ps-4 pe-5 board-search"
+              placeholder="검색어를 입력해주세요.."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            {/* <Search className="osition-absolute top-50 end-0 translate-middle-y me-3 text-secondary"/> */}
             </div>
+            {isAdmin && (
+              <Button variant="primary rounded-pill px-3">
+                게시글 작성 <Pencil className="ms-1" />
+              </Button>
+            )}
+          </div>
+        </div>
 
         {/* 탭 */}
         <div className="mbp-tabs border-bottom">
-                {CATEGORIES.map((c) => (
-                <button
-                    key={c}
-                    className={`mbp-tabbtn ${active === c.name ? "active" : ""}`}
-                    onClick={() => {setActive(c.name); navigate(c.path);}}
-                >
-                    {c.name}
-                </button>
-                ))}
-            </div>
+          {CATEGORIES.map((c) => (
+          <button
+            key={c}
+            className={`mbp-tabbtn ${active === c.name ? "active" : ""}`}
+            onClick={() => {setActive(c.name); navigate(c.path);}}
+          >
+            {c.name}
+          </button>
+          ))}
+        </div>
 
         {/* 리스트: 공지사항만 표시 / FAQ·자료실은 안내문 */}
         {active === "공지사항" ? (

@@ -1,10 +1,12 @@
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState } from 'react'
+import { useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./DataRoomDetail.css";
-import { Eye, HandThumbsUp, Share, ThreeDots, Download } from "react-bootstrap-icons";
+import { Eye, HandThumbsUp, Share, Folder } from "react-bootstrap-icons";
 
-export default function BoardDetail() {
+const DataRoomDetail = () => {
   const { id } = useParams();
+  const [showPopup, setShowPopup] = useState(false);
 
   const post = {
     id,
@@ -21,23 +23,10 @@ export default function BoardDetail() {
       같은 고민 하시는 분들 있으신가요?
     `,
     likes: 25,
+    attachments: [
+      { name: "간수치_상세표.xlsx", url: "/files/liver_data.xlsx" },
+    ],
   };
-
-  const comments = [
-    {
-      id: 1,
-      author: "프로단식러",
-      datetime: "2025.09.22 23:57",
-      text:
-        "힘내세요. 저도 간경화 진단 받고나서는 회식 참여 전혀 안했어요. 영업직은 힘들지만 건강이 최우선이에요!",
-    },
-    {
-      id: 2,
-      author: "희망찬직장인",
-      datetime: "2025.09.23 09:15",
-      text: "저도 비슷한 경험이 있었는데 식습관 바꾸고 운동하니 좋아졌어요!",
-    },
-  ];
 
   return (
     <div className="container post-detail">
@@ -51,10 +40,45 @@ export default function BoardDetail() {
           <span className="fw-semibold text-dark me-2">{post.author}</span>
           <span>{post.date} {post.time}</span> <Eye /> {post.views}
         </div>
-        <div><Download /> {post.chumbu}</div>
       </div>
 
       <hr />
+
+      {/* 첨부파일 줄 */}
+      <div className="text-end position-relative">
+        <div
+          className="d-inline-flex align-items-center gap-1 text-muted small popup-trigger"
+          onClick={() => setShowPopup(!showPopup)}
+          style={{ cursor: "pointer" }}
+        >
+          <Folder size={16} />
+          첨부파일{" "}
+          <span className="text-primary fw-semibold">
+            {post.attachments.length}
+          </span>
+        </div>
+
+        {/* 첨부파일 팝업 */}
+        {showPopup && (
+          <div className="attachment-popup shadow-sm border rounded bg-white p-3 mt-2">
+            {post.attachments.map((file, index) => (
+              <div
+                key={index}
+                className="d-flex justify-content-between align-items-center"
+              >
+                <span className="text-truncate small fw-semibold">{file.name}</span>
+                <span className="text-muted">|</span>
+                <button
+                  className="btn btn-link btn-sm p-0 text-decoration-none text-secondary"
+                  onClick={() => window.open(file.url, "_blank")}
+                >
+                  내PC 저장
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* 본문 */}
       <div className="p-2 mb-4">
@@ -73,3 +97,5 @@ export default function BoardDetail() {
     </div>
   );
 }
+
+export default DataRoomDetail
