@@ -1,9 +1,9 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./Noticeboard.css";
 import { Eye, HandThumbsUp, Share, ThreeDots } from "react-bootstrap-icons";
 
-export default function PostDetail() {
+const BoardDetail = () => {
   const { id } = useParams();
 
   const post = {
@@ -39,6 +39,7 @@ export default function PostDetail() {
   ];
 
   return (
+    <>
     <div className="container post-detail">
 
       {/* 제목 */}
@@ -98,5 +99,8 @@ export default function PostDetail() {
         ))}
       </div>
     </div>
+    </>
   );
 }
+
+export default BoardDetail

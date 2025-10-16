@@ -38,6 +38,7 @@ const HospitalList = () => {
   if (error) return <p>에러 발생: {error}</p>;
 
   return (
+    <>
     <div>
       <h2>성남시 병원 목록</h2>
       <ul style={{ listStyle: "none", padding: 0 }}>
@@ -57,6 +58,7 @@ const HospitalList = () => {
         ))}
       </ul>
     </div>
+    </>
   );
 };
 

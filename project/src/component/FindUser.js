@@ -47,6 +47,7 @@ const FindUser = () => {
     setError("");
   };
   return (
+    <>
     <Container className="py-5">
       <Row className="justify-content-center align-items-center">
         {/* PC 전용 왼쪽 안내 */}
@@ -214,6 +215,7 @@ const FindUser = () => {
         </Col>
       </Row>
     </Container>
+    </>
   );
 };
 

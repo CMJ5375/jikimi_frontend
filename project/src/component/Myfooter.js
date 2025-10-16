@@ -1,8 +1,9 @@
 import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-export default function Footer() {
+const Myfooter = () => {
   return (
+    <>
     <footer className="bg-dark text-light pt-4 pb-3 mt-5">
       <div className="container">
 
@@ -100,5 +101,8 @@ export default function Footer() {
         </div>
       </div>
     </footer>
+    </>
   );
 }
+
+export default Myfooter

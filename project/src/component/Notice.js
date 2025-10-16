@@ -95,6 +95,7 @@ const Notice = () => {
   // };
 
   return (
+    <>
     <div className="bg-white">
       {/* ===== PC / 태블릿 이상 ===== */}
       <div className="bg-primary text-white mb-4 px-3 py-2 text-center d-none d-md-block">
@@ -125,21 +126,21 @@ const Notice = () => {
         </div>
 
         {/* 탭 */}
-        <div className="mbp-tabs border-bottom">
+        <div className="mbp-tabs border-bottom mb-3">
           {CATEGORIES.map((c) => (
-          <button
-            key={c}
-            className={`mbp-tabbtn ${active === c.name ? "active" : ""}`}
-            onClick={() => {setActive(c.name); navigate(c.path);}}
-          >
-            {c.name}
-          </button>
+            <div
+              key={c.name}
+              className={`mbp-tabbtn ${active === c.name ? "active" : ""}`}
+              onClick={() => {setActive(c.name); navigate(c.path);}}
+            >
+              {c.name}
+            </div>
           ))}
         </div>
 
         {/* 리스트: 공지사항만 표시 / FAQ·자료실은 안내문 */}
         {active === "공지사항" ? (
-          <div className="list-group board-list mt-3">
+          <div className="list-group board-list">
             {filtered.map((m) => (
               <button
                 type="button"
@@ -282,6 +283,7 @@ const Notice = () => {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

@@ -4,7 +4,7 @@ import { Container, Row, Col, Table, Card } from "react-bootstrap";
 const HospitalDetail = () => {
   return (
     <>
-        <div className="bg-white">
+    <div className="bg-white">
         <Container className="py-4">
             {/* 경로 */}
             <Row>
@@ -228,7 +228,7 @@ const HospitalDetail = () => {
             </Row>
 
         </Container>
-        </div>
+    </div>
     </>
     )
 }

@@ -31,6 +31,7 @@ const Faq = () => {
   const [q, setQ] = useState("");
 
   return (
+    <>
     <div className="bg-white">
       {/* 상단 공지 바 */}
       <div className="bg-primary text-white mb-4 px-3 py-2 text-center d-none d-md-block">
@@ -62,21 +63,21 @@ const Faq = () => {
         </div>
 
           {/* 카테고리 탭 */}
-          <div className="mbp-tabs border-bottom">
+          <div className="mbp-tabs border-bottom mb-3">
             {CATEGORIES.map((c) => (
-                <div
-                  key={c.name}
-                  className={`mbp-tabbtn ${active === c.name ? "active" : ""}`}
-                  onClick={() => {setActive(c.name); navigate(c.path);}}
-                >
-                  {c.name}
-                </div>
+              <div
+                key={c.name}
+                className={`mbp-tabbtn ${active === c.name ? "active" : ""}`}
+                onClick={() => {setActive(c.name); navigate(c.path);}}
+              >
+                {c.name}
+              </div>
             ))}
           </div>
 
           {/* 리스트 */}
           <div className="list-group board-list">
-            <Accordion defaultActiveKey="0" className="mt-3">
+            <Accordion defaultActiveKey="0">
               <Accordion.Item eventKey="0">
                 <Accordion.Header>병원 상세 검색 질문에 대해..</Accordion.Header>
                 <Accordion.Body>
@@ -243,6 +244,7 @@ const Faq = () => {
           </div>
       </div>
     </div>
+    </>
   );
 }
 
