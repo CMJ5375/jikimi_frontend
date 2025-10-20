@@ -1,7 +1,45 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Container, Row, Col, Table, Card } from "react-bootstrap";
+import { useParams } from 'react-router-dom';
+import { renderKakaoMap } from "../api/kakaoMapApi";
 
 const HospitalDetail = () => {
+  const { id } = useParams();
+  const [hospital, setHospital] = useState(null);
+
+  //병원 정보 가져오기
+  useEffect(() => {
+    const fetchHospital = async () => {
+      try {
+        const res = await fetch(`http://localhost:8080/api/facilities/${id}`);
+        const data = await res.json();
+        setHospital(data);
+      } catch (error) {
+        console.error("병원 정보를 불러오지 못했습니다:", error);
+      }
+    };
+    fetchHospital();
+  }, [id]);
+
+  //지도 표시
+  useEffect(() => {
+    if (!hospital || !hospital.latitude || !hospital.longitude) return;
+
+    renderKakaoMap(
+      "map",
+      { lat: hospital.latitude, lng: hospital.longitude },
+      [
+        {
+          name: hospital.name,
+          latitude: hospital.latitude,
+          longitude: hospital.longitude,
+        },
+      ]
+    );
+  }, [hospital]);
+
+  if (!hospital) return <div>로딩 중...</div>;
+
   return (
     <>
     <div className="bg-white">
@@ -11,8 +49,6 @@ const HospitalDetail = () => {
             <Col>
                 <div className="d-flex align-items-center gap-2 text-secondary mb-3 small">
                 <span>HOME</span>
-                <span>{'>'}</span>
-                <span>병원,약국찾기</span>
                 <span>{'>'}</span>
                 <span>병원찾기</span>
                 </div>
@@ -36,7 +72,7 @@ const HospitalDetail = () => {
             <Row className="align-items-center mb-3">
             <Col>
                 <h5 className="fw-bold mb-2">
-                성신한방병원 <span className="text-warning">★</span>  {/* 즐겨찾기 표시는 로그인하면 보이게 */}
+                {hospital.name} <span className="text-warning">★</span>  {/* 즐겨찾기 표시는 로그인하면 보이게 */}
                 </h5>
                 <div className="d-flex gap-3">
                 <span className="text-danger fw-semibold">응급실 운영</span>
@@ -48,40 +84,34 @@ const HospitalDetail = () => {
             {/* 지도 + 정보 테이블 */}
             <Row className="mb-4">
             <Col md={6}>
-                <div
-                style={{
-                    backgroundColor: "#f4f4f4",
-                    height: "280px",
-                    border: "0px solid #ddd",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#888",
-                }}
-                >
-                지도 영역 (예: 카카오맵)
-                </div>
+                <div id="map"
+                    style={{
+                        backgroundColor: "#f4f4f4",
+                        height: "280px",
+                        border: "0px solid #ddd",
+                    }}
+                ></div>
             </Col>
             <Col md={6}>
                 <Table className="mt-3 mt-md-0 small">
-                <tbody >
-                    <tr>
-                    <th className="bg-light w-25 text-center">주소</th>
-                    <td>경기 성남시 수정구 성남대로 1170 7-8층 (우)13326</td>
-                    </tr>
-                    <tr>
-                    <th className="bg-light text-center">대표전화</th>
-                    <td>031-722-1175</td>
-                    </tr>
-                    <tr>
-                    <th className="bg-light text-center">기관구분</th>
-                    <td>응급의료기관 외의 의료기관(응급의료시설) &gt; 병원</td>
-                    </tr>
-                    <tr>
-                    <th className="bg-light text-center">소개</th>
-                    <td>버스정류장: 모란경찰서 옆</td>
-                    </tr>
-                </tbody>
+                    <tbody>
+                        <tr>
+                            <th className="bg-light w-25 text-center">주소</th>
+                            <td>{hospital.address || "-"}</td>
+                        </tr>
+                        <tr>
+                            <th className="bg-light text-center">대표전화</th>
+                            <td>{hospital.phone || "-"}</td>
+                        </tr>
+                        <tr>
+                            <th className="bg-light text-center">기관구분</th>
+                            <td>병원</td>
+                        </tr>
+                        <tr>
+                            <th className="bg-light text-center">소개</th>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
                 </Table>
             </Col>
             </Row>
@@ -94,12 +124,12 @@ const HospitalDetail = () => {
                 <Card.Header
                     className="fw-bold"
                     style={{
-                    backgroundColor: "#f4f4f4",
-                    color: "#414141ff",
-                    height: "50px",
-                    display: "flex",
-                    alignItems: "center",
-                    paddingLeft: "15px",
+                        backgroundColor: "#f4f4f4",
+                        color: "#414141ff",
+                        height: "50px",
+                        display: "flex",
+                        alignItems: "center",
+                        paddingLeft: "15px",
                     }}
                 >
                     진료시간
@@ -109,10 +139,10 @@ const HospitalDetail = () => {
                     <Col xs={6} md={6} className='mb-1'><span className='fw-bold'>월요일</span> 09:00~21:00</Col>
                     <Col xs={6} md={6} className='mb-1 fw-bold'
                             style={{
-                            color: 'red',
-                            textDecoration: 'underline',
-                            textDecorationColor: 'red',
-                            textDecorationThickness: '2px',
+                                color: 'red',
+                                textDecoration: 'underline',
+                                textDecorationColor: 'red',
+                                textDecorationThickness: '2px',
                             }}>
                         <span>화요일</span>{' '}09:00~21:00
                     </Col>
@@ -132,13 +162,13 @@ const HospitalDetail = () => {
                 <Card.Header
                     className="fw-bold"
                     style={{
-                    backgroundColor: "#f4f4f4",
-                    color: "#414141ff",
-                    height: "50px",
-                    display: "flex",
-                    alignItems: "center",
-                    paddingLeft: "15px",
-                    }}
+                        backgroundColor: "#f4f4f4",
+                        color: "#414141ff",
+                        height: "50px",
+                        display: "flex",
+                        alignItems: "center",
+                        paddingLeft: "15px",
+                        }}
                 >
                     진료과목
                 </Card.Header>
@@ -192,12 +222,12 @@ const HospitalDetail = () => {
                 <Card.Header
                     className="fw-bold"
                     style={{
-                    backgroundColor: "#f4f4f4",
-                    color: "#414141ff",
-                    height: "50px",
-                    display: "flex",
-                    alignItems: "center",
-                    paddingLeft: "15px",
+                        backgroundColor: "#f4f4f4",
+                        color: "#414141ff",
+                        height: "50px",
+                        display: "flex",
+                        alignItems: "center",
+                        paddingLeft: "15px",
                     }}
                 >
                     실시간 병상정보

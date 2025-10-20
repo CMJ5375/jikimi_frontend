@@ -45,8 +45,8 @@ export default function App() {
         <Route path="pharmacy" element={<PharmacyMain />} />
 
         {/* 디테일 */}
-        <Route path="hospitaldetail" element={<HospitalDetail />} />
-        <Route path="pharmacydetail" element={<PharmacyDetail />} />
+        <Route path="hospitaldetail/:id" element={<HospitalDetail />} />
+        <Route path="pharmacydetail/:id" element={<PharmacyDetail />} />
 
         {/* 유저/인증 */}
         <Route path="mypage" element={<MyPage />} />
