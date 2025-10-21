@@ -17,8 +17,12 @@ import FindUser from './component/FindUser';
 import FindUserPW from './component/FindUserPW';
 import Noticeboard from './component/Noticeboard';
 import BoardDetail from './component/BoardDetail';
-import BoardCreat from './component/BoardCreat';       
-import FindUserPW from './component/FindUserPW';
+import BoardCreat from './component/BoardCreat';
+import Notice from './component/Notice';
+import NoticeDetail from './component/NoticeDetail';
+import Faq from './component/Faq';
+import DataRoom from './component/DataRoom';
+import DataRoomDetail from './component/DataRoomDetail';
 
 function Layout() {
   return (

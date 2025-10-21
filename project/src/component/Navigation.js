@@ -6,10 +6,20 @@ import { useLocation,Link } from "react-router-dom";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import NavDropdown from 'react-bootstrap/NavDropdown';
+import { useSelector } from "react-redux";
+import useCustomLogin from "../hook/useCustomLogin";
 
 const Navigation = () => {
+  const loginState = useSelector(state => state.loginSlice)
+  const {doLogout, moveToPath} = useCustomLogin()
+  const handleClickLogout = () => {
+    doLogout()
+    alert("로그아웃 되었습니다.")
+    moveToPath("/")
+  }
+  
   const location = useLocation();
-
+  
   // 안내바를 숨기고 싶은 경로들
   const hideBannerPaths = [""]; //경로 넣기
   const shouldShowBanner = !hideBannerPaths.includes(location.pathname);
@@ -27,10 +37,16 @@ const Navigation = () => {
                 <GeoAltFill size={18} />
                 <span>경기도 성남시 중원구 성남동</span>
               </div>
-              <div className="d-flex align-items-center gap-3">
-                <a href="register" className="link-secondary text-decoration-none">회원가입</a>
-                <a href="login"  className="link-secondary text-decoration-none">로그인</a>
-              </div>
+              {!loginState.username ? 
+                <div className="d-flex align-items-center gap-3">
+                  <a href="register" className="link-secondary text-decoration-none">회원가입</a>
+                  <a href="login"  className="link-secondary text-decoration-none">로그인</a>
+                </div>
+                :
+                  <a href="/" className="link-secondary text-decoration-none" onClick={handleClickLogout}>
+                    로그아웃
+                  </a>
+              }
             </div>
           </div>
 
@@ -197,3 +213,5 @@ const Navigation = () => {
     </>
   );
 }
+
+export default Navigation
