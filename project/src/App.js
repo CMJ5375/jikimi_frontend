@@ -57,7 +57,7 @@ export default function App() {
 
         {/* 게시판 */}
         <Route path="noticeboards" element={<Noticeboard />} />
-        <Route path="boarddetails" element={<BoardDetail />} />
+        <Route path="boarddetails/:id" element={<BoardDetail />} />
         <Route path="boardCreats" element={<BoardCreat />} />
 
         {/* 고객지원 */}
