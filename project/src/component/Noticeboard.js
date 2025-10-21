@@ -3,8 +3,10 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "./Noticeboard.css";
 import { ChatDots, HandThumbsUp, Pencil, Plus, Search } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
+import useCustomLogin from "../hook/useCustomLogin";
 
 const Noticeboard = () => {
+    
     const EDONG = useNavigate();
     const CATEGORIES = ["전체", "인기글", "병원정보", "약국정보", "질문해요", "자유글"];
     const POSTS = [
@@ -12,21 +14,27 @@ const Noticeboard = () => {
         { id: 2, cat: "인기글", hot: true,  title: "좋은 이비인후과를 찾은 것 같습니다.", date: "2025-09-25", time: "3일 전", author:"홍길동", region:"서울/송파", excerpt:"목이 너무 아파서 병원을 찾다가 만족스러운 곳을 발견했어요.", likes:18, comments:5 },
         { id: 3, cat: "질문해요", title: "혹시 성남에 괜찮은 어린이 병원 없을까요?  N", date: "2025-09-27", time: "어제", author:"마케터", region:"경기/성남시", excerpt:"아이 감기가 오래가네요. 소아과 추천 부탁드립니다.", likes:7, comments:9 },
     ];
-
+    
     const [active, setActive] = useState("전체");
     const [q, setQ] = useState("");
-
+    
     const filteredBase =
-        active === "전체"
-        ? POSTS
-        : active === "인기글"
-        ? POSTS.filter((p) => p.hot)
-        : POSTS.filter((p) => p.cat === active);
-
+    active === "전체"
+    ? POSTS
+    : active === "인기글"
+    ? POSTS.filter((p) => p.hot)
+    : POSTS.filter((p) => p.cat === active);
+    
     const filtered = filteredBase.filter((p) =>
         q ? p.title.toLowerCase().includes(q.toLowerCase()) : true
     );
 
+    // 로그인 상태, 로그인상태체크 후 로그인상태가 아니면 로그인페이지로 이동
+    const {isLogin, moveToLoginReturn} = useCustomLogin()
+
+    if(!isLogin) {
+        return moveToLoginReturn()
+    }
   return (
     <>
     <div className="bg-white">

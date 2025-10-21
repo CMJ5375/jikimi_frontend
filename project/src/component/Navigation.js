@@ -6,10 +6,20 @@ import { useLocation,Link } from "react-router-dom";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import NavDropdown from 'react-bootstrap/NavDropdown';
+import { useSelector } from "react-redux";
+import useCustomLogin from "../hook/useCustomLogin";
 
 const Navigation = () => {
+  const loginState = useSelector(state => state.loginSlice)
+  const {doLogout, moveToPath} = useCustomLogin()
+  const handleClickLogout = () => {
+    doLogout()
+    alert("로그아웃 되었습니다.")
+    moveToPath("/")
+  }
+  
   const location = useLocation();
-
+  
   // 안내바를 숨기고 싶은 경로들
   const hideBannerPaths = [""]; //경로 넣기
   const shouldShowBanner = !hideBannerPaths.includes(location.pathname);
@@ -27,10 +37,16 @@ const Navigation = () => {
                 <GeoAltFill size={18} />
                 <span>경기도 성남시 중원구 성남동</span>
               </div>
-              <div className="d-flex align-items-center gap-3">
-                <a href="register" className="link-secondary text-decoration-none">회원가입</a>
-                <a href="login"  className="link-secondary text-decoration-none">로그인</a>
-              </div>
+              {!loginState.username ? 
+                <div className="d-flex align-items-center gap-3">
+                  <a href="register" className="link-secondary text-decoration-none">회원가입</a>
+                  <a href="login"  className="link-secondary text-decoration-none">로그인</a>
+                </div>
+                :
+                  <a href="/" className="link-secondary text-decoration-none" onClick={handleClickLogout}>
+                    로그아웃
+                  </a>
+              }
             </div>
           </div>
 
@@ -48,6 +64,7 @@ const Navigation = () => {
             <Nav className="me-auto">
               <Nav.Link href="/noticeboards">게시판</Nav.Link>
               <Nav.Link href="/mypage">마이페이지</Nav.Link>
+               
               <NavDropdown title="고객지원" id="basic-nav-dropdown">
                 <NavDropdown.Item href="/notice">공지사항</NavDropdown.Item>
                 <NavDropdown.Item href="/faq">FAQ</NavDropdown.Item>
@@ -66,10 +83,16 @@ const Navigation = () => {
             </a>
 
             <div className="d-flex align-items-start">
-              <a href="login" className="text-dark text-decoration-none d-flex flex-column align-items-center me-4">
+              {!loginState.username ?
+                <a href="login" className="text-dark text-decoration-none d-flex flex-column align-items-center me-4">
                 <i className="bi bi-person fs-1"></i>
                 <small className="mt-1">로그인</small>
               </a>
+              :
+              <a href="/" className="text-dark text-decoration-none d-flex flex-column align-items-center me-4" onClick={handleClickLogout}>
+                <i className="bi bi-person fs-1"></i>
+                <small className="mt-1">로그아웃</small>
+              </a>}
 
               <button
                 className="btn btn-link text-dark text-decoration-none d-flex flex-column align-items-center p-0"

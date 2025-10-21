@@ -18,6 +18,7 @@ import {
   FaRegCommentDots,
 } from "react-icons/fa";
 import "./MyPage.css";
+import useCustomLogin from "../hook/useCustomLogin";
 
 const MyPage = () => {
   const [activeMenu, setActiveMenu] = useState("favorite");
@@ -26,6 +27,13 @@ const MyPage = () => {
   const [activePage, setActivePage] = useState(1);
 
   const handlePageChange = (page) => setActivePage(page);
+
+  // 로그인 상태, 로그인상태체크 후 로그인상태가 아니면 로그인페이지로 이동
+  const {isLogin, moveToLoginReturn} = useCustomLogin()
+
+  if(!isLogin) {
+      return moveToLoginReturn()
+  }
 
   return (
     <>
