@@ -17,12 +17,12 @@ import FindUser from './component/FindUser';
 import FindUserPW from './component/FindUserPW';
 import Noticeboard from './component/Noticeboard';
 import BoardDetail from './component/BoardDetail';
-import BoardCreat from './component/BoardCreat';       
+import BoardCreat from './component/BoardCreat';
 import Notice from './component/Notice';
+import NoticeDetail from './component/NoticeDetail';
 import Faq from './component/Faq';
 import DataRoom from './component/DataRoom';
 import DataRoomDetail from './component/DataRoomDetail';
-import NoticeDetail from './component/NoticeDetail';
 
 function Layout() {
   return (
@@ -53,7 +53,7 @@ export default function App() {
         <Route path="login" element={<LoginMain />} />
         <Route path="register" element={<Register />} />
         <Route path="finduser" element={<FindUser />} />
-        <Route path="finduserpw" element={<FindUserPW />} />
+        <Route path='finduserpw' element={<FindUserPW />} />
 
         {/* 게시판 */}
         <Route path="noticeboards" element={<Noticeboard />} />

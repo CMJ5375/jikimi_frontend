@@ -1,8 +1,33 @@
 import { Container, Row, Col, Form, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import '../btn.css';
+import { useState } from 'react';
+import useCustomLogin from '../hook/useCustomLogin';
+
+const initState = {
+  username: '',
+  password: '',
+}
 
 const LoginMain = () => {
+  const [loginParam, setLoginParam] = useState({ ...initState })
+  const {doLogin, moveToPath} = useCustomLogin()
+  const handleChange = (e) => {
+    loginParam[e.target.name] = e.target.value;
+    setLoginParam({ ...loginParam })
+  }
+  const handClickLogin = (e) => {
+    doLogin(loginParam).then(data => {
+      console.log(data)
+      if(data.error) {
+        alert("이메일과 패스워드를 다시 확인하세요")
+      } else {
+        alert("로그인 성공")
+        moveToPath('/')
+      }
+    })
+  }
+  
   return (
     <>
     <Container className="py-5">
@@ -31,16 +56,20 @@ const LoginMain = () => {
             <Form.Group className="mb-3">
               <Form.Control
                 type="text"
+                name='username'
                 placeholder="아이디를 입력해주세요."
                 className="bg-light rounded-0"
+                onChange={handleChange}
               />
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Control
                 type="password"
+                name='password'
                 placeholder="비밀번호를 입력해주세요."
                 className="bg-light rounded-0"
+                onChange={handleChange}
               />
             </Form.Group>
 
@@ -62,6 +91,7 @@ const LoginMain = () => {
                       fontSize: "16px",
                       height: "48px",
                     }}
+                    onClick={handClickLogin}
                   >
                     로그인
                   </Button>
@@ -82,6 +112,7 @@ const LoginMain = () => {
                   fontSize: "18px",
                   height: "50px",
                 }}
+                onClick={handClickLogin}
               >
                 로그인
               </Button>
@@ -98,6 +129,7 @@ const LoginMain = () => {
                   fontSize: "18px",
                   height: "50px",
                 }}
+                onClick={handClickLogin}
               >
                 로그인
               </Button>

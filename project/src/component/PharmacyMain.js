@@ -2,33 +2,51 @@ import { useEffect, useState } from "react";
 import '../App.css';
 import '../css/Pharmacy.css';
 import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstrap";
-import { GeoAltFill, StarFill, TelephoneFill } from "react-bootstrap-icons";
+import { GeoAltFill, StarFill, Star, TelephoneFill, CheckCircleFill, XCircleFill } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
 import { getDefaultPosition, addDistanceAndSort } from "../api/geolocationApi";
 import { renderKakaoMap } from "../api/kakaoMapApi";
-
-const colors = {
-  primary: "#3B6CFF",
-  primarySoft: "#E9F0FF",
-  text: "#111",
-  mute: "#6c757d",
-};
 
 const PharmacyMain = () => {
   const [distance, setDistance] = useState("");
   const [keyword, setKeyword] = useState("");
   const [results, setResults] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [currentPos, setCurrentPos] = useState({ lat: null, lng: null });
 
   const navigate = useNavigate();
+
+  //드롭다운 거리
   const distanceList = ["500m", "1km", "5km", "10km"];
 
-  // 기본으로 설정된 위치 가져오기
+  //localStorage에서 즐겨찾기 불러오기
+  useEffect(() => {
+    const stored = Object.keys(localStorage)
+      .filter((key) => key.startsWith("favorite_pharmacy_"))
+      .filter((key) => localStorage.getItem(key) === "true")
+      .map((key) => key.replace("favorite_pharmacy_", ""));
+    setFavorites(stored);
+  }, []);
+
+  //즐겨찾기 토글
+  const toggleFavorite = (id) => {
+    setFavorites((prev) => {
+      const idStr = String(id);
+      const newFavorites = prev.includes(idStr)
+        ? prev.filter((fid) => fid !== idStr)
+        : [...prev, idStr];
+      localStorage.setItem(`favorite_pharmacy_${idStr}`, newFavorites.includes(idStr));
+      return newFavorites;
+    });
+  };
+
+  //기본으로 설정된 위치 가져오기
   useEffect(() => {
     getDefaultPosition().then(setCurrentPos);
   }, []);
 
-  // 약국 검색
+  //검색 기능
   const onSearch = async (e) => {
     e.preventDefault();
     try {
@@ -63,21 +81,25 @@ const PharmacyMain = () => {
     renderKakaoMap("map", currentPos, results);
   }, [results, currentPos]);
 
+  // 즐겨찾기 필터 적용
+  const displayedResults = showFavoritesOnly
+    ? results.filter((r) => favorites.includes(String(r.facilityId)))
+    : results;
+
   return (
     <>
       <div className="bg-white">
         <Container className="py-4">
-          {/* 상단 소개 영역 */}
+          {/* 상단 소개 */}
           <Row className="g-3 mb-3 align-items-center">
             <Col xs={6}>
               <div className="d-flex align-items-center gap-2 text-secondary mb-2">
                 <GeoAltFill size={18} />
                 <small>경기도 성남시 중원구</small>
               </div>
-              <h3 className="fw-bold lh-base mb-3" style={{ color: colors.text }}>
-                지금 나에게
-                <br />
-                딱 맞는 <span style={{ color: colors.primary }}>약국</span>을 찾아보세요
+              <h3 className="fw-bold lh-base mb-3 pharmacy-title">
+                지금 나에게<br />
+                딱 맞는 <span>약국</span>을 찾아보세요
               </h3>
             </Col>
             <Col xs={6} className="text-end">
@@ -85,38 +107,27 @@ const PharmacyMain = () => {
             </Col>
           </Row>
 
-          {/* 병원 / 약국 버튼 */}
+          {/* 병원 / 약국 선택 카드 */}
           <Row className="g-3 mb-4">
             <Col xs={6}>
               <Card
-                className="rounded-4 shadow-sm border-0 text-dark"
-                style={{ background: "#f3f4f6", cursor: "pointer", minHeight: 160 }}
+                className="card-pharmacy-gray text-dark"
                 onClick={() => navigate("/")}
               >
-                <Card.Body className="d-flex flex-column justify-content-center align-items-center">
-                  <img src="/image/hospitalBed.png" alt="병원" height="180" />
-                  <div className="fw-semibold" style={{ fontSize: "1rem" }}>
-                    병원
-                  </div>
+                <Card.Body>
+                  <img src="/image/hospitalBed.png" alt="병원" />
+                  <div className="fw-semibold">병원</div>
                 </Card.Body>
               </Card>
             </Col>
-
             <Col xs={6}>
               <Card
-                className="rounded-4 shadow-sm border-0 text-white"
-                style={{
-                  background: colors.primary,
-                  cursor: "pointer",
-                  minHeight: 180,
-                }}
+                className="card-pharmacy-blue text-white"
                 onClick={() => navigate("/pharmacy")}
               >
-                <Card.Body className="d-flex flex-column justify-content-center align-items-center">
-                  <img src="/image/pharmacy.png" alt="약국" height="180" />
-                  <div className="fw-semibold" style={{ fontSize: "1rem" }}>
-                    약국
-                  </div>
+                <Card.Body>
+                  <img src="/image/pharmacy.png" alt="약국" />
+                  <div className="fw-semibold">약국</div>
                 </Card.Body>
               </Card>
             </Col>
@@ -124,11 +135,10 @@ const PharmacyMain = () => {
 
           {/* 검색 폼 */}
           <Form onSubmit={onSearch}>
-            <Dropdown className="mb-3">
+            <Dropdown className="mb-3 dropdown-custom">
               <Dropdown.Toggle
-                className="w-100 rounded-pill text-dark d-flex justify-content-between align-items-center shadow-sm"
                 variant="light"
-                style={{ padding: "0.9rem 1.25rem", border: "1px solid #e0e0e0" }}
+                className="text-dark d-flex justify-content-between align-items-center"
               >
                 <span className={distance ? "" : "text-secondary"}>
                   {distance || "거리 선택"}
@@ -146,81 +156,98 @@ const PharmacyMain = () => {
               </Dropdown.Menu>
             </Dropdown>
 
+            {/* 검색창 */}
             <Form.Control
               type="text"
               placeholder="약국 이름을 입력하세요."
-              className="rounded-3 mb-3 shadow-sm"
-              style={{ padding: "0.9rem 1rem", border: "1px solid #eee", background: "#f8f9fa" }}
+              className="search-input mb-3"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
             />
 
-            <Button
-              type="submit"
-              className="w-100 rounded-pill fw-semibold shadow-sm"
-              style={{ background: colors.primary, border: "none", padding: "0.9rem 1rem" }}
-            >
-              내 주변 약국 검색
-            </Button>
+            <Button type="submit" className="btn-search w-100">내 주변 약국 검색</Button>
           </Form>
 
-          <hr className="my-4" style={{ border: "0.5px solid #ccc" }} />
-
-          {/* 지도 */}
+          {/* 즐겨찾기만 보기 토글 버튼 */}
           {results.length > 0 && (
+            <>
+              <hr className="hr-line my-3" />
+              <div className="d-flex justify-content-start align-items-center mt-4 mb-3">
+                <Button
+                  variant="light"
+                  onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                  className="border-0 d-flex align-items-center gap-2"
+                >
+                  {showFavoritesOnly ? (
+                    <StarFill color="#FFD43B" size={20} />
+                  ) : (
+                    <Star color="#aaa" size={20} />
+                  )}
+                  <span className="small">
+                    {showFavoritesOnly ? "즐겨찾기만 보기" : "전체 보기"}
+                  </span>
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* 검색 결과 */}
+          {displayedResults.length > 0 && (
             <>
               <div id="map" style={{ width: "100%", height: "400px" }}></div>
               <div className="mt-4">
-                {results.map((item, idx) => (
+                {displayedResults.map((item) => {
+                const isFavorite = favorites.includes(String(item.facilityId));
+
+                return (
                   <Card
-                    key={idx}
-                    className="rounded-4 shadow mb-3 border-1"
-                    style={{ cursor: "pointer" }}
+                    key={item.facilityId}
+                    className="result-card mb-3"
                     onClick={() => navigate(`/pharmacydetail/${item.facilityId}`)}
                   >
                     <Card.Body>
                       <h5 className="fw-bold my-2 d-flex justify-content-between align-items-center">
                         <span>
                           {item.name}
-                          <span style={{ color: "#2563eb", fontSize: "20px", marginLeft: "6px" }}>
-                            ({item.distance || "—"})
-                          </span>
+                          <span className="result-distance">({item.distance})</span>
                         </span>
-                        <StarFill color="#FFD43B" size={30} />
-                      </h5>
-                      <div
-                        className="mb-3"
-                        style={{ display: "flex", alignItems: "center", marginTop: "6px" }}
-                      >
                         <span
-                          style={{
-                            backgroundColor: "#5c5c5c",
-                            color: "#fff",
-                            fontSize: "12px",
-                            padding: "2px 6px",
-                            borderRadius: "4px",
-                            marginRight: "8px",
+                          className={`favorite-icon ${isFavorite ? "active" : ""}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(item.facilityId);
                           }}
                         >
-                          도로명
+                          {isFavorite ? <StarFill size={30}/> : <Star size={30}/>}
                         </span>
-                        <span style={{ color: "#555", fontSize: "14px" }}>{item.address}</span>
+                      </h5>
+                      <div className="my-3 d-flex align-items-center">
+                        <span className="badge-road">도로명</span>
+                        <span className="text-gray">{item.address}</span>
                       </div>
                       <div className="d-flex align-items-center justify-content-between">
-                        <div className="d-flex align-items-center gap-2 text-muted small">
+                        <div className="text-gray d-flex align-items-center gap-2">
                           <TelephoneFill className="me-1" /> {item.phone}
                         </div>
                         <div
-                          className={`fw-semibold small ${
+                          className={`small fw-semibold ms-2 d-flex align-items-center gap-1 ${
                             item.open ? "text-success" : "text-secondary"
                           }`}
                         >
-                          {item.open ? "영업 중" : "영업 종료"}
+                          {item.open ? (
+                            <>
+                              <CheckCircleFill size={18} /> 운영 중
+                            </>
+                          ) : (
+                            <>
+                              <XCircleFill size={18} /> 운영종료
+                            </>
+                          )}
                         </div>
                       </div>
                     </Card.Body>
                   </Card>
-                ))}
+                )})}
               </div>
             </>
           )}

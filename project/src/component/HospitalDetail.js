@@ -2,14 +2,19 @@ import React, { useEffect, useState } from 'react';
 import '../App.css';
 import '../css/Hospital.css';
 import { Container, Row, Col, Table, Card } from "react-bootstrap";
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { renderKakaoMap } from "../api/kakaoMapApi";
+import { StarFill, Star, CheckCircleFill, XCircleFill, HospitalFill } from "react-bootstrap-icons";
 
 
 const HospitalDetail = () => {
   const { id } = useParams();
   const [hospital, setHospital] = useState(null);
+  const [favorite, setFavorite] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [hasEmergency, setHasEmergency] = useState(false);
 
+  //병원 정보 불러오기
   useEffect(() => {
     const fetchHospital = async () => {
       try {
@@ -23,6 +28,7 @@ const HospitalDetail = () => {
     fetchHospital();
   }, [id]);
 
+  //지도 표시
   useEffect(() => {
     if (!hospital || !hospital.latitude || !hospital.longitude) return;
 
@@ -39,6 +45,28 @@ const HospitalDetail = () => {
     );
   }, [hospital]);
 
+  //운영여부
+  useEffect(() => {
+    // 예시: 9~18시 운영, 10~16시 진료 가능, 응급실 여부는 병원 데이터에 존재한다고 가정
+    const now = new Date();
+    const h = now.getHours();
+    setOpen(h >= 9 && h < 18);
+    setHasEmergency(hospital?.hasEmergency || true);
+  }, [hospital]);
+
+  // 즐겨찾기 복원
+  useEffect(() => {
+    const stored = localStorage.getItem(`favorite_hospital_${id}`);
+    if (stored === "true") setFavorite(true);
+  }, [id]);
+
+  // 즐겨찾기 토글
+  const toggleFavorite = () => {
+    const newState = !favorite;
+    setFavorite(newState);
+    localStorage.setItem(`favorite_hospital_${id}`, newState);
+  };
+
   if (!hospital) return <div>로딩 중...</div>;
 
   return (
@@ -47,10 +75,12 @@ const HospitalDetail = () => {
         {/* 경로 */}
         <Row>
           <Col>
-            <div className="d-flex align-items-center gap-2 text-secondary mb-3 small">
-              <span>HOME</span>
+            <div className="d-flex align-items-center gap-2 mb-3">
+              <Link to="/" className="text-gray">HOME</Link>
               <span>{'>'}</span>
-              <span>병원찾기</span>
+              <Link to="/" className="text-gray">병원찾기</Link>
+              <span>{'>'}</span>
+              <span className="breadcrumb-current">{hospital?.name || "병원상세"}</span>
             </div>
           </Col>
         </Row>
@@ -68,12 +98,19 @@ const HospitalDetail = () => {
         {/* 병원명 + 상태 */}
         <Row className="align-items-center mb-3">
           <Col>
-            <h5 className="fw-bold mb-2">
-              {hospital.name} <span className="text-warning">★</span>
-            </h5>
-            <div className="d-flex gap-3">
-              <span className="text-danger fw-semibold">응급실 운영</span>
-              <span className="text-success fw-semibold">진료 가능</span>
+            <h4 className="fw-bold mb-2 d-flex align-items-center justify-content-between">
+              {hospital.name}
+              <span className={`favorite-icon ${favorite ? 'active' : ''}`} onClick={toggleFavorite}>
+                {favorite ? <StarFill size={30}/> : <Star size={30}/>}
+              </span>
+            </h4>
+            <div className="d-flex flex-wrap gap-3 mt-2">
+              <span>{hasEmergency ? 
+                <><HospitalFill className="text-danger me-2" />응급실 운영</> : 
+                <><XCircleFill className="text-secondary me-2" />응급실 없음</>}</span>
+              <span>{open ? 
+                <><CheckCircleFill className="text-success me-2" />운영 중</> : 
+                <><XCircleFill className="text-danger me-2" />운영종료</>}</span>
             </div>
           </Col>
         </Row>
@@ -86,22 +123,10 @@ const HospitalDetail = () => {
           <Col md={6}>
             <Table className="mt-3 mt-md-0 small hospital-table">
               <tbody>
-                <tr>
-                  <th className="w-25">주소</th>
-                  <td>{hospital.address || "-"}</td>
-                </tr>
-                <tr>
-                  <th>대표전화</th>
-                  <td>{hospital.phone || "-"}</td>
-                </tr>
-                <tr>
-                  <th>기관구분</th>
-                  <td>병원</td>
-                </tr>
-                <tr>
-                  <th>소개</th>
-                  <td>-</td>
-                </tr>
+                <tr><th className="w-25">주소</th><td>{hospital.address || "-"}</td></tr>
+                <tr><th>대표전화</th><td>{hospital.phone || "-"}</td></tr>
+                <tr><th>기관구분</th><td>병원</td></tr>
+                <tr><th>소개</th><td>-</td></tr>
               </tbody>
             </Table>
           </Col>

@@ -2,15 +2,18 @@ import React from 'react'
 import '../App.css';
 import '../css/Pharmacy.css';
 import { Container, Row, Col, Table, Card } from "react-bootstrap";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from 'react-router-dom';
 import { useEffect, useState } from "react";
 import { renderKakaoMap } from "../api/kakaoMapApi";
+import { StarFill, Star, CheckCircleFill, XCircleFill } from "react-bootstrap-icons";
 
 const PharmacyDetail = () => {
   const { id } = useParams();
   const [pharmacy, setPharmacy] = useState(null);
+  const [favorite, setFavorite] = useState(false);
+  const [open, setOpen] = useState(false);
 
-  // 약국 정보 가져오기
+  // 약국 정보 불러오기
   useEffect(() => {
     const fetchPharmacy = async () => {
       try {
@@ -41,24 +44,46 @@ const PharmacyDetail = () => {
     );
   }, [pharmacy]);
 
+  //운영여부
+  useEffect(() => {
+    const now = new Date();
+    const hour = now.getHours();
+    setOpen(hour >= 9 && hour < 20);
+  }, []);
+
+  // 즐겨찾기 복원
+  useEffect(() => {
+    const stored = localStorage.getItem(`favorite_pharmacy_${id}`);
+    if (stored === "true") setFavorite(true);
+  }, [id]);
+
+  // 즐겨찾기 토글
+  const toggleFavorite = () => {
+    const newState = !favorite;
+    setFavorite(newState);
+    localStorage.setItem(`favorite_pharmacy_${id}`, newState);
+  };
+
   if (!pharmacy) return <div>로딩 중...</div>;
 
   return (
     <>
       <div className="bg-white">
         <Container className="py-4">
-          {/* 경로 */}
+        {/* 경로 */}
           <Row>
             <Col>
-              <div className="d-flex align-items-center gap-2 text-secondary mb-3 small">
-                <span>HOME</span>
+              <div className="d-flex align-items-center gap-2 mb-3">
+                <Link to="/" className="text-gray">HOME</Link>
                 <span>{'>'}</span>
-                <span>약국찾기</span>
-              </div>
+                <Link to="/pharmacy" className="text-gray">약국찾기</Link>
+                <span>{'>'}</span>
+                <span className="breadcrumb-current">{pharmacy?.name || "약국상세"}</span>
+            </div>
             </Col>
           </Row>
 
-          {/* 안내 문구 */}
+        {/* 안내 문구 */}
           <Row>
             <Col>
               <div
@@ -70,48 +95,35 @@ const PharmacyDetail = () => {
             </Col>
           </Row>
 
-          {/* 약국명 + 즐겨찾기 + 운영 여부 */}
+        {/* 약국명 + 상태 */}
           <Row className="align-items-center mb-3">
             <Col>
-              <h5 className="fw-bold mb-2">
-                {pharmacy.name} <span className="text-warning">★</span>  {/* 즐겨찾기 표시는 로그인하면 보이게 */}
-              </h5>
-              <div className="d-flex gap-3">
-                <span className="text-success fw-semibold">영업 중</span>
+              <h4 className="fw-bold mb-2 d-flex align-items-center justify-content-between">
+                <span>{pharmacy.name}</span>
+                <span className={`favorite-icon ${favorite ? 'active' : ''}`} onClick={toggleFavorite}>
+                  {favorite ? <StarFill size={30}/> : <Star size={30}/>}
+                </span>
+              </h4>
+              <div className="d-flex gap-3 mt-2">
+                {open ? (
+                  <span><CheckCircleFill className="text-success me-2" />운영 중</span>
+                ) : (
+                  <span><XCircleFill className="text-danger me-2" />운영 종료</span>
+                )}
               </div>
             </Col>
           </Row>
 
-          {/* 지도 + 정보 테이블 */}
+        {/* 지도 + 정보 */}
           <Row className="mb-4">
+            <Col md={6}><div id="map" className="pharmacy-map"></div></Col>
             <Col md={6}>
-              <div id="map"
-                style={{
-                  backgroundColor: "#f4f4f4",
-                  height: "280px",
-                  border: "0px solid #ddd",
-                }}
-              ></div>
-            </Col>
-            <Col md={6}>
-              <Table className="mt-3 mt-md-0 small">
+              <Table className="mt-3 mt-md-0 small pharmacy-table">
                 <tbody>
-                  <tr>
-                    <th className="bg-light w-25 text-center">주소</th>
-                    <td>{pharmacy.address || "-"}</td>
-                  </tr>
-                  <tr>
-                    <th className="bg-light text-center">대표전화</th>
-                    <td>{pharmacy.phone || "-"}</td>
-                  </tr>
-                  <tr>
-                    <th className="bg-light text-center">기관구분</th>
-                    <td>약국</td>
-                  </tr>
-                  <tr>
-                    <th className="bg-light text-center">소개</th>
-                    <td>-</td>
-                  </tr>
+                  <tr><th className="w-25">주소</th><td>{pharmacy.address || "-"}</td></tr>
+                  <tr><th>대표전화</th><td>{pharmacy.phone || "-"}</td></tr>
+                  <tr><th>기관구분</th><td>약국</td></tr>
+                  <tr><th>소개</th><td>-</td></tr>
                 </tbody>
               </Table>
             </Col>
