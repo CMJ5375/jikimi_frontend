@@ -5,6 +5,7 @@ import "./Noticeboard.css";
 import { ChatDots, HandThumbsUp, Pencil, Plus, Search } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
 import { getList } from "../api/postApi"; // GET /api/posts/list
+import useCustomLogin from "../hook/useCustomLogin"
 
 const CATEGORIES = ["전체", "인기글", "병원정보", "약국정보", "질문해요", "자유글"];
 
@@ -27,6 +28,7 @@ const Noticeboard = () => {
       try {
         const data = await getList({ page, size });
         if (!ignore) setPageData(data);
+        console.log("호출")
       } catch (e) {
         console.error(e);
       }
@@ -76,11 +78,11 @@ const Noticeboard = () => {
   }
 
     // 로그인 상태, 로그인상태체크 후 로그인상태가 아니면 로그인페이지로 이동
-    const {isLogin, moveToLoginReturn} = useCustomLogin()
+    // const {isLogin, moveToLoginReturn} = useCustomLogin()
 
-    if(!isLogin) {
-        return moveToLoginReturn()
-    }
+    // if(!isLogin) {
+    //     return moveToLoginReturn()
+    // }
   return (
     <>
       <div className="bg-white">
