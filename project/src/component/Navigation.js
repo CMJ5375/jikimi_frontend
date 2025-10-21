@@ -83,10 +83,16 @@ const Navigation = () => {
             </a>
 
             <div className="d-flex align-items-start">
-              <a href="login" className="text-dark text-decoration-none d-flex flex-column align-items-center me-4">
+              {!loginState.username ?
+                <a href="login" className="text-dark text-decoration-none d-flex flex-column align-items-center me-4">
                 <i className="bi bi-person fs-1"></i>
                 <small className="mt-1">로그인</small>
               </a>
+              :
+              <a href="/" className="text-dark text-decoration-none d-flex flex-column align-items-center me-4" onClick={handleClickLogout}>
+                <i className="bi bi-person fs-1"></i>
+                <small className="mt-1">로그아웃</small>
+              </a>}
 
               <button
                 className="btn btn-link text-dark text-decoration-none d-flex flex-column align-items-center p-0"
