@@ -11,7 +11,7 @@ const colors = {
   mute: "#6c757d",
 };
 
-export default function MainPage() {
+const Main = () => {
   const [type, setType] = useState("hospital"); // 'hospital' | 'pharmacy'
   const [dept, setDept] = useState("");         // 진료과목
   const [org, setOrg] = useState("");           // 의료기관
@@ -45,6 +45,7 @@ export default function MainPage() {
   };
 
   return (
+    <>
     <div className="bg-white">
       <Container className="py-4">
         {/* 위치 */}
@@ -203,5 +204,8 @@ export default function MainPage() {
         </Form>
       </Container>
     </div>
+    </>
   );
 }
+
+export default Main

@@ -1,8 +1,10 @@
 import { Container, Row, Col, Form, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import '../btn.css';
-function LoginMain() {
+
+const LoginMain = () => {
   return (
+    <>
     <Container className="py-5">
       <Row className="justify-content-center align-items-center">
 
@@ -149,6 +151,7 @@ function LoginMain() {
         </Col>
       </Row>
     </Container>
+    </>
   );
 }
 

@@ -7,15 +7,15 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import NavDropdown from 'react-bootstrap/NavDropdown';
 
-
-export default function HeaderResponsive() {
+const Navigation = () => {
   const location = useLocation();
 
   // 안내바를 숨기고 싶은 경로들
   const hideBannerPaths = [""]; //경로 넣기
-
   const shouldShowBanner = !hideBannerPaths.includes(location.pathname);
+
   return (
+    <>
     <header className="border-bottom">
       <div>
         {/* ================= PC / 태블릿 이상 ================= */}
@@ -50,9 +50,9 @@ export default function HeaderResponsive() {
               <Nav.Link href="/mypage">마이페이지</Nav.Link>
                
               <NavDropdown title="고객지원" id="basic-nav-dropdown">
-                <NavDropdown.Item href="/">FAQ</NavDropdown.Item>
-                <NavDropdown.Item href="/">공지사항</NavDropdown.Item>
-                <NavDropdown.Item href="/">자료실</NavDropdown.Item>
+                <NavDropdown.Item href="/notice">공지사항</NavDropdown.Item>
+                <NavDropdown.Item href="/faq">FAQ</NavDropdown.Item>
+                <NavDropdown.Item href="/dataroom">자료실</NavDropdown.Item>
               </NavDropdown>
             </Nav>
           </nav>
@@ -130,7 +130,7 @@ export default function HeaderResponsive() {
             {/* 게시판 */}
             <div className="mt-2 mb-2">
               <Link
-                to="/noticeboard"
+                to="/noticeboards"
                 className="fw-semibold text-dark text-decoration-none d-block px-0"
               >
                게시판
@@ -171,17 +171,17 @@ export default function HeaderResponsive() {
                   <div className="accordion-body py-2 ps-3">
                     <ul className="list-unstyled mb-0">
                       <li className="py-1">
-                        <a href="#faq" className="text-secondary text-decoration-none">
-                          FAQ
-                        </a>
-                      </li>
-                      <li className="py-1">
-                        <a href="#notice" className="text-secondary text-decoration-none">
+                        <a href="/notice" className="text-secondary text-decoration-none">
                           공지사항
                         </a>
                       </li>
                       <li className="py-1">
-                        <a href="#data" className="text-secondary text-decoration-none">
+                        <a href="/faq" className="text-secondary text-decoration-none">
+                          FAQ
+                        </a>
+                      </li>
+                      <li className="py-1">
+                        <a href="/dataroom" className="text-secondary text-decoration-none">
                           자료실
                         </a>
                       </li>
@@ -194,5 +194,6 @@ export default function HeaderResponsive() {
         </div>
       </div>
     </header>
+    </>
   );
 }

@@ -10,7 +10,7 @@ const colors = {
   mute: "#6c757d",
 };
 
-export default function HospitalMain() {
+const HospitalMain = () => {
   const [dept, setDept] = useState("");
   const [org, setOrg] = useState("");
   const [keyword, setKeyword] = useState("");
@@ -43,6 +43,7 @@ export default function HospitalMain() {
   };
 
   return (
+    <>
     <div className="bg-white">
       <Container className="py-4">
         {/* 상단 소개 영역 */}
@@ -234,5 +235,8 @@ export default function HospitalMain() {
         )}
       </Container>
     </div>
+    </>
   );
 }
+
+export default HospitalMain

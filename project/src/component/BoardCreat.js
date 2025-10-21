@@ -5,7 +5,7 @@ import { X } from "react-bootstrap-icons";
 
 const CATEGORIES = ["자유글", "질문해요", "병원정보", "약국정보", "공지사항"];
 
-export default function BoardCreat({ onSubmit, onClose }) {
+const BoardCreat = ({ onSubmit, onClose }) => {
   const [category, setCategory] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -42,6 +42,7 @@ export default function BoardCreat({ onSubmit, onClose }) {
   };
 
   return (
+    <>
     <div className="container py-3 postcreate-wrap">
       {/* 헤더 */}
       <div className="d-flex justify-content-between align-items-center mb-2">
@@ -154,5 +155,8 @@ export default function BoardCreat({ onSubmit, onClose }) {
         </div>
       </form>
     </div>
+    </>
   );
 }
+
+export default BoardCreat
