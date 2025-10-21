@@ -1,0 +1,120 @@
+/* ========== HospitalMain.jsx 전용 ========== */
+
+/* 상단 텍스트 */
+.hospital-title { color: #111; }
+.hospital-title span { color: #3B6CFF; }
+
+/* 병원 카드 (왼쪽 - 파란색) */
+.card-hospital-blue {
+  background: #3B6CFF;
+  cursor: pointer;
+  min-height: 180px;
+  border: none;
+}
+.card-hospital-blue .card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.card-hospital-blue img {
+  height: 180px;
+  object-fit: contain;
+  margin-bottom: 8px;
+}
+.card-hospital-blue .fw-semibold {
+  /* font-family: 'Pretendard', 'Noto Sans KR', sans-serif; */
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -0.2px;
+}
+/* 병원 카드 hover */
+.card-hospital-blue:hover {
+  background: #2f56d6;
+  transition: background-color 0.2s ease-in-out;
+}
+
+/* 약국 카드 (오른쪽 - 회색) */
+.card-hospital-gray {
+  background: #f3f4f6;
+  cursor: pointer;
+  min-height: 180px;
+  border: none;
+}
+.card-hospital-gray .card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.card-hospital-gray img {
+  height: 180px;
+  object-fit: contain;
+  margin-bottom: 8px;
+}
+.card-hospital-gray .fw-semibold {
+  /* font-family: 'Pretendard', 'Noto Sans KR', sans-serif; */
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -0.2px;
+}
+/* 약국 카드 hover */
+.card-hospital-gray:hover {
+  background: #e7e8eb;
+  transition: background-color 0.2s ease-in-out;
+}
+
+/* ========== HospitalDetail.jsx 전용 ========== */
+
+/* 안내 문구 */
+.hospital-notice {
+  background: #DBEFFF;
+  font-size: 0.9rem;
+  color: var(--primary);
+  border: 0;
+  padding: 0.8rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+/* 지도 영역 */
+.hospital-map {
+  background-color: #f4f4f4;
+  height: 280px;
+  border: 0px solid #ddd;
+  border-radius: 8px;
+}
+
+/* 테이블 헤더 */
+.hospital-table th {
+  background-color: #f4f4f4;
+  text-align: center;
+}
+
+/* 카드 헤더 */
+.hospital-card-header {
+  background-color: #f4f4f4;
+  color: #414141ff;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  padding-left: 15px;
+  font-weight: bold;
+}
+
+/* 진료시간 강조 (오늘인 경우) */
+.hospital-time-col.active {
+  color: red;
+  text-decoration: underline;
+  text-decoration-color: red;
+  text-decoration-thickness: 2px;
+}
+
+/* 비고 영역 */
+.hospital-remark {
+  background: #DBEFFF;
+  font-size: 0.9rem;
+  border: 0;
+  padding: 1rem;
+  border-radius: 8px;
+}

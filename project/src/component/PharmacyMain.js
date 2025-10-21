@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import '../App.css';
+import '../css/Pharmacy.css';
 import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstrap";
 import { GeoAltFill, StarFill, TelephoneFill } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
