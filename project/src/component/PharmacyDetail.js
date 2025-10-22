@@ -7,6 +7,36 @@ import { useEffect, useState } from "react";
 import { renderKakaoMap } from "../api/kakaoMapApi";
 import { StarFill, Star, CheckCircleFill, XCircleFill } from "react-bootstrap-icons";
 
+//오늘 ‘운영중’ 계산 유틸 (약국 상세)
+function isOpenNow(businessHours = []) {
+  if (!Array.isArray(businessHours) || businessHours.length === 0) return false
+  const now = new Date()
+  const dayNames = ["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"]
+  const today = dayNames[now.getDay()]
+  const todayEntry = businessHours.find(b => (b.dayOfWeek || "").toUpperCase() === today)
+  if (!todayEntry) return false
+  if (todayEntry.open24h) return true
+  if (todayEntry.closed) return false
+  if (!todayEntry.openTime || !todayEntry.closeTime) return false
+  const [oH,oM] = todayEntry.openTime.split(":").map(Number)
+  const [cH,cM] = todayEntry.closeTime.split(":").map(Number)
+  const openMins  = oH*60 + oM
+  const closeMins = cH*60 + cM
+  const nowMins   = now.getHours()*60 + now.getMinutes()
+  return nowMins >= openMins && nowMins < closeMins
+}
+
+//요일 한글 표기
+const dayLabel = {
+  MONDAY: "월요일",
+  TUESDAY: "화요일",
+  WEDNESDAY: "수요일",
+  THURSDAY: "목요일",
+  FRIDAY: "금요일",
+  SATURDAY: "토요일",
+  SUNDAY: "일요일",
+}
+
 const PharmacyDetail = () => {
   const { id } = useParams();
   const [pharmacy, setPharmacy] = useState(null);
@@ -17,54 +47,48 @@ const PharmacyDetail = () => {
   useEffect(() => {
     const fetchPharmacy = async () => {
       try {
-        const res = await fetch(`http://localhost:8080/api/facilities/${id}`);
-        const data = await res.json();
-        setPharmacy(data);
+        const res = await fetch(`http://localhost:8080/project/pharmacy/${id}`)
+        const data = await res.json()
+        setPharmacy(data)
+        setOpen(isOpenNow(data.facilityBusinessHours || data.facility?.businessHours || []))
       } catch (error) {
-        console.error("약국 정보를 불러오지 못했습니다:", error);
+        console.error("약국 정보를 불러오지 못했습니다:", error)
       }
-    };
-    fetchPharmacy();
-  }, [id]);
+    }
+    fetchPharmacy()
+  }, [id])
 
   // 지도 표시
   useEffect(() => {
-    if (!pharmacy || !pharmacy.latitude || !pharmacy.longitude) return;
-
+    if (!pharmacy || !pharmacy.facility?.latitude || !pharmacy.facility?.longitude) return
     renderKakaoMap(
       "map",
-      { lat: pharmacy.latitude, lng: pharmacy.longitude },
+      { lat: pharmacy.facility.latitude, lng: pharmacy.facility.longitude },
       [
         {
-          name: pharmacy.name,
-          latitude: pharmacy.latitude,
-          longitude: pharmacy.longitude,
+          name: pharmacy.pharmacyName,
+          latitude: pharmacy.facility.latitude,
+          longitude: pharmacy.facility.longitude,
         },
       ]
-    );
-  }, [pharmacy]);
-
-  //운영여부
-  useEffect(() => {
-    const now = new Date();
-    const hour = now.getHours();
-    setOpen(hour >= 9 && hour < 20);
-  }, []);
+    )
+  }, [pharmacy])
 
   // 즐겨찾기 복원
   useEffect(() => {
-    const stored = localStorage.getItem(`favorite_pharmacy_${id}`);
-    if (stored === "true") setFavorite(true);
-  }, [id]);
+    const stored = localStorage.getItem(`favorite_pharmacy_${id}`)
+    if (stored === "true") setFavorite(true)
+  }, [id])
 
   // 즐겨찾기 토글
   const toggleFavorite = () => {
-    const newState = !favorite;
-    setFavorite(newState);
-    localStorage.setItem(`favorite_pharmacy_${id}`, newState);
+    const newState = !favorite
+    setFavorite(newState)
+    localStorage.setItem(`favorite_pharmacy_${id}`, newState)
   };
 
-  if (!pharmacy) return <div>로딩 중...</div>;
+  if (!pharmacy) return <div>로딩 중...</div>
+  const bizHours = pharmacy.facilityBusinessHours || pharmacy.facility?.businessHours || []
 
   return (
     <>
@@ -78,7 +102,7 @@ const PharmacyDetail = () => {
                 <span>{'>'}</span>
                 <Link to="/pharmacy" className="text-gray">약국찾기</Link>
                 <span>{'>'}</span>
-                <span className="breadcrumb-current">{pharmacy?.name || "약국상세"}</span>
+                <span className="breadcrumb-current">{pharmacy?.pharmacyName || "약국상세"}</span>
             </div>
             </Col>
           </Row>
@@ -99,7 +123,7 @@ const PharmacyDetail = () => {
           <Row className="align-items-center mb-3">
             <Col>
               <h4 className="fw-bold mb-2 d-flex align-items-center justify-content-between">
-                <span>{pharmacy.name}</span>
+                <span>{pharmacy.pharmacyName}</span>
                 <span className={`favorite-icon ${favorite ? 'active' : ''}`} onClick={toggleFavorite}>
                   {favorite ? <StarFill size={30}/> : <Star size={30}/>}
                 </span>
@@ -120,8 +144,8 @@ const PharmacyDetail = () => {
             <Col md={6}>
               <Table className="mt-3 mt-md-0 small pharmacy-table">
                 <tbody>
-                  <tr><th className="w-25">주소</th><td>{pharmacy.address || "-"}</td></tr>
-                  <tr><th>대표전화</th><td>{pharmacy.phone || "-"}</td></tr>
+                  <tr><th className="w-25">주소</th><td>{pharmacy.facility?.address || "-"}</td></tr>
+                  <tr><th>대표전화</th><td>{pharmacy.facility?.phone || "-"}</td></tr>
                   <tr><th>기관구분</th><td>약국</td></tr>
                   <tr><th>소개</th><td>-</td></tr>
                 </tbody>
@@ -148,21 +172,21 @@ const PharmacyDetail = () => {
                 </Card.Header>
                 <Card.Body className="small text-secondary">
                   <Row>
-                    <Col xs={6} md={3} className='mb-1'><span className='fw-bold'>월요일</span> 09:00~19:00</Col>
-                    <Col xs={6} md={3} className='mb-1 fw-bold'
-                            style={{
-                            color: 'red',
-                            textDecoration: 'underline',
-                            textDecorationColor: 'red',
-                            textDecorationThickness: '2px',
-                            }}>
-                        <span>화요일</span>{' '}09:00~19:00
-                    </Col>
-                    <Col xs={6} md={3} className='mb-1'><span className='fw-bold'>수요일</span> 09:00~19:00</Col>
-                    <Col xs={6} md={3} className='mb-1'><span className='fw-bold'>목요일</span> 09:00~19:00</Col>
-                    <Col xs={6} md={3} className='mb-1'><span className='fw-bold'>금요일</span> 09:00~19:00</Col>
-                    <Col xs={6} md={3} className='mb-1'><span className='fw-bold'>토요일</span> 09:00~19:00</Col>
-                    <Col xs={6} md={3} className='mb-1'><span className='fw-bold'>일요일</span> 09:00~13:00</Col>
+                    {bizHours.map((bh, idx) => (
+                      <Col
+                        key={idx}
+                        xs={6}
+                        md={3}
+                        className={`mb-1 ${
+                          bh.dayOfWeek &&
+                          (bh.dayOfWeek.toUpperCase() === (["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"][new Date().getDay()]))
+                            ? "pharmacy-time-col active" : ""
+                        }`}
+                      >
+                        <span className='fw-bold'>{dayLabel[bh.dayOfWeek] || bh.dayOfWeek}</span>{" "}
+                        {bh.open24h ? "24시간" : (bh.closed ? "휴무" : `${bh.openTime?.slice(0,5) ?? "--:--"}~${bh.closeTime?.slice(0,5) ?? "--:--"}`)}
+                      </Col>
+                    ))}
                   </Row>
                 </Card.Body>
               </Card>
