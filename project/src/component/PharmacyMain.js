@@ -7,39 +7,58 @@ import { useNavigate } from "react-router-dom";
 import { getDefaultPosition, addDistanceAndSort } from "../api/geolocationApi";
 import { renderKakaoMap } from "../api/kakaoMapApi";
 
-const PharmacyMain = () => {
-  const [distance, setDistance] = useState("");
-  const [keyword, setKeyword] = useState("");
-  const [results, setResults] = useState([]);
-  const [favorites, setFavorites] = useState([]);
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [currentPos, setCurrentPos] = useState({ lat: null, lng: null });
+//FacilityBusinessHourDTO 기반, 오늘 ‘운영중’ 계산
+function isOpenNow(businessHours = []) {
+  if (!Array.isArray(businessHours) || businessHours.length === 0) return false
+  const now = new Date()
+  const dayNames = ["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"]
+  const today = dayNames[now.getDay()]
+  const todayEntry = businessHours.find(b => (b.dayOfWeek || "").toUpperCase() === today)
+  if (!todayEntry) return false
+  if (todayEntry.open24h) return true
+  if (todayEntry.closed) return false
+  if (!todayEntry.openTime || !todayEntry.closeTime) return false
+  const [oH,oM] = todayEntry.openTime.split(":").map(Number)
+  const [cH,cM] = todayEntry.closeTime.split(":").map(Number)
+  const openMins  = oH*60 + oM
+  const closeMins = cH*60 + cM
+  const nowMins   = now.getHours()*60 + now.getMinutes()
+  return nowMins >= openMins && nowMins < closeMins
+}
 
-  const navigate = useNavigate();
+const PharmacyMain = () => {
+  const [distance, setDistance] = useState("")
+  const [keyword, setKeyword] = useState("")
+  const [results, setResults] = useState([])
+  const [favorites, setFavorites] = useState([])
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  const [currentPos, setCurrentPos] = useState({ lat: null, lng: null })
+
+  const navigate = useNavigate()
 
   //드롭다운 거리
-  const distanceList = ["500m", "1km", "5km", "10km"];
+  const distanceList = ["500m", "1km", "5km", "10km"]
 
   //localStorage에서 즐겨찾기 불러오기
   useEffect(() => {
     const stored = Object.keys(localStorage)
       .filter((key) => key.startsWith("favorite_pharmacy_"))
       .filter((key) => localStorage.getItem(key) === "true")
-      .map((key) => key.replace("favorite_pharmacy_", ""));
-    setFavorites(stored);
-  }, []);
+      .map((key) => key.replace("favorite_pharmacy_", ""))
+    setFavorites(stored)
+  }, [])
 
   //즐겨찾기 토글
   const toggleFavorite = (id) => {
     setFavorites((prev) => {
-      const idStr = String(id);
+      const idStr = String(id)
       const newFavorites = prev.includes(idStr)
         ? prev.filter((fid) => fid !== idStr)
-        : [...prev, idStr];
-      localStorage.setItem(`favorite_pharmacy_${idStr}`, newFavorites.includes(idStr));
-      return newFavorites;
-    });
-  };
+        : [...prev, idStr]
+      localStorage.setItem(`favorite_pharmacy_${idStr}`, newFavorites.includes(idStr))
+      return newFavorites
+    })
+  }
 
   //기본으로 설정된 위치 가져오기
   useEffect(() => {
@@ -48,43 +67,49 @@ const PharmacyMain = () => {
 
   //검색 기능
   const onSearch = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
     try {
-      const query = new URLSearchParams({
-        type: "PHARMACY",
-        name: keyword || "",
-      });
-      const url = `http://localhost:8080/api/facilities?${query.toString()}`;
-      console.log("요청 URL:", url);
+      const url = `http://localhost:8080/project/pharmacy/search?keyword=${keyword}`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`서버 오류: ${res.status}`)
+      const page = await res.json()
+      const data = Array.isArray(page.content) ? page.content : []
 
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
+      //키워드(약국명) 필터링
+      const filtered = data.filter(p => (keyword ? (p.pharmacyName || "").includes(keyword) : true))
 
-      const data = await res.json();
-      let withDistance = addDistanceAndSort(data, currentPos);
+      //화면 구조에 맞게 정규화 + ‘오늘 운영중’ 계산
+      const normalized = filtered.map(p => ({
+        pharmacyId: p.pharmacyId,
+        name: p.pharmacyName,
+        address: p.facility?.address || "",
+        phone: p.facility?.phone || "",
+        latitude: p.facility?.latitude,
+        longitude: p.facility?.longitude,
+        open: isOpenNow(p.facilityBusinessHours || p.facility?.businessHours || []),
+      }));
 
-      // 거리 필터 적용
-      if (distance) {
-        const range = parseFloat(distance) / (distance.includes("km") ? 1 : 1000); // m → km 변환
-        withDistance = withDistance.filter((item) => item.distanceValue <= range);
+      let withDistance = addDistanceAndSort(normalized, currentPos);
+      if (distance) { // 기존 거리 필터 로직 유지
+        const range = parseFloat(distance) / (distance.includes("km") ? 1 : 1000)
+        withDistance = withDistance.filter((item) => item.distanceValue <= range)
       }
-
-      setResults(withDistance);
+      setResults(withDistance)
     } catch (error) {
-      console.error("검색 실패:", error);
+      console.error("검색 실패:", error)
     }
-  };
+  }
 
   // 지도 표시 (검색 결과 있을 때만)
   useEffect(() => {
-    if (results.length === 0 || !currentPos.lat) return;
-    renderKakaoMap("map", currentPos, results);
-  }, [results, currentPos]);
+    if (results.length === 0 || !currentPos.lat) return
+    renderKakaoMap("map", currentPos, results)
+  }, [results, currentPos])
 
   // 즐겨찾기 필터 적용
   const displayedResults = showFavoritesOnly
-    ? results.filter((r) => favorites.includes(String(r.facilityId)))
-    : results;
+    ? results.filter((r) => favorites.includes(String(r.pharmacyId)))
+    : results
 
   return (
     <>
@@ -197,57 +222,53 @@ const PharmacyMain = () => {
               <div id="map" style={{ width: "100%", height: "400px" }}></div>
               <div className="mt-4">
                 {displayedResults.map((item) => {
-                const isFavorite = favorites.includes(String(item.facilityId));
-
-                return (
-                  <Card
-                    key={item.facilityId}
-                    className="result-card mb-3"
-                    onClick={() => navigate(`/pharmacydetail/${item.facilityId}`)}
-                  >
-                    <Card.Body>
-                      <h5 className="fw-bold my-2 d-flex justify-content-between align-items-center">
-                        <span>
-                          {item.name}
-                          <span className="result-distance">({item.distance})</span>
-                        </span>
-                        <span
-                          className={`favorite-icon ${isFavorite ? "active" : ""}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleFavorite(item.facilityId);
-                          }}
-                        >
-                          {isFavorite ? <StarFill size={30}/> : <Star size={30}/>}
-                        </span>
-                      </h5>
-                      <div className="my-3 d-flex align-items-center">
-                        <span className="badge-road">도로명</span>
-                        <span className="text-gray">{item.address}</span>
-                      </div>
-                      <div className="d-flex align-items-center justify-content-between">
-                        <div className="text-gray d-flex align-items-center gap-2">
-                          <TelephoneFill className="me-1" /> {item.phone}
+                  const isFavorite = favorites.includes(String(item.pharmacyId));
+                  return (
+                    <Card
+                      key={item.pharmacyId}
+                      className="result-card mb-3"
+                      onClick={() => navigate(`/pharmacydetail/${item.pharmacyId}`)}
+                    >
+                      <Card.Body>
+                        <h5 className="fw-bold my-2 d-flex justify-content-between align-items-center">
+                          <span>{item.pharmacyName} <span className="result-distance">({item.distance})</span></span>
+                          <span
+                            className={`favorite-icon ${isFavorite ? "active" : ""}`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleFavorite(item.pharmacyId)
+                            }}
+                          >
+                            {isFavorite ? <StarFill size={30}/> : <Star size={30}/>}
+                          </span>
+                        </h5>
+                        <div className="my-3 d-flex align-items-center">
+                          <span className="badge-road">도로명</span>
+                          <span className="text-gray">{item.address}</span>
                         </div>
-                        <div
-                          className={`small fw-semibold ms-2 d-flex align-items-center gap-1 ${
-                            item.open ? "text-success" : "text-secondary"
-                          }`}
-                        >
-                          {item.open ? (
-                            <>
-                              <CheckCircleFill size={18} /> 운영 중
-                            </>
-                          ) : (
-                            <>
-                              <XCircleFill size={18} /> 운영종료
-                            </>
-                          )}
+                        <div className="d-flex align-items-center justify-content-between">
+                          <div className="text-gray d-flex align-items-center gap-2">
+                            <TelephoneFill className="me-1" /> {item.phone}
+                          </div>
+                          <div
+                            className={`small fw-semibold ms-2 d-flex align-items-center gap-1 ${
+                              item.open ? "text-success" : "text-secondary"
+                            }`}
+                          >
+                            {item.open ? (
+                              <>
+                                <CheckCircleFill size={18} /> 운영 중
+                              </>
+                            ) : (
+                              <>
+                                <XCircleFill size={18} /> 운영종료
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                )})}
+                      </Card.Body>
+                    </Card>
+                  )})}
               </div>
             </>
           )}
