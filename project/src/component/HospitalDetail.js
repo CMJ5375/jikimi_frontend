@@ -97,9 +97,9 @@ const HospitalDetail = () => {
         <Row>
           <Col>
             <div className="d-flex align-items-center gap-2 mb-3">
-              <Link to="/" className="text-gray">HOME</Link>
+              <Link to="/" className="text-route">HOME</Link>
               <span>{'>'}</span>
-              <Link to="/" className="text-gray">병원찾기</Link>
+              <Link to="/" className="text-route">병원찾기</Link>
               <span>{'>'}</span>
               <span className="breadcrumb-current">{hospital?.hospitalName || "병원상세"}</span>
             </div>
@@ -131,7 +131,7 @@ const HospitalDetail = () => {
                 <><XCircleFill className="text-secondary me-2" />응급실 없음</>}</span>
               <span>{open ? 
                 <><CheckCircleFill className="text-success me-2" />운영 중</> : 
-                <><XCircleFill className="text-danger me-2" />운영종료</>}</span>
+                <><XCircleFill className="text-secondary me-2" />운영종료</>}</span>
             </div>
           </Col>
         </Row>

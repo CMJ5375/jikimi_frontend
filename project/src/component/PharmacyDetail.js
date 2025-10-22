@@ -98,9 +98,9 @@ const PharmacyDetail = () => {
           <Row>
             <Col>
               <div className="d-flex align-items-center gap-2 mb-3">
-                <Link to="/" className="text-gray">HOME</Link>
+                <Link to="/" className="text-route">HOME</Link>
                 <span>{'>'}</span>
-                <Link to="/pharmacy" className="text-gray">약국찾기</Link>
+                <Link to="/pharmacy" className="text-route">약국찾기</Link>
                 <span>{'>'}</span>
                 <span className="breadcrumb-current">{pharmacy?.pharmacyName || "약국상세"}</span>
             </div>
@@ -132,7 +132,7 @@ const PharmacyDetail = () => {
                 {open ? (
                   <span><CheckCircleFill className="text-success me-2" />운영 중</span>
                 ) : (
-                  <span><XCircleFill className="text-danger me-2" />운영 종료</span>
+                  <span><XCircleFill className="text-secondary me-2" />운영 종료</span>
                 )}
               </div>
             </Col>

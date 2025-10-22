@@ -4,7 +4,7 @@ import '../css/Hospital.css';
 import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstrap";
 import { GeoAltFill, StarFill, Star, TelephoneFill, HospitalFill, CheckCircleFill, XCircleFill } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { getDefaultPosition, addDistanceAndSort } from "../api/geolocationApi";
+import { getDefaultPosition } from "../api/geolocationApi";
 
 // FacilityBusinessHourDTO 기반, 오늘 ‘운영중’ 계산 유틸
 function isOpenNow(businessHours = []) {
@@ -44,28 +44,23 @@ const HospitalMain = () => {
     () => ["상급종합병원", "종합병원", "병원", "의원", "보건소", "한방병원", "치과의원"], []
   )
 
-  // 페이지 최초 진입 시 localStorage에서 즐겨찾기 불러오기
+  // 즐겨찾기 불러오기
   useEffect(() => {
     const stored = Object.keys(localStorage)
-      .filter((key) => key.startsWith("favorite_hospital_"))
-      .filter((key) => localStorage.getItem(key) === "true")
-      .map((key) => key.replace("favorite_hospital_", ""))
+      .filter(k => k.startsWith("favorite_hospital_") && localStorage.getItem(k) === "true")
+      .map(k => k.replace("favorite_hospital_", ""));
     setFavorites(stored);
-  }, [])
+  }, []);
 
-  // 즐겨찾기 토글 (localStorage 동기화)
+  // 즐겨찾기 토글
   const toggleFavorite = (id) => {
-    setFavorites((prev) => {
-      const idStr = String(id)
-      const newFavorites = prev.includes(idStr)
-        ? prev.filter((fid) => fid !== idStr)
-        : [...prev, idStr]
-
-      // 로컬스토리지에 반영
-      localStorage.setItem(`favorite_hospital_${idStr}`, newFavorites.includes(idStr))
-      return newFavorites
-    })
-  }
+    const idStr = String(id);
+    setFavorites(prev => {
+      const updated = prev.includes(idStr) ? prev.filter(f => f !== idStr) : [...prev, idStr];
+      localStorage.setItem(`favorite_hospital_${idStr}`, updated.includes(idStr));
+      return updated;
+    });
+  };
 
   //기본으로 설정된 위치 가져오기
   useEffect(() => {
@@ -74,41 +69,36 @@ const HospitalMain = () => {
 
   //검색 기능
   const onSearch = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
     try {
-      const url = `http://localhost:8080/project/hospital/search?keyword=${keyword}&org=${org}&dept=${dept}`
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`서버 오류: ${res.status}`)
-      const page = await res.json()
-      const data = Array.isArray(page.content) ? page.content : []
+      const url = `http://localhost:8080/project/hospital/search?keyword=${keyword}&org=${org}&dept=${dept}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
+      const page = await res.json();
+      const data = Array.isArray(page.content) ? page.content : [];
 
-      //클라이언트 측 필터링 (이름/기관유형/진료과목)
-      const filtered = data.filter((h) => {
-        const nameMatch = keyword ? (h.hospitalName || "").includes(keyword) : true
-        const orgMatch  = org ? (h.facility?.orgType || "").includes(org) : true
-        const deptMatch = dept ? (h.departments || []).some(d => (d.deptName || "").includes(dept)) : true
-        return nameMatch && orgMatch && deptMatch
-      })
-
-      //화면에서 쓰던 구조로 정규화 + ‘오늘 운영중’ 계산
-      const normalized = filtered.map(h => ({
-        hospitalId: h.hospitalId,                   
-        name: h.hospitalName,                        
-        address: h.facility?.address || "",        
-        phone: h.facility?.phone || "",            
-        latitude: h.facility?.latitude,             
-        longitude: h.facility?.longitude,          
-        orgType: h.facility?.orgType || "",        
-        hasEmergency: false,                       
+      // 데이터 정규화
+      const normalized = data.map(h => ({
+        hospitalId: h.hospitalId,
+        hospitalName: h.hospitalName,
+        address: h.facility?.address || "",
+        phone: h.facility?.phone || "",
+        latitude: h.facility?.latitude,
+        longitude: h.facility?.longitude,
+        orgType: h.facility?.orgType || "",
+        hasEmergency: h.hasEmergency ?? false,
         open: isOpenNow(h.facilityBusinessHours || h.facility?.businessHours || []),
-      }))
-
-      const sortedData = addDistanceAndSort(normalized, currentPos)
-      setResults(sortedData)
+        distance: h.distance
+          ? (h.distance < 1
+              ? `${Math.round(h.distance * 1000)}m`
+              : `${h.distance.toFixed(1)}km`)
+          : "",
+      }));
+      setResults(normalized);
     } catch (error) {
-      console.error("검색 실패:", error)
+      console.error("검색 실패:", error);
     }
-  }
+  };
 
   // 즐겨찾기 필터 적용
   const displayedResults = showFavoritesOnly
@@ -118,7 +108,7 @@ const HospitalMain = () => {
   return (
     <div className="bg-white">
       <Container className="py-4">
-        {/* 상단 소개 영역 */}
+        {/* 상단 안내 */}
         <Row className="g-3 mb-3 align-items-center">
           <Col xs={6}>
             <div className="d-flex align-items-center gap-2 text-secondary mb-2">
@@ -126,8 +116,7 @@ const HospitalMain = () => {
               <small>경기도 성남시 중원구</small>
             </div>
             <h3 className="fw-bold lh-base mb-3 hospital-title">
-              지금 나에게<br />
-              딱 맞는 <span>병원</span>을 찾아보세요
+              지금 나에게<br />딱 맞는 <span>병원</span>을 찾아보세요
             </h3>
           </Col>
           <Col xs={6} className="text-end">
@@ -138,24 +127,17 @@ const HospitalMain = () => {
         {/* 병원 / 약국 선택 버튼 */}
         <Row className="g-3 mb-4">
           <Col xs={6}>
-            <Card
-              className="card-hospital-blue text-white"
-              onClick={() => navigate("/")}
-            >
+            <Card className="card-hospital-blue text-white" onClick={() => navigate("/")}>
               <Card.Body>
-                <img src="/image/hospitalBed.png" alt="병원 이미지" />
+                <img src="/image/hospitalBed.png" alt="병원" />
                 <div className="fw-semibold">병원</div>
               </Card.Body>
             </Card>
           </Col>
-
           <Col xs={6}>
-            <Card
-              className="card-hospital-gray text-dark"
-              onClick={() => navigate("/pharmacy")}
-            >
+            <Card className="card-hospital-gray text-dark" onClick={() => navigate("/pharmacy")}>
               <Card.Body>
-                <img src="/image/pharmacy.png" alt="약국 이미지" />
+                <img src="/image/pharmacy.png" alt="약국" />
                 <div className="fw-semibold">약국</div>
               </Card.Body>
             </Card>
@@ -164,20 +146,15 @@ const HospitalMain = () => {
 
         {/* 검색 폼 */}
         <Form onSubmit={onSearch}>
-          {/* 진료과목 */}
+          {/* 진료과목 선택 */}
           <Dropdown className="mb-3 dropdown-custom">
-            <Dropdown.Toggle
-              variant="light"
-              className="text-dark d-flex justify-content-between align-items-center"
-            >
+            <Dropdown.Toggle variant="light" className="text-dark d-flex justify-content-between align-items-center">
               <span className={dept ? "" : "text-secondary"}>{dept || "진료과목"}</span>
               <i className="bi bi-chevron-down"></i>
             </Dropdown.Toggle>
             <Dropdown.Menu>
               {deptList.map((d) => (
-                <Dropdown.Item key={d} onClick={() => setDept(d)}>
-                  {d}
-                </Dropdown.Item>
+                <Dropdown.Item key={d} onClick={() => setDept(d)}>{d}</Dropdown.Item>
               ))}
               <Dropdown.Divider />
               <Dropdown.Item onClick={() => setDept("")}>선택 해제</Dropdown.Item>
@@ -186,18 +163,13 @@ const HospitalMain = () => {
 
           {/* 의료기관 */}
           <Dropdown className="mb-3 dropdown-custom">
-            <Dropdown.Toggle
-              variant="light"
-              className="text-dark d-flex justify-content-between align-items-center"
-            >
+            <Dropdown.Toggle variant="light" className="text-dark d-flex justify-content-between align-items-center">
               <span className={org ? "" : "text-secondary"}>{org || "의료기관"}</span>
               <i className="bi bi-chevron-down"></i>
             </Dropdown.Toggle>
             <Dropdown.Menu>
               {orgList.map((o) => (
-                <Dropdown.Item key={o} onClick={() => setOrg(o)}>
-                  {o}
-                </Dropdown.Item>
+                <Dropdown.Item key={o} onClick={() => setOrg(o)}>{o}</Dropdown.Item>
               ))}
               <Dropdown.Divider />
               <Dropdown.Item onClick={() => setOrg("")}>선택 해제</Dropdown.Item>
@@ -212,25 +184,16 @@ const HospitalMain = () => {
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
           />
-
           <Button type="submit" className="btn-search w-100">내 주변 병원 검색</Button>
         </Form>
 
-        {/* 즐겨찾기 보기 토글 버튼 */}
+        {/* 즐겨찾기 토글 */}
         {results.length > 0 && (
           <>
-          <hr className="hr-line my-3" />
+            <hr className="hr-line my-3" />
             <div className="d-flex justify-content-start align-items-center mt-4 mb-2">
-              <Button
-                variant="light"
-                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                className="border-0 d-flex align-items-center gap-2"
-              >
-                {showFavoritesOnly ? (
-                  <StarFill color="#FFD43B" size={20} />
-                ) : (
-                  <Star color="#aaa" size={20} />
-                )}
+              <Button variant="light" onClick={() => setShowFavoritesOnly(!showFavoritesOnly)} className="border-0 d-flex align-items-center gap-2">
+                {showFavoritesOnly ? <StarFill color="#FFD43B" size={20}/> : <Star color="#aaa" size={20}/>}
                 <span className="small">{showFavoritesOnly ? "즐겨찾기만 보기" : "전체 보기"}</span>
               </Button>
             </div>
@@ -239,65 +202,38 @@ const HospitalMain = () => {
 
         {/* 검색 결과 */}
         {displayedResults.length > 0 && (
-            <div className="mt-4">
-              {displayedResults.map((item) => {
-                const isFavorite = favorites.includes(String(item.hospitalId));
-                return (
-                  <Card
-                    key={item.hospitalId}
-                    className="result-card mb-3"
-                    onClick={() => navigate(`/hospitaldetail/${item.hospitalId}`)}
-                  >
-                    <Card.Body>
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="text-gray">{item.orgType || "의료기관 미지정"}</span>
+          <div className="mt-4">
+            {displayedResults.map(item => {
+              const isFavorite = favorites.includes(String(item.hospitalId));
+              return (
+                <Card key={item.hospitalId} className="result-card mb-3"
+                      onClick={() => navigate(`/hospitaldetail/${item.hospitalId}`)}>
+                  <Card.Body>
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <span className="text-gray">{item.orgType || "의료기관 미지정"}</span>
+                      <span className={`favorite-icon ${isFavorite ? "active" : ""}`}
+                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item.hospitalId); }}>
+                        {isFavorite ? <StarFill size={30}/> : <Star size={30}/>}
+                      </span>
+                    </div>
 
-                        {/* 즐겨찾기 */}
-                        <span
-                          className={`favorite-icon ${isFavorite ? "active" : ""}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleFavorite(item.hospitalId);
-                          }}
-                        >
-                          {isFavorite ? <StarFill size={30} /> : <Star size={30} />}
-                        </span>
-                      </div>
-
-                    <h5 className="fw-bold mb-2">
-                      {item.hospitalName}
-                      <span className="result-distance">({item.distance})</span>
+                     <h5 className="fw-bold mb-2">
+                      {item.hospitalName}<span className="result-distance">({item.distance})</span>
                     </h5>
 
-                    <div className="my-3 d-flex align-items-center" style={{ marginTop: "6px" }}>
+                    <div className="my-3 d-flex align-items-center">
                       <span className="badge-road">도로명</span>
                       <span className="text-gray">{item.address}</span>
                     </div>
 
-                    <div className="d-flex align-items-center justify-content-between">
+                     <div className="d-flex align-items-center justify-content-between">
                       <div className="text-gray d-flex align-items-center gap-2">
-                        <TelephoneFill className="me-1" /> {item.phone}
+                        <TelephoneFill className="me-1"/> {item.phone}
                       </div>
                       <div className="d-flex align-items-center gap-2">
-                        {item.hasEmergency && (
-                          <div className="d-flex align-items-center gap-1 text-danger fw-semibold small">
-                            <HospitalFill /> 응급실 운영
-                          </div>
-                        )}
-                        <div
-                          className={`small fw-semibold ms-2 d-flex align-items-center gap-1 ${
-                            item.open ? "text-success" : "text-secondary"
-                          }`}
-                        >
-                          {item.open ? (
-                            <>
-                              <CheckCircleFill size={18} /> 운영 중
-                            </>
-                          ) : (
-                            <>
-                              <XCircleFill size={18} /> 운영종료
-                            </>
-                          )}
+                        {item.hasEmergency && <div className="d-flex align-items-center gap-1 text-danger fw-semibold small"><HospitalFill/> 응급실 운영</div>}
+                        <div className={`small fw-semibold ${item.open ? "text-success" : "text-secondary"}`}>
+                          {item.open ? (<><CheckCircleFill size={18}/> 운영 중</>) : (<><XCircleFill size={18}/> 운영종료</>)}
                         </div>
                       </div>
                     </div>
