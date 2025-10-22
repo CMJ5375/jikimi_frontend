@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import '../btn.css';
 import { useState } from 'react';
 import useCustomLogin from '../hook/useCustomLogin';
+import { getKakaoLoginLink } from '../api/kakaoApi';
 
 const initState = {
   username: '',
@@ -26,6 +27,10 @@ const LoginMain = () => {
         moveToPath('/')
       }
     })
+  }
+  
+  const goKakao = () => {
+    window.location.href = getKakaoLoginLink()
   }
   
   return (
@@ -154,6 +159,7 @@ const LoginMain = () => {
                   border: "none",
                   height: "50px",
                 }}
+                onClick={goKakao}
               >
                 <img
                   src="/image/kakao.png"
