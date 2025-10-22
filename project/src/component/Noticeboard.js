@@ -5,12 +5,15 @@ import "./Noticeboard.css";
 import { ChatDots, HandThumbsUp, Pencil, Plus, Search } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
 import { getList } from "../api/postApi"; // GET /api/posts/list
-import useCustomLogin from "../hook/useCustomLogin"
+import useCustomLogin from "../hook/useCustomLogin";
 
 const CATEGORIES = ["전체", "인기글", "병원정보", "약국정보", "질문해요", "자유글"];
 
 const Noticeboard = () => {
   const navigate = useNavigate();
+
+  // 훅은 최상단에서 항상 같은 순서로 호출
+  const { isLogin, moveToLoginReturn } = useCustomLogin();
 
   // 서버 페이징 데이터
   const [pageData, setPageData] = useState(null);
@@ -23,18 +26,21 @@ const Noticeboard = () => {
 
   // 목록 로드
   useEffect(() => {
+    if (!isLogin) return; // 비로그인 시 API 호출 방지
     let ignore = false;
     (async () => {
       try {
         const data = await getList({ page, size });
         if (!ignore) setPageData(data);
-        console.log("호출")
+        console.log("호출");
       } catch (e) {
         console.error(e);
       }
     })();
-    return () => { ignore = true; };
-  }, [page]);
+    return () => {
+      ignore = true;
+    };
+  }, [page, size, isLogin]);
 
   // 서버 데이터 → 화면용 변환 (카테고리는 임시, 인기글 규칙: likeCount ≥ 10)
   const items = useMemo(() => {
@@ -69,6 +75,10 @@ const Noticeboard = () => {
     q ? p.title.toLowerCase().includes(q.toLowerCase()) : true
   );
 
+  if (!isLogin) {
+    return moveToLoginReturn();
+  }
+
   if (!pageData) {
     return (
       <div className="container py-4">
@@ -77,12 +87,6 @@ const Noticeboard = () => {
     );
   }
 
-    // 로그인 상태, 로그인상태체크 후 로그인상태가 아니면 로그인페이지로 이동
-    // const {isLogin, moveToLoginReturn} = useCustomLogin()
-
-    // if(!isLogin) {
-    //     return moveToLoginReturn()
-    // }
   return (
     <>
       <div className="bg-white">
@@ -129,7 +133,7 @@ const Noticeboard = () => {
             ))}
           </div>
 
-          {/* 리스트 (PC) — 상세 이동 경로 통일: /boarddetails/:id */}
+          {/* 리스트 (PC) — 상세 이동 경로: /boarddetails/:id */}
           <div className="list-group board-list">
             {filtered.map((m) => (
               <button
@@ -206,7 +210,7 @@ const Noticeboard = () => {
               ))}
             </div>
 
-            {/* 카드 리스트 (모바일) — 상세 이동 경로도 동일하게 통일 */}
+            {/* 카드 리스트 (모바일) */}
             {filtered.map((p) => (
               <article
                 className="mbp-card"
