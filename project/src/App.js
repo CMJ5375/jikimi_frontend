@@ -23,6 +23,7 @@ import NoticeDetail from './component/NoticeDetail';
 import Faq from './component/Faq';
 import DataRoom from './component/DataRoom';
 import DataRoomDetail from './component/DataRoomDetail';
+import KakaoLoginPage from './component/kakaoLogin/KakaoLoginPage';
 
 function Layout() {
   return (
@@ -68,6 +69,10 @@ export default function App() {
 
         <Route path="dataroom" element={<DataRoom />} />
         <Route path="dataroomdetails" element={<DataRoomDetail />} />
+
+        <Route path='user/'>
+          <Route path="kakao" element={<KakaoLoginPage />} />
+        </Route>
       </Route>
     </Routes>
   );
