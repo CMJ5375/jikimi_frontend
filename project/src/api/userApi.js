@@ -4,7 +4,7 @@ export const API_SERVER_HOST = 'http://localhost:8080'
 const host = `${API_SERVER_HOST}/project/user`
 
 export const loginPost = async (loginParam) => {
-    const header = { Headers: { "Content-Type": "x-www-form-urlencoded" } }
+    const header = { headers: { "Content-Type": "x-www-form-urlencoded" } }
     const form = new FormData()
     form.append('username', loginParam.username)
     form.append('password', loginParam.password)

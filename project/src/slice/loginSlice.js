@@ -29,13 +29,15 @@ const loginSlice = createSlice({
             // 소셜로그인 회원이면
             const payload = action.payload
             setCookie("member", JSON.stringify(payload), 1) //1일
-            if (payload?.accessToken) localStorage.setItem("accessToken", payload.accessToken) // 토큰 미러링
+            if (payload?.accessToken) localStorage.setItem("accessToken", payload.accessToken)
+            if (payload?.refreshToken) localStorage.setItem("refreshToken", payload.refreshToken)
             return payload
         },
         logout: (state, action) => {
             console.log("logout")
             removeCookie("member")
             localStorage.removeItem("accessToken") // 로그아웃 시 토큰 제거
+            localStorage.removeItem("refreshToken")
             return {...initState}
         }
     },
@@ -49,6 +51,7 @@ const loginSlice = createSlice({
                 if(!payload.error) {
                     setCookie("member", JSON.stringify(payload), 1)
                     if (payload?.accessToken) localStorage.setItem("accessToken", payload.accessToken) // 성공 시 토큰 저장
+                    if (payload?.refreshToken) localStorage.setItem("refreshToken", payload.refreshToken)
                 }
                 return payload
             })
