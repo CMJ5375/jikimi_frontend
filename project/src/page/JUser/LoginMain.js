@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import useCustomLogin from '../../hook/useCustomLogin';
 import { getKakaoLoginLink } from '../../api/kakaoApi';
+import '../../css/btn.css';
 
 const initState = {
   username: '',
@@ -101,7 +102,13 @@ const LoginMain = () => {
                   </Button>
                 </Col>
                 <Col xs={6}>
-                  <Button className="w-100 fw-bold btn-outline-blue" as={Link} to="/register">
+                  <Button 
+                    className="w-100 fw-bold btn-outline-blue" 
+                    style={{
+                      fontSize: "16px",
+                      height: "48px",
+                    }}
+                    as={Link} to="/register">
                     회원가입
                   </Button>
                 </Col>
@@ -111,7 +118,7 @@ const LoginMain = () => {
             {/* 태블릿 */}
             <div className="d-none d-md-block d-lg-none d-grid gap-2 mb-3">
               <Button
-                className="w-100 fw-bold mb-3 shadow btn-main-blue"
+                className="w-100 fw-bold mb-3 btn-main-blue"
                 style={{
                   fontSize: "18px",
                   height: "50px",
@@ -120,7 +127,13 @@ const LoginMain = () => {
               >
                 로그인
               </Button>
-              <Button className="w-100 fw-bold btn-outline-blue" as={Link} to="/register">
+              <Button 
+                className="w-100 fw-bold btn-outline-blue"
+                style={{
+                  fontSize: "18px",
+                  height: "50px",
+                }}
+                as={Link} to="/register">
                 회원가입
               </Button>
             </div>
@@ -128,7 +141,7 @@ const LoginMain = () => {
             {/*PC*/}
             <div className="d-none d-lg-block d-grid gap-2">
               <Button
-                className="w-100 fw-bold shadow mb-3 btn-main-blue"
+                className="w-100 fw-bold mb-3 btn-main-blue"
                 style={{
                   fontSize: "18px",
                   height: "50px",
@@ -137,7 +150,13 @@ const LoginMain = () => {
               >
                 로그인
               </Button>
-              <Button className="w-100 fw-bold btn-outline-blue" as={Link} to="/register"> 
+              <Button 
+                className="w-100 fw-bold btn-outline-blue"
+                style={{
+                  fontSize: "18px",
+                  height: "50px",
+                }}
+                as={Link} to="/register">
                 회원가입
               </Button>
             </div>

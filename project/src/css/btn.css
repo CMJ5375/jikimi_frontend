@@ -2,12 +2,14 @@
   --main-blue: #3341F3;
 }
 
-
 .btn-main-blue {
   background-color: var(--main-blue);
   color: #fff;
   font-size: 18px;
   height: 50px;
+  display: flex;
+  align-items: center; /* 세로 중앙 정렬 */
+  justify-content: center; /* 가로 중앙 정렬 */
   font-weight: 600;
   border: none;
   transition: all 0.2s ease-in-out;
@@ -24,6 +26,9 @@
 .btn-outline-blue {
   font-size: 18px;
   height: 50px;
+  display: flex;
+  align-items: center; /* 세로 중앙 정렬 */
+  justify-content: center; /* 가로 중앙 정렬 */
   color: var(--main-blue);
   border: 2px solid var(--main-blue);
   background-color: transparent;
