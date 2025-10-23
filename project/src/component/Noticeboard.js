@@ -11,6 +11,11 @@ const CATEGORIES = ["전체", "인기글", "병원정보", "약국정보", "질�
 
 const Noticeboard = () => {
   const navigate = useNavigate();
+  //비로그인 시에 로그인 화면으로 이동
+  // const {isLogin, moveToLoginReturn} = useCustomLogin()
+  // if(!isLogin) {
+  //   return moveToLoginReturn()
+  // }
 
   // 서버 페이징 데이터
   const [pageData, setPageData] = useState(null);
@@ -77,12 +82,6 @@ const Noticeboard = () => {
     );
   }
 
-    // 로그인 상태, 로그인상태체크 후 로그인상태가 아니면 로그인페이지로 이동
-    // const {isLogin, moveToLoginReturn} = useCustomLogin()
-
-    // if(!isLogin) {
-    //     return moveToLoginReturn()
-    // }
   return (
     <>
       <div className="bg-white">

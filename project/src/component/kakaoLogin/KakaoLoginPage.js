@@ -23,8 +23,6 @@ const KakaoLoginPage = () => {
   }, [authCode])
   return (
     <>
-      <div>KakaoLoginPage</div>
-      <div>{authCode}</div>
     </>
   )
 }
