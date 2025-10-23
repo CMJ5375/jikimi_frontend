@@ -33,7 +33,4 @@ export const loginPost = async (loginParam) => {
  * 현재는 구현되어 있지 않으며, 향후 사용자 객체(user)를 받아 회원가입 로직을 추가해야 합니다.
  * @param {object} user - 회원가입에 필요한 사용자 정보를 담는 객체
  */
-export const registerPost = async (user) => {
-    // TODO: 회원가입 로직 구현 (예시: axios.post(`${host}/register`, user) 등을 사용하여 서버에 요청)
-    // 현재 함수 본문이 비어 있어 구현이 필요합니다.
-}
+
