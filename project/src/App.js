@@ -67,6 +67,7 @@ export default function App() {
         <Route path="dataroom" element={<DataRoom />} />
         <Route path="dataroomdetails" element={<DataRoomDetail />} />
 
+        {/*카카오 로그인 */}
         <Route path='user/'>
           <Route path="kakao" element={<KakaoLoginPage />} />
         </Route>

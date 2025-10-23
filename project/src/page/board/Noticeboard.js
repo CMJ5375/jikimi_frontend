@@ -11,6 +11,11 @@ const CATEGORIES = ["전체", "인기글", "병원정보", "약국정보", "질�
 
 const Noticeboard = () => {
   const navigate = useNavigate();
+  //비로그인 시에 로그인 화면으로 이동
+  // const {isLogin, moveToLoginReturn} = useCustomLogin()
+  // if(!isLogin) {
+  //   return moveToLoginReturn()
+  // }
 
   // 훅은 최상단에서 항상 같은 순서로 호출
   const { isLogin, moveToLoginReturn } = useCustomLogin();

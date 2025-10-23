@@ -1,8 +1,49 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Container, Row, Col, Form, Button } from 'react-bootstrap';
-import '../../css/btn.css';
+import '../btn.css'
+import { API_SERVER_HOST } from '../api/userApi';
+import axios from 'axios';
+import useCustomLogin from '../hook/useCustomLogin';
+
+const initState = {
+  username: '',
+  email: '',
+  name: '',
+  password: '',
+  confirmPassword: ''
+}
 
 const Register = () => {
+  const [form, setForm] = useState({initState})
+  const {moveToPath} = useCustomLogin()
+
+  const handleChange = (e) => {
+    form[e.target.name] = e.target.value
+    setForm({...form})
+  }
+
+  const handleClickRegister = async () => {
+
+    if(form.password !== form.confirmPassword) {
+      alert("비밀번호가 일치하지 않습니다.")
+      return
+    }
+    
+    try {
+      const res = await axios.post(`${API_SERVER_HOST}/project/register`, form);
+      alert(res.data); // "회원가입 성공"
+      moveToPath('/login')
+    } catch (err) {
+      if (err.response) {
+        console.log("서버 응답:", err.response.data);
+        alert(err.response.data); // "이미 존재하는 회원입니다." 같은 문구 출력됨
+      } else {
+        console.error(err);
+        alert("서버와 통신 중 오류 발생");
+      }
+    }
+  }
+  
   return (
     <Container className="py-5">
       <Row className="justify-content-center align-items-center">
@@ -29,30 +70,49 @@ const Register = () => {
             <Form.Group className="mb-2">
               <Form.Control
                 type="text"
+                name='username'
                 placeholder="아이디를 입력해주세요."
                 className="bg-light rounded-0"
+                onChange={handleChange}
               />
             </Form.Group>
 
             <Form.Group className="mb-2">
               <Form.Control
                 type="email"
+                name='email'
                 placeholder="이메일을 입력해주세요."
                 className="bg-light rounded-0"
+                onChange={handleChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-2">
+              <Form.Control
+                type="text"
+                name='name'
+                placeholder="이름을 입력해주세요."
+                className="bg-light rounded-0"
+                onChange={handleChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-2">
+              <Form.Control
+                type="password"
+                name='password'
+                placeholder="비밀번호를 입력해주세요."
+                className="bg-light rounded-0"
+                onChange={handleChange}
               />
             </Form.Group>
             <Form.Group className="mb-2">
               <Form.Control
                 type="password"
+                name='confirmPassword'
                 placeholder="비밀번호를 입력해주세요."
                 className="bg-light rounded-0"
-              />
-            </Form.Group>
-            <Form.Group className="mb-2">
-              <Form.Control
-                type="password"
-                placeholder="비밀번호를 입력해주세요."
-                className="bg-light rounded-0"
+                onChange={handleChange}
               />
             </Form.Group>
 
@@ -74,6 +134,7 @@ const Register = () => {
                       fontSize: "16px",
                       height: "48px",
                     }}
+                    onClick={handleClickRegister}
                   >
                     회원가입
                   </Button>
@@ -94,6 +155,7 @@ const Register = () => {
                   fontSize: "18px",
                   height: "50px",
                 }}
+                onClick={handleClickRegister}
               >
                 회원가입
               </Button>
@@ -110,6 +172,7 @@ const Register = () => {
                   fontSize: "18px",
                   height: "50px",
                 }}
+                onClick={handleClickRegister}
               >
                 회원가입
               </Button>
