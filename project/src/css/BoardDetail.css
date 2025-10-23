@@ -1,0 +1,85 @@
+/* ===== BoardDetail – tidy visuals ===== */
+
+.post-detail { 
+  max-width: 760px; 
+  margin: 0 auto; 
+}
+
+.post-title {
+  word-break: keep-all;
+  line-height: 1.45;
+  margin-bottom: .25rem;
+}
+
+.post-meta { 
+  color: #6c757d; 
+  font-size: .925rem; 
+}
+
+.post-body {
+  margin: 12px 0 28px;
+}
+
+/* 상단 “수정/삭제”를 텍스트형으로 */
+.post-actions { gap: .75rem; }
+.btn-ghost {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: #6c757d;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn-ghost:hover { color: #343a40; text-decoration: underline; }
+.btn-ghost-danger { color: #dc3545; }
+.btn-ghost-danger:hover { color: #b02a37; }
+
+/* 좋아요/공유는 둥글게 */
+.like-share .btn { border-radius: 10rem; }
+
+/* 이전/다음/목록 네비게이션 */
+.post-nav { 
+  margin-top: 36px; 
+  padding-top: 16px; 
+  border-top: 1px solid #eee; 
+}
+.post-nav .nav-row { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  padding: 10px 0; 
+}
+.post-nav .nav-side { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  color: #6c757d; 
+  font-size: .94rem; 
+}
+.post-nav .nav-link { 
+  cursor: pointer; 
+  color: #222; 
+}
+.post-nav .nav-link:hover { text-decoration: underline; }
+
+.post-nav .go { 
+  font-size: .9rem; 
+  color: #0d6efd; 
+  cursor: pointer; 
+}
+.post-nav .go:hover { text-decoration: underline; }
+
+.post-nav .empty { color: #adb5bd; }
+
+.post-nav .list-wrap { 
+  text-align: right; 
+  margin-top: 10px; 
+}
+.post-nav .btn-list { border-radius: 999px; }
+
+/* 모바일 여백 살짝 보정 */
+@media (max-width: 768px) {
+  .post-detail { padding-left: 12px; padding-right: 12px; }
+  .post-actions { justify-content: flex-end; }
+}
+

@@ -1,0 +1,201 @@
+.mypage-section {
+  background-color: #ffffff;
+  font-family: "Noto Sans KR", sans-serif;
+}
+
+/* 타이틀 */
+.mypage-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+/* 프로필 */
+.mypage-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background-color: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-logo {
+  font-size: 2rem;
+  color: #bdbdbd;
+}
+
+.mypage-btn {
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 0.95rem;
+}
+
+.mypage-icon {
+  font-size: 1.5rem;
+  color: #333;
+}
+
+/* 좌측 메뉴 */
+.menu-card {
+  border-radius: 16px;
+  background-color: #f8fafc;
+}
+
+.menu-item {
+  padding: 14px 20px;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  background-color: #eaf1ff;
+  color: #3341F3;
+}
+
+.active-item {
+  background-color: #3341F3 !important;
+  color: #fff !important;
+  border-radius: 12px;
+}
+
+/* 우측 콘텐츠 */
+.content-card {
+  border-radius: 16px;
+  background-color: #f9fafb;
+  min-height: 380px;
+}
+
+/* 탭 */
+.custom-tabs {
+  border-bottom: none !important;
+  display: flex;
+  justify-content: center;
+  gap: 60px;
+}
+
+.tab-link {
+  position: relative;
+  color: #6c757d !important;
+  border: none !important;
+  background: transparent !important;
+  font-weight: 600;
+  font-size: 1.05rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  padding-bottom: 10px;
+}
+
+/* 활성 탭 */
+.tab-link.active {
+  color: #3341F3 !important;
+}
+
+.tab-link.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 3px;
+  background-color: #3341F3;
+  border-radius: 2px;
+}
+
+/* hover 시 같은 색상 유지 */
+.tab-link:hover {
+  color: #3341F3 !important;
+}
+
+.tab-link:hover::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 3px;
+  background-color: #3341F3;
+  opacity: 0.4;
+  border-radius: 2px;
+}
+
+/* 병원/약국 리스트 */
+.hospital-item {
+  position: relative;
+  padding: 10px 0;
+}
+
+.favorite-star {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  color: #ffb400;
+  font-size: 1.2rem;
+}
+
+/* 페이지네이션 */
+.custom-pagination .page-item .page-link {
+  color: #333;
+  border-radius: 6px;
+}
+
+.custom-pagination .page-item.active .page-link,
+.active-page .page-link {
+  background-color: #3341F3 !important;
+  border-color: #3341F3 !important;
+  color: #ffffff !important;
+}
+
+.custom-pagination .page-link:hover {
+  background-color: #eaf1ff;
+  border-color: #eaf1ff;
+  color: #3341F3;
+}
+
+/* 반응형 */
+@media (max-width: 991px) {
+  .mypage-avatar {
+    width: 90px;
+    height: 90px;
+  }
+  .content-card {
+    min-height: 320px;
+  }
+}
+
+@media (max-width: 767px) {
+  .mypage-title {
+    font-size: 1.5rem;
+  }
+  .mypage-avatar {
+    width: 80px;
+    height: 80px;
+  }
+  .mypage-btn {
+    font-size: 0.85rem;
+    padding: 6px 14px;
+  }
+  .content-card {
+    min-height: 280px;
+  }
+}
+
+/* 🔹 전체 폭 줄이기 */
+.narrow-container {
+  max-width: 950px; /* 화면을 좀 더 컴팩트하게 */
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* 내부 카드들도 조금 더 타이트하게 */
+.content-card,
+.menu-card {
+  border-radius: 12px;
+}
+
+.mypage-section {
+  background-color: #f8f9fa;
+}

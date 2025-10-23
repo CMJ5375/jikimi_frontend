@@ -138,7 +138,7 @@
 /* 거리 표시 텍스트 */
 .result-distance {
   color: #3B6CFF;
-  margin-left: 5px;
+  margin-left: 5px !important; 
 }
 
 /* 보조 텍스트 */
@@ -146,9 +146,16 @@
   color: #555;        
   font-size: 14px;     
   font-weight: 400;   
+}
+
+/* 텍스트 경로 */
+.text-route {
+  color: #555;        
+  font-size: 15px;     
+  font-weight: 400;   
   text-decoration: none; 
 }
-.text-gray:hover {
+.text-route:hover {
   text-decoration: none;
   color: #3B6CFF !important;
 }
@@ -179,6 +186,37 @@
 }
 .favorite-icon.active {
   color: #FFD43B; /* 즐겨찾기된 경우 노란색 */
+}
+
+/* Noticeboard 페이지네이션 동일 스타일 */
+.pagination {
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.pagination .page-link {
+  color: #3B6CFF;
+  border: 1px solid #dee2e6;
+  font-size: 0.95rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: #3B6CFF;
+  border-color: #3B6CFF;
+  color: #fff;
+}
+
+.pagination .page-link:hover {
+  background-color: #eaf0ff;
+  color: #3B6CFF;
+}
+
+.pagination .page-item.disabled .page-link {
+  color: #ccc;
+  background-color: #f9f9f9;
+  border-color: #eee;
+  pointer-events: none;
 }
 
 /* ========== HospitalDetail.jsx 전용 ========== */
