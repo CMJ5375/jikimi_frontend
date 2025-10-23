@@ -3,6 +3,7 @@ import { Container, Row, Col, Form, Button } from 'react-bootstrap';
 import '../btn.css'
 import { API_SERVER_HOST } from '../api/userApi';
 import axios from 'axios';
+import useCustomLogin from '../hook/useCustomLogin';
 
 const initState = {
   username: '',
@@ -14,6 +15,7 @@ const initState = {
 
 const Register = () => {
   const [form, setForm] = useState({initState})
+  const {moveToPath} = useCustomLogin()
 
   const handleChange = (e) => {
     form[e.target.name] = e.target.value
@@ -21,12 +23,24 @@ const Register = () => {
   }
 
   const handleClickRegister = async () => {
+
+    if(form.password !== form.confirmPassword) {
+      alert("비밀번호가 일치하지 않습니다.")
+      return
+    }
+    
     try {
-      const res = await axios.post(`${API_SERVER_HOST}/project/register`, form)
-      console.log(res)
-      alert("회원가입 성공")
+      const res = await axios.post(`${API_SERVER_HOST}/project/register`, form);
+      alert(res.data); // "회원가입 성공"
+      moveToPath('/login')
     } catch (err) {
-      alert("회원가입 실패")
+      if (err.response) {
+        console.log("서버 응답:", err.response.data);
+        alert(err.response.data); // "이미 존재하는 회원입니다." 같은 문구 출력됨
+      } else {
+        console.error(err);
+        alert("서버와 통신 중 오류 발생");
+      }
     }
   }
   
@@ -120,6 +134,7 @@ const Register = () => {
                       fontSize: "16px",
                       height: "48px",
                     }}
+                    onClick={handleClickRegister}
                   >
                     회원가입
                   </Button>
@@ -140,6 +155,7 @@ const Register = () => {
                   fontSize: "18px",
                   height: "50px",
                 }}
+                onClick={handleClickRegister}
               >
                 회원가입
               </Button>
