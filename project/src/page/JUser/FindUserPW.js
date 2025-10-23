@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Container, Row, Col, Form, Button, Nav } from 'react-bootstrap';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import '../../css/btn.css';
 
 const FindUserPW = () => {
   const { pathname } = useLocation();
