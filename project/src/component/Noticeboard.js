@@ -29,6 +29,14 @@ const Noticeboard = () => {
   const [active, setActive] = useState("전체");
   const [q, setQ] = useState("");
 
+  // 카테고리 한글 라벨 매핑
+  const LABELS = {
+  HOSPITAL_INFO: "병원정보",
+  PHARMACY_INFO: "약국정보",
+  QUESTION: "질문해요",
+  FREE: "자유글",
+  };
+
   // 목록 로드
   useEffect(() => {
     if (!isLogin) return; // 비로그인 시 API 호출 방지
@@ -47,12 +55,13 @@ const Noticeboard = () => {
     };
   }, [page, size, isLogin]);
 
-  // 서버 데이터 → 화면용 변환 (카테고리는 임시, 인기글 규칙: likeCount ≥ 10)
+
+  // 서버 데이터 → 화면용 변환 (카테고리는 enum → 한글)
   const items = useMemo(() => {
     if (!pageData?.dtoList) return [];
     return pageData.dtoList.map((p) => ({
       id: p.postId,
-      cat: "자유글",
+      cat: LABELS[p.boardCategory] ?? "자유글", // ✅ 핵심 수정
       hot: (p.likeCount ?? 0) >= 10,
       title: p.title ?? "",
       date: p.createdAt ? p.createdAt.slice(0, 10) : "",
