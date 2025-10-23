@@ -1,21 +1,32 @@
+// src/component/BoardCreate.jsx
 import React, { useRef, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./BoardCreate.css";
 import { X } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { createPost } from "../api/postApi"; // 백엔드 호출 함수 import***
+import { createPost } from "../api/postApi";
 
-const CATEGORIES = ["자유글", "질문해요", "병원정보", "약국정보", "공지사항"];
+// 한글 라벨 ↔ Enum 코드 매핑 (백엔드 enum: BoardCategory)
+const CATEGORY_OPTIONS = [
+  { label: "자유글",   value: "FREE" },
+  { label: "질문해요", value: "QUESTION" },
+  { label: "병원정보", value: "HOSPITAL_INFO" },
+  { label: "약국정보", value: "PHARMACY_INFO" },
+  // ⚠️ 백엔드 enum에 NOTICE가 없다면 주석 처리하거나 막아두세요.
+  // { label: "공지사항", value: "NOTICE" },
+];
 
 const BoardCreat = ({ onClose }) => {
-  const [category, setCategory] = useState("");
+  const navigate = useNavigate();
+  const fileRef = useRef(null);
+
+  // 폼 상태
+  const [boardCategory, setBoardCategory] = useState("FREE"); // ✅ Enum 코드로 관리
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [files, setFiles] = useState([]);
-  const fileRef = useRef(null);
-  const navigate = useNavigate();
 
-  // 파일 처리
+  // 파일 선택
   const handleFiles = (e) => {
     const list = Array.from(e.target.files || []);
     setFiles(list);
@@ -26,7 +37,7 @@ const BoardCreat = ({ onClose }) => {
     if (fileRef.current && files.length === 1) fileRef.current.value = "";
   };
 
-  // 등록 버튼 클릭 시
+  // 등록
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -35,26 +46,39 @@ const BoardCreat = ({ onClose }) => {
       return;
     }
 
+    // ⚠️ 백엔드 enum에 없는 값(예: NOTICE)이면 막기
+    const enumValues = CATEGORY_OPTIONS.map((o) => o.value);
+    if (!enumValues.includes(boardCategory)) {
+      alert("지원하지 않는 카테고리입니다. 다른 카테고리를 선택해주세요.");
+      return;
+    }
+
     try {
-      // 파일은 추후 별도 업로드 로직을 추가할 수 있음.
-      // 현재는 fileUrl 빈값으로 전달.
       const newPost = {
         title,
         content,
         fileUrl: files.length > 0 ? files[0].name : "",
         likeCount: 0,
         isDeleted: false,
-        userId: 1, // 로그인 연결 전이므로 임시 userId
+        // TODO: 로그인 연동 후 실제 userId로 교체
+        userId: 1,
+        // ✅ 가장 중요: Enum 코드 그대로 보내기
+        boardCategory,
       };
 
-      const newId = await createPost(newPost); // /api/posts/add 호출***
+      const newId = await createPost(newPost); // POST /api/posts/add
       alert("게시글이 등록되었습니다.");
-      navigate(`/boardRead/${newId}`); // 등록 후 상세 페이지로 이동***
+      // 네 리스트에서 상세 이동 경로가 /boarddetails/:id 였으므로 여기도 맞춰줌
+      navigate(`/boarddetails/${newId}`);
     } catch (err) {
       console.error(err);
       alert("등록 중 오류가 발생했습니다.");
     }
   };
+
+  // 라벨 표시용 (현재 선택 값 → 한글)
+  const selectedLabel =
+    CATEGORY_OPTIONS.find((o) => o.value === boardCategory)?.label || "자유글";
 
   return (
     <div className="container py-3 postcreate-wrap">
@@ -80,7 +104,7 @@ const BoardCreat = ({ onClose }) => {
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* 게시판 선택 */}
+        {/* 카테고리 선택 (Dropdown UI 유지, 내부값은 Enum) */}
         <div className="border-bottom py-3">
           <label className="form-label text-muted mb-1">게시판을 선택하세요.</label>
           <div className="dropdown">
@@ -90,17 +114,17 @@ const BoardCreat = ({ onClose }) => {
               data-bs-toggle="dropdown"
               aria-expanded="false"
             >
-              {category || "게시판 선택"}
+              {selectedLabel}
             </button>
             <ul className="dropdown-menu w-100">
-              {CATEGORIES.map((c) => (
-                <li key={c}>
+              {CATEGORY_OPTIONS.map((opt) => (
+                <li key={opt.value}>
                   <button
                     type="button"
                     className="dropdown-item"
-                    onClick={() => setCategory(c)}
+                    onClick={() => setBoardCategory(opt.value)} // ✅ Enum 코드 저장
                   >
-                    {c}
+                    {opt.label}
                   </button>
                 </li>
               ))}
@@ -144,7 +168,6 @@ const BoardCreat = ({ onClose }) => {
               onChange={handleFiles}
             />
 
-            {/* 미리보기 썸네일 */}
             {files.length > 0 && (
               <div className="d-flex flex-wrap gap-2">
                 {files.map((f, idx) => {
