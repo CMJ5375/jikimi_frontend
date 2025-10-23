@@ -1,10 +1,10 @@
 import React from 'react'
-import '../App.css';
-import '../css/Pharmacy.css';
+import '../../App.css';
+import "../../css/Pharmacy.css";
 import { Container, Row, Col, Table, Card } from "react-bootstrap";
 import { useParams, Link } from 'react-router-dom';
 import { useEffect, useState } from "react";
-import { renderKakaoMap } from "../api/kakaoMapApi";
+import { renderKakaoMap } from "../../api/kakaoMapApi";
 import { StarFill, Star, CheckCircleFill, XCircleFill } from "react-bootstrap-icons";
 
 //오늘 ‘운영중’ 계산 유틸 (약국 상세)

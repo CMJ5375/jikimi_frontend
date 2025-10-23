@@ -1,9 +1,9 @@
 import React, { useRef, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "./BoardCreate.css";
+import '../../css/BoardCreate.css';
 import { X } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { createPost } from "../api/postApi"; // 백엔드 호출 함수 import***
+import { createPost } from "../../api/postApi"; // 백엔드 호출 함수 import***
 
 const CATEGORIES = ["자유글", "질문해요", "병원정보", "약국정보", "공지사항"];
 

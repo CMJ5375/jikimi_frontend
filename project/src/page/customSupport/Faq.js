@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "./Noticeboard.css";
+import "../../css/Noticeboard.css";
 import { Pencil, Search } from "react-bootstrap-icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Accordion, Button } from 'react-bootstrap';

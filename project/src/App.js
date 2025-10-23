@@ -1,29 +1,26 @@
 import './App.css';
 import { Routes, Route, Outlet } from 'react-router-dom';
 import { Container } from 'react-bootstrap';
-
-import Navigation from './component/Navigation';
-import Myfooter from './component/Myfooter';
-
-import HospitalMain from './component/HospitalMain';   
-import PharmacyMain from './component/PharmacyMain';   
-
-import HospitalDetail from './component/HospitalDetail';
-import PharmacyDetail from './component/PharmacyDetail';
-import MyPage from './component/MyPage';
-import LoginMain from './component/LoginMain';
-import Register from './component/Register';
-import FindUser from './component/FindUser';
-import FindUserPW from './component/FindUserPW';
-import Noticeboard from './component/Noticeboard';
-import BoardDetail from './component/BoardDetail';
-import BoardCreat from './component/BoardCreat';
-import Notice from './component/Notice';
-import NoticeDetail from './component/NoticeDetail';
-import Faq from './component/Faq';
-import DataRoom from './component/DataRoom';
-import DataRoomDetail from './component/DataRoomDetail';
-import KakaoLoginPage from './component/kakaoLogin/KakaoLoginPage';
+import Navigation from './layout/Navigation';
+import Myfooter from './layout/Myfooter';
+import HospitalMain from './page/facility/HospitalMain';
+import PharmacyMain from './page/facility/PharmacyMain';
+import HospitalDetail from './page/facility/HospitalDetail';
+import PharmacyDetail from './page/facility/PharmacyDetail';
+import MyPage from './page/mypage/MyPage';
+import LoginMain from './page/JUser/LoginMain';
+import Register from './page/JUser/Register';
+import FindUser from './page/JUser/FindUser';
+import FindUserPW from './page/JUser/FindUserPW';
+import Noticeboard from './page/board/Noticeboard';
+import BoardDetail from './page/board/BoardDetail';
+import BoardCreat from './page/board/BoardCreat';
+import Notice from './page/customSupport/Notice';
+import NoticeDetail from './page/customSupport/NoticeDetail';
+import Faq from './page/customSupport/Faq';
+import DataRoom from './page/customSupport/DataRoom';
+import DataRoomDetail from './page/customSupport/DataRoomDetail';
+import KakaoLoginPage from './page/JUser/KakaoLoginPage';
 
 function Layout() {
   return (

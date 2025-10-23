@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import '../App.css';
-import '../css/Hospital.css';
+import '../../App.css';
+import "../../css/Hospital.css";
 import { Container, Row, Col, Table, Card } from "react-bootstrap";
 import { useParams, Link } from 'react-router-dom';
-import { renderKakaoMap } from "../api/kakaoMapApi";
+import { renderKakaoMap } from "../../api/kakaoMapApi";
 import { StarFill, Star, CheckCircleFill, XCircleFill, HospitalFill } from "react-bootstrap-icons";
 
 //오늘 ‘운영중’ 계산 유틸 (병원 상세)
@@ -41,7 +41,6 @@ const HospitalDetail = () => {
   const [hospital, setHospital] = useState(null)
   const [favorite, setFavorite] = useState(false)
   const [open, setOpen] = useState(false)
-  const hasEmergency = false
 
   //병원 정보 불러오기
   useEffect(() => {
@@ -126,7 +125,7 @@ const HospitalDetail = () => {
               </span>
             </h4>
             <div className="d-flex flex-wrap gap-3 mt-2">
-              <span>{hasEmergency ? 
+              <span>{hospital.hasEmergency ? 
                 <><HospitalFill className="text-danger me-2" />응급실 운영</> : 
                 <><XCircleFill className="text-secondary me-2" />응급실 없음</>}</span>
               <span>{open ? 
@@ -146,7 +145,7 @@ const HospitalDetail = () => {
               <tbody>
                 <tr><th className="w-25">주소</th><td>{hospital.facility?.address || "-"}</td></tr>
                 <tr><th>대표전화</th><td>{hospital.facility?.phone || "-"}</td></tr>
-                <tr><th>기관구분</th><td>{hospital.facility?.orgType || "병원"}</td></tr>
+                <tr><th>기관구분</th><td>{hospital.orgType || "병원"}</td></tr>
                 <tr><th>소개</th><td>-</td></tr>
               </tbody>
             </Table>

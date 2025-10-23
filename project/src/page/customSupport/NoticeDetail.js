@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "./DataRoomDetail.css";
+import "../../css/DataRoomDetail.css";
 import { Eye, HandThumbsUp, Share } from "react-bootstrap-icons";
 
 const NoticeDetail = () => {

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "./BoardDetail.css";
+import '../../css/BoardDetail.css';
 import { Eye,HandThumbsUp,Share,ThreeDots,ChevronLeft,ChevronRight,List, } from "react-bootstrap-icons";
-import { getOne, deletePost, getList, updatePost } from "../api/postApi";
+import { getOne, deletePost, getList, updatePost } from "../../api/postApi";
 
 const BoardDetail = () => {
   const { id: idParam } = useParams();

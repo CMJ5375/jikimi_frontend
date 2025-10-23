@@ -1,8 +1,6 @@
-import React, { useState } from "react";
-import { Container, Row, Col, Form, Button, Nav,Card } from "react-bootstrap";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-
-import "../btn.css";
+import React, { useState } from 'react';
+import { Container, Row, Col, Form, Button, Nav, Card } from 'react-bootstrap';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const FindUser = () => {
   const { pathname } = useLocation();

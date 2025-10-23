@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { getAccessToken, getUserWithAccessToken } from '../../api/kakaoApi'
-import { useDispatch } from 'react-redux'
-import { login } from '../../slices/loginSlice'
-import useCustomLogin from '../../hook/useCustomLogin'
+import React, { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { getAccessToken, getUserWithAccessToken } from '../../api/kakaoApi';
+import { useDispatch } from 'react-redux';
+import { login } from '../../slice/loginSlice';
+import useCustomLogin from '../../hook/useCustomLogin';
 
 const KakaoLoginPage = () => {
   const [searchParams] = useSearchParams()

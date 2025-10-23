@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import "bootstrap/dist/css/bootstrap.min.css";
-import "./Noticeboard.css";
+import "../../css/Noticeboard.css";
 import { Eye, HandThumbsUp, Plus, Pencil, Search, Paperclip } from "react-bootstrap-icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from 'react-bootstrap';

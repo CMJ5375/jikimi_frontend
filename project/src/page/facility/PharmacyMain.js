@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import '../App.css';
-import '../css/Pharmacy.css';
+import '../../App.css';
+import "../../css/Pharmacy.css";
 import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstrap";
 import { GeoAltFill, StarFill, Star, TelephoneFill, CheckCircleFill, XCircleFill } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { getDefaultPosition } from "../api/geolocationApi";
-import { renderKakaoMap } from "../api/kakaoMapApi";
+import { getDefaultPosition, addDistanceAndSort } from "../../api/geolocationApi";
+import { renderKakaoMap } from "../../api/kakaoMapApi";
 
 //FacilityBusinessHourDTO 기반, 오늘 ‘운영중’ 계산
 function isOpenNow(businessHours = []) {
@@ -33,6 +33,8 @@ const PharmacyMain = () => {
   const [favorites, setFavorites] = useState([])
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [currentPos, setCurrentPos] = useState({ lat: null, lng: null })
+  const [pageData, setPageData] = useState(null);
+  const [page, setPage] = useState(0);
 
   const navigate = useNavigate()
 
@@ -63,14 +65,15 @@ const PharmacyMain = () => {
   }, []);
 
   //검색 기능
-  const onSearch = async (e) => {
-    e.preventDefault();
+  const onSearch = async (e, newPage = 0) => {
+    if (e) e.preventDefault();
     try {
-      const url = `http://localhost:8080/project/pharmacy/search?keyword=${keyword}`;
+      const url = `http://localhost:8080/project/pharmacy/list?page=${newPage}&size=10`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
-      const page = await res.json();
-      const data = Array.isArray(page.content) ? page.content : [];
+      const pageJson = await res.json();
+
+      const data = Array.isArray(pageJson.content) ? pageJson.content : [];
       const normalized = data.map(p => ({
         pharmacyId: p.pharmacyId,
         pharmacyName: p.pharmacyName,
@@ -80,12 +83,31 @@ const PharmacyMain = () => {
         longitude: p.facility?.longitude,
         open: isOpenNow(p.facilityBusinessHours || p.facility?.businessHours || []),
         distance: p.distance
-          ? (p.distance < 1
-              ? `${Math.round(p.distance * 1000)}m`
-              : `${p.distance.toFixed(1)}km`)
+          ? (p.distance < 1 ? `${Math.round(p.distance * 1000)}m` : `${p.distance.toFixed(1)}km`)
           : "",
       }));
-      setResults(normalized);
+
+       // 현재 위치 기준 거리 계산 및 정렬
+      const withDistance = addDistanceAndSort(normalized, currentPos);
+
+      // 페이지 리스트 구성 (Noticeboard와 동일)
+      const totalPages = pageJson.totalPages;
+      const current = pageJson.number + 1;
+      const pageNumList = Array.from({ length: totalPages }, (_, i) => i + 1);
+
+      setResults(withDistance);
+      setPageData({
+        ...pageJson,
+        content: withDistance,
+        current,
+        totalPage: totalPages,
+        pageNumList,
+        prev: !pageJson.first,
+        next: !pageJson.last,
+        prevPage: newPage > 0 ? newPage - 1 : 0,
+        nextPage: newPage < totalPages - 1 ? newPage + 1 : newPage
+      });
+      setPage(newPage);
     } catch (error) {
       console.error("검색 실패:", error);
     }
@@ -102,6 +124,34 @@ const PharmacyMain = () => {
     if (results.length === 0 || !currentPos.lat) return;
     renderKakaoMap("map", currentPos, results);
   }, [results, currentPos]);
+
+  // 페이지네이션 버튼
+  const renderPagination = () => {
+    if (!pageData) return null;
+    return (
+      <ul className="pagination justify-content-center mt-4">
+        <li className={`page-item ${!pageData.prev ? "disabled" : ""}`}>
+          <button className="page-link" onClick={() => onSearch(null, pageData.prevPage)}>
+            &laquo;
+          </button>
+        </li>
+
+        {pageData.pageNumList?.map((n) => (
+          <li key={n} className={`page-item ${n === pageData.current ? "active" : ""}`}>
+            <button className="page-link" onClick={() => onSearch(null, n - 1)}>
+              {n}
+            </button>
+          </li>
+        ))}
+
+        <li className={`page-item ${!pageData.next ? "disabled" : ""}`}>
+          <button className="page-link" onClick={() => onSearch(null, pageData.nextPage)}>
+            &raquo;
+          </button>
+        </li>
+      </ul>
+    );
+  };
 
   return (
     <>
@@ -217,6 +267,7 @@ const PharmacyMain = () => {
                   );
                 })}
               </div>
+              {renderPagination()}
             </>
           )}
 

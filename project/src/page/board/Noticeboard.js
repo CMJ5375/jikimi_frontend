@@ -1,11 +1,11 @@
 // src/component/Noticeboard.js
 import React, { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "./Noticeboard.css";
+import '../../css/Noticeboard.css';
 import { ChatDots, HandThumbsUp, Pencil, Plus, Search } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { getList } from "../api/postApi"; // GET /api/posts/list
-import useCustomLogin from "../hook/useCustomLogin";
+import { getList } from '../../api/postApi'; // GET /api/posts/list
+import useCustomLogin from "../../hook/useCustomLogin";
 
 const CATEGORIES = ["전체", "인기글", "병원정보", "약국정보", "질문해요", "자유글"];
 

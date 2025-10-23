@@ -1,24 +1,8 @@
 import React, { useState } from "react";
-import {
-  Container,
-  Row,
-  Col,
-  Card,
-  ListGroup,
-  Button,
-  Nav,
-  Pagination,
-  Form,
-} from "react-bootstrap";
-import {
-  FaBookmark,
-  FaCommentDots,
-  FaStar,
-  FaHeart,
-  FaRegCommentDots,
-} from "react-icons/fa";
-import "./MyPage.css";
-import useCustomLogin from "../hook/useCustomLogin";
+import { Container, Row, Col, Card, ListGroup, Button, Nav, Pagination, Form } from "react-bootstrap";
+import { FaBookmark, FaCommentDots, FaStar, FaHeart, FaRegCommentDots } from "react-icons/fa";
+import "../../css/MyPage.css";
+import useCustomLogin from "../../hook/useCustomLogin";
 
 const MyPage = () => {
   const [activeMenu, setActiveMenu] = useState("favorite");

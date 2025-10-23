@@ -188,6 +188,37 @@
   color: #FFD43B; /* 즐겨찾기된 경우 노란색 */
 }
 
+/* Noticeboard 페이지네이션 동일 스타일 */
+.pagination {
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.pagination .page-link {
+  color: #3B6CFF;
+  border: 1px solid #dee2e6;
+  font-size: 0.95rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: #3B6CFF;
+  border-color: #3B6CFF;
+  color: #fff;
+}
+
+.pagination .page-link:hover {
+  background-color: #eaf0ff;
+  color: #3B6CFF;
+}
+
+.pagination .page-item.disabled .page-link {
+  color: #ccc;
+  background-color: #f9f9f9;
+  border-color: #eee;
+  pointer-events: none;
+}
+
 /* ========== HospitalDetail.jsx 전용 ========== */
 
 /* 안내 문구 */

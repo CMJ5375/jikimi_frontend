@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import '../App.css';
-import '../css/Hospital.css';
+import '../../App.css';
+import "../../css/Hospital.css";
 import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstrap";
 import { GeoAltFill, StarFill, Star, TelephoneFill, HospitalFill, CheckCircleFill, XCircleFill } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { getDefaultPosition } from "../api/geolocationApi";
+import { getDefaultPosition, addDistanceAndSort } from "../../api/geolocationApi";
 
 // FacilityBusinessHourDTO 기반, 오늘 ‘운영중’ 계산 유틸
 function isOpenNow(businessHours = []) {
@@ -33,6 +33,8 @@ const HospitalMain = () => {
   const [favorites, setFavorites] = useState([])
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [currentPos, setCurrentPos] = useState({ lat: null, lng: null })
+  const [pageData, setPageData] = useState(null)
+  const [page, setPage] = useState(0)
 
   const navigate = useNavigate()
 
@@ -68,16 +70,15 @@ const HospitalMain = () => {
   }, [])
 
   //검색 기능
-  const onSearch = async (e) => {
-    e.preventDefault();
+  const onSearch = async (e, newPage = 0) => {
+    if (e) e.preventDefault();
     try {
-      const url = `http://localhost:8080/project/hospital/search?keyword=${keyword}&org=${org}&dept=${dept}`;
+      const url = `http://localhost:8080/project/hospital/list?page=${newPage}&size=10`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
-      const page = await res.json();
-      const data = Array.isArray(page.content) ? page.content : [];
+      const pageJson = await res.json();
 
-      // 데이터 정규화
+      const data = Array.isArray(pageJson.content) ? pageJson.content : [];
       const normalized = data.map(h => ({
         hospitalId: h.hospitalId,
         hospitalName: h.hospitalName,
@@ -85,7 +86,7 @@ const HospitalMain = () => {
         phone: h.facility?.phone || "",
         latitude: h.facility?.latitude,
         longitude: h.facility?.longitude,
-        orgType: h.facility?.orgType || "",
+        orgType: h.orgType || "",
         hasEmergency: h.hasEmergency ?? false,
         open: isOpenNow(h.facilityBusinessHours || h.facility?.businessHours || []),
         distance: h.distance
@@ -94,7 +95,28 @@ const HospitalMain = () => {
               : `${h.distance.toFixed(1)}km`)
           : "",
       }));
-      setResults(normalized);
+
+      // 현재 위치 기준 거리 계산 및 정렬
+      const withDistance = addDistanceAndSort(normalized, currentPos);
+
+      // 페이지 리스트 구성 (Noticeboard와 동일)
+      const totalPages = pageJson.totalPages;
+      const current = pageJson.number + 1;
+      const pageNumList = Array.from({ length: totalPages }, (_, i) => i + 1);
+
+      setResults(withDistance);
+      setPageData({
+        ...pageJson,
+        content: withDistance,
+        current,
+        totalPage: totalPages,
+        pageNumList,
+        prev: !pageJson.first,
+        next: !pageJson.last,
+        prevPage: newPage > 0 ? newPage - 1 : 0,
+        nextPage: newPage < totalPages - 1 ? newPage + 1 : newPage
+      });
+      setPage(newPage);
     } catch (error) {
       console.error("검색 실패:", error);
     }
@@ -104,6 +126,34 @@ const HospitalMain = () => {
   const displayedResults = showFavoritesOnly
     ? results.filter((r) => favorites.includes(String(r.hospitalId)))
     : results;
+
+  // 페이지네이션 버튼
+  const renderPagination = () => {
+    if (!pageData) return null;
+    return (
+      <ul className="pagination justify-content-center mt-4">
+        <li className={`page-item ${!pageData.prev ? "disabled" : ""}`}>
+          <button className="page-link" onClick={() => onSearch(null, pageData.prevPage)}>
+            &laquo;
+          </button>
+        </li>
+
+        {pageData.pageNumList?.map((n) => (
+          <li key={n} className={`page-item ${n === pageData.current ? "active" : ""}`}>
+            <button className="page-link" onClick={() => onSearch(null, n - 1)}>
+              {n}
+            </button>
+          </li>
+        ))}
+
+        <li className={`page-item ${!pageData.next ? "disabled" : ""}`}>
+          <button className="page-link" onClick={() => onSearch(null, pageData.nextPage)}>
+            &raquo;
+          </button>
+        </li>
+      </ul>
+    );
+  };
 
   return (
     <div className="bg-white">
@@ -202,6 +252,7 @@ const HospitalMain = () => {
 
         {/* 검색 결과 */}
         {displayedResults.length > 0 && (
+          <>
           <div className="mt-4">
             {displayedResults.map(item => {
               const isFavorite = favorites.includes(String(item.hospitalId));
@@ -210,7 +261,7 @@ const HospitalMain = () => {
                       onClick={() => navigate(`/hospitaldetail/${item.hospitalId}`)}>
                   <Card.Body>
                     <div className="d-flex justify-content-between align-items-center mb-2">
-                      <span className="text-gray">{item.orgType || "의료기관 미지정"}</span>
+                      <span className="text-gray">{item.orgType && item.orgType.trim() !== "" ? item.orgType : "의료기관 정보 없음"}</span>
                       <span className={`favorite-icon ${isFavorite ? "active" : ""}`}
                             onClick={(e) => { e.stopPropagation(); toggleFavorite(item.hospitalId); }}>
                         {isFavorite ? <StarFill size={30}/> : <Star size={30}/>}
@@ -241,6 +292,8 @@ const HospitalMain = () => {
                 </Card>
               )})}
             </div>
+            {renderPagination()}
+          </>
         )}
       </Container>
     </div>

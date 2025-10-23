@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "./DataRoomDetail.css";
+import "../../css/DataRoomDetail.css";
 import { Eye, HandThumbsUp, Share, Folder } from "react-bootstrap-icons";
 
 const DataRoomDetail = () => {
