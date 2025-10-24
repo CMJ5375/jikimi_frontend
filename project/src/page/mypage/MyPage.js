@@ -1,14 +1,60 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Card, ListGroup, Button, Nav, Pagination, Form } from "react-bootstrap";
 import { FaBookmark, FaCommentDots, FaStar, FaHeart, FaRegCommentDots } from "react-icons/fa";
 import "../../css/MyPage.css";
 import useCustomLogin from "../../hook/useCustomLogin";
+import { useSelector } from "react-redux";
+import { modifyUser } from "../../api/userApi";
+
+const initState = {
+  username: '',
+  password: '',
+  email: '',
+  name: '',
+  age: 0,
+  roleNames: []
+}
 
 const MyPage = () => {
   const [activeMenu, setActiveMenu] = useState("favorite");
   const [favoriteTab, setFavoriteTab] = useState("hospital");
   const [postTab, setPostTab] = useState("post");
   const [activePage, setActivePage] = useState(1);
+  const {moveToPath} = useCustomLogin()
+  
+  const [user, setUser] = useState(initState)
+  const loginInfo = useSelector(state => state.loginSlice)
+  
+  // 유저 정보 가져오기
+  useEffect(() => {
+    setUser({...loginInfo})
+  }, [loginInfo])
+  
+  const handleChange = (e) => {
+    user[e.target.name] = e.target.value
+    setUser({...user})
+  }
+  
+  const handleClickModify = () => {
+    const { email, password, age } = user;
+
+    if (!email.trim() || !password.trim() || !age) {
+      alert("이메일, 비밀번호, 나이를 모두 입력해주세요.");
+      return;
+    }
+
+    // 나이 숫자 유효성 검사
+    if (isNaN(age) || age <= 0) {
+      alert("나이는 숫자로 입력해주세요.");
+      return;
+    }
+
+    modifyUser(user);
+    alert("회원정보 수정이 되었습니다.")
+    moveToPath('/')
+  };
+
+
 
   const handlePageChange = (page) => setActivePage(page);
 
@@ -18,6 +64,8 @@ const MyPage = () => {
   if(!isLogin) {
       return moveToLoginReturn()
   }
+
+
 
   return (
     <>
@@ -294,40 +342,66 @@ const MyPage = () => {
                     <Form>
                       <Form.Group className="mb-3" controlId="formRank">
                         <Form.Label>등급</Form.Label>
-                        <Form.Control type="text" value="일반 회원" readOnly />
+                        <Form.Control 
+                          type="text" 
+                          name="roleNames"
+                          value={`${user.roleNames}`} 
+                          readOnly 
+                          />
+                      </Form.Group>
+
+                      <Form.Group className="mb-3" controlId="formId">
+                        <Form.Label>아이디</Form.Label>
+                        <Form.Control 
+                          type="text" 
+                          name="username"
+                          value={`${user.username}`} 
+                          readOnly 
+                          />
+                      </Form.Group>
+
+                      <Form.Group className="mb-4" controlId="formName">
+                        <Form.Label>
+                          이름 <span className="text-danger">*</span>
+                        </Form.Label>
+                        <Form.Control 
+                          type="text"
+                          name="name"
+                          value={`${user.name}`}
+                          readOnly
+                          />
                       </Form.Group>
 
                       <Form.Group className="mb-3" controlId="formEmail">
                         <Form.Label>이메일</Form.Label>
                         <Form.Control
                           type="email"
-                          value="limdoyung@naver.com"
-                          readOnly
+                          name="email"
+                          onChange={handleChange}
+                          value={`${user.email}`}
                         />
-                      </Form.Group>
-
-                      <Form.Group className="mb-3" controlId="formId">
-                        <Form.Label>아이디</Form.Label>
-                        <Form.Control type="text" value="limdo" readOnly />
                       </Form.Group>
 
                       <Form.Group className="mb-3" controlId="formPassword">
                         <Form.Label>비밀번호</Form.Label>
-                        <Form.Control type="password" value="******" readOnly />
+                        <Form.Control 
+                          type="password" 
+                          name="password"
+                          onChange={handleChange}
+                          value={`${user.password}`}
+                          />
                       </Form.Group>
 
                       <Form.Group className="mb-4" controlId="formAge">
                         <Form.Label>
                           나이 <span className="text-danger">*</span>
                         </Form.Label>
-                        <Form.Select>
-                          <option>연령대를 선택하면 관련 안내를 받을 수 있어요.</option>
-                          <option>10대</option>
-                          <option>20대</option>
-                          <option>30대</option>
-                          <option>40대</option>
-                          <option>50대 이상</option>
-                        </Form.Select>
+                        <Form.Control 
+                          type="text"
+                          name="age"
+                          onChange={handleChange}
+                          value={`${user.age}`}
+                          />
                       </Form.Group>
 
                       <div className="text-end">
@@ -337,6 +411,7 @@ const MyPage = () => {
                             backgroundColor: "#3341F3",
                             borderColor: "#3341F3",
                           }}
+                          onClick={handleClickModify}
                         >
                           회원정보 수정
                         </Button>
