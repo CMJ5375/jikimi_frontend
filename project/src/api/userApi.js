@@ -1,5 +1,6 @@
 // HTTP 통신을 위한 axios 라이브러리를 임포트합니다.
 import axios from 'axios'
+import jwtAxios from '../util/jwtUtil'
 
 // 백엔드 API 서버의 기본 호스트 주소를 정의합니다.
 // 이 값은 다른 API 파일(예: kakaoApi.js)에서 임포트하여 사용됩니다.
@@ -31,3 +32,9 @@ export const loginPost = async (loginParam) => {
  * @param {object} user - 회원가입에 필요한 사용자 정보를 담는 객체
  */
 
+
+// 회원정보 수정
+export const modifyUser = async (user) => {
+    const res = await jwtAxios.put(`${host}/modify/${user.username}`, user)
+    return res.data
+}
