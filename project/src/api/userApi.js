@@ -25,7 +25,45 @@ export const loginPost = async (loginParam) => {
     // 서버 응답 데이터를 반환합니다.
     return res.data
 }
+// 계정찾기(아이디 찾기) 전용 API Base
+const ACCOUNT_BASE = `${API_SERVER_HOST}/api/account`;
 
+/** 인증코드 발송 */
+export const sendCodeApi = (email) => {
+    return axios.post(`${ACCOUNT_BASE}/send-code`, { email }, {
+        headers: { "Content-Type": "application/json" }
+    }); // 성공 시 204 No Content
+};
+
+/** 인증코드 검증 */
+export const verifyCodeApi = (email, code) => {
+    return axios.post(`${ACCOUNT_BASE}/verify-code`, { email, code }, {
+        headers: { "Content-Type": "application/json" }
+    }); // { verified: true|false }
+};
+
+/** 이메일로 username(아이디) 조회 */
+export const getUsernameApi = (email) => {
+  return axios.get(`${ACCOUNT_BASE}/username`, {
+    params: { email }
+  }); // { username: "..." }
+};
+//비밀번호 찾기 부분
+const PWD_BASE = `${API_SERVER_HOST}/api/password`;
+export const sendPwdCodeApi = (username, email) =>
+  axios.post(`${PWD_BASE}/send-code`, { username, email }, {
+    headers: { "Content-Type": "application/json" }
+  }); // 204
+
+export const verifyPwdCodeApi = (username, email, code) =>
+  axios.post(`${PWD_BASE}/verify-code`, { username, email, code }, {
+    headers: { "Content-Type": "application/json" }
+  }); // { verified: true|false }
+
+export const resetPasswordApi = (username, email, code, newPassword) =>
+  axios.post(`${PWD_BASE}/reset`, { username, email, code, newPassword }, {
+    headers: { "Content-Type": "application/json" }
+  }); // { reset: true }
 /**
  * 사용자 회원가입을 위한 POST 요청을 처리할 비동기 함수입니다.
  * 현재는 구현되어 있지 않으며, 향후 사용자 객체(user)를 받아 회원가입 로직을 추가해야 합니다.

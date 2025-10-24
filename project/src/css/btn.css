@@ -84,3 +84,7 @@
   background-color: #3341F3;
 }
 
+.is-invalid-ph::placeholder {
+  color: #dc3545;    
+  opacity: 1;     
+}
