@@ -13,10 +13,7 @@ const host = `${API_SERVER_HOST}/project/user`
  * @returns {Promise<any>} - 로그인 성공 시 서버에서 반환하는 데이터 (예: JWT 토큰, 사용자 정보)
  */
 export const loginPost = async (loginParam) => {
-    // 요청 헤더 설정: 'x-www-form-urlencoded'는 일반적인 폼 데이터 전송 방식입니다.
-    const header = { Headers: { "Content-Type": "x-www-form-urlencoded" } }
-    
-    // 폼 데이터(FormData) 객체를 생성하여 사용자 이름과 비밀번호를 담습니다.
+    const header = { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     const form = new FormData()
     form.append('username', loginParam.username) // 사용자 이름을 폼 데이터에 추가
     form.append('password', loginParam.password) // 비밀번호를 폼 데이터에 추가
