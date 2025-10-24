@@ -5,3 +5,14 @@
   --text: #111;
   --mute: #6c757d;
 }
+
+/* 페이지네이션 */
+.pagination-block .page-link {
+  color: #333333 !important; /* 글자색 검은색 */
+}
+.pagination-block .page-item.active .page-link {
+  background-color: #3b6cff;
+  border-color: #3b6cff;
+  color: white !important;
+  font-weight: 600;
+}

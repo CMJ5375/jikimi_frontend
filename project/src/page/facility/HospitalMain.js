@@ -4,39 +4,19 @@ import "../../css/Hospital.css";
 import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstrap";
 import { GeoAltFill, StarFill, Star, TelephoneFill, HospitalFill, CheckCircleFill, XCircleFill } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { getDefaultPosition, addDistanceAndSort } from "../../api/geolocationApi";
-
-// FacilityBusinessHourDTO 기반, 오늘 ‘운영중’ 계산 유틸
-function isOpenNow(businessHours = []) {
-  if (!Array.isArray(businessHours) || businessHours.length === 0) return false
-  const now = new Date()
-  const dayNames = ["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"]
-  const today = dayNames[now.getDay()]
-  const todayEntry = businessHours.find(b => (b.dayOfWeek || "").toUpperCase() === today)
-  if (!todayEntry) return false
-  if (todayEntry.open24h) return true
-  if (todayEntry.closed) return false
-  if (!todayEntry.openTime || !todayEntry.closeTime) return false;
-  const [oH,oM] = todayEntry.openTime.split(":").map(Number)
-  const [cH,cM] = todayEntry.closeTime.split(":").map(Number)
-  const openMins  = oH*60 + oM
-  const closeMins = cH*60 + cM
-  const nowMins   = now.getHours()*60 + now.getMinutes()
-  return nowMins >= openMins && nowMins < closeMins
-}
+import useFavorites from "../../hook/useFavorites";
+import useFacilitySearch from "../../hook/useFacilitySearch";
+import PageComponent from "../../component/common/PageComponent";
 
 const HospitalMain = () => {
   const [dept, setDept] = useState("")
   const [org, setOrg] = useState("")
   const [keyword, setKeyword] = useState("")
-  const [results, setResults] = useState([])
-  const [favorites, setFavorites] = useState([])
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
-  const [currentPos, setCurrentPos] = useState({ lat: null, lng: null })
-  const [pageData, setPageData] = useState(null)
-  const [page, setPage] = useState(0)
 
+  const { results, pageData, search } = useFacilitySearch("hospital");
   const navigate = useNavigate()
+  const { favorites, toggle, check } = useFavorites("HOSPITAL")
 
   //드롭다운 진료과목/기관종류
   const deptList = useMemo(
@@ -46,114 +26,10 @@ const HospitalMain = () => {
     () => ["상급종합병원", "종합병원", "병원", "의원", "보건소", "한방병원", "치과의원"], []
   )
 
-  // 즐겨찾기 불러오기
-  useEffect(() => {
-    const stored = Object.keys(localStorage)
-      .filter(k => k.startsWith("favorite_hospital_") && localStorage.getItem(k) === "true")
-      .map(k => k.replace("favorite_hospital_", ""));
-    setFavorites(stored);
-  }, []);
-
-  // 즐겨찾기 토글
-  const toggleFavorite = (id) => {
-    const idStr = String(id);
-    setFavorites(prev => {
-      const updated = prev.includes(idStr) ? prev.filter(f => f !== idStr) : [...prev, idStr];
-      localStorage.setItem(`favorite_hospital_${idStr}`, updated.includes(idStr));
-      return updated;
-    });
-  };
-
-  //기본으로 설정된 위치 가져오기
-  useEffect(() => {
-    getDefaultPosition().then(setCurrentPos)
-  }, [])
-
-  //검색 기능
-  const onSearch = async (e, newPage = 0) => {
-    if (e) e.preventDefault();
-    try {
-      const url = `http://localhost:8080/project/hospital/list?page=${newPage}&size=10`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
-      const pageJson = await res.json();
-
-      const data = Array.isArray(pageJson.content) ? pageJson.content : [];
-      const normalized = data.map(h => ({
-        hospitalId: h.hospitalId,
-        hospitalName: h.hospitalName,
-        address: h.facility?.address || "",
-        phone: h.facility?.phone || "",
-        latitude: h.facility?.latitude,
-        longitude: h.facility?.longitude,
-        orgType: h.orgType || "",
-        hasEmergency: h.hasEmergency ?? false,
-        open: isOpenNow(h.facilityBusinessHours || h.facility?.businessHours || []),
-        distance: h.distance
-          ? (h.distance < 1
-              ? `${Math.round(h.distance * 1000)}m`
-              : `${h.distance.toFixed(1)}km`)
-          : "",
-      }));
-
-      // 현재 위치 기준 거리 계산 및 정렬
-      const withDistance = addDistanceAndSort(normalized, currentPos);
-
-      // 페이지 리스트 구성 (Noticeboard와 동일)
-      const totalPages = pageJson.totalPages;
-      const current = pageJson.number + 1;
-      const pageNumList = Array.from({ length: totalPages }, (_, i) => i + 1);
-
-      setResults(withDistance);
-      setPageData({
-        ...pageJson,
-        content: withDistance,
-        current,
-        totalPage: totalPages,
-        pageNumList,
-        prev: !pageJson.first,
-        next: !pageJson.last,
-        prevPage: newPage > 0 ? newPage - 1 : 0,
-        nextPage: newPage < totalPages - 1 ? newPage + 1 : newPage
-      });
-      setPage(newPage);
-    } catch (error) {
-      console.error("검색 실패:", error);
-    }
-  };
-
   // 즐겨찾기 필터 적용
   const displayedResults = showFavoritesOnly
     ? results.filter((r) => favorites.includes(String(r.hospitalId)))
     : results;
-
-  // 페이지네이션 버튼
-  const renderPagination = () => {
-    if (!pageData) return null;
-    return (
-      <ul className="pagination justify-content-center mt-4">
-        <li className={`page-item ${!pageData.prev ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => onSearch(null, pageData.prevPage)}>
-            &laquo;
-          </button>
-        </li>
-
-        {pageData.pageNumList?.map((n) => (
-          <li key={n} className={`page-item ${n === pageData.current ? "active" : ""}`}>
-            <button className="page-link" onClick={() => onSearch(null, n - 1)}>
-              {n}
-            </button>
-          </li>
-        ))}
-
-        <li className={`page-item ${!pageData.next ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => onSearch(null, pageData.nextPage)}>
-            &raquo;
-          </button>
-        </li>
-      </ul>
-    );
-  };
 
   return (
     <div className="bg-white">
@@ -195,7 +71,7 @@ const HospitalMain = () => {
         </Row>
 
         {/* 검색 폼 */}
-        <Form onSubmit={onSearch}>
+        <Form onSubmit={search}>
           {/* 진료과목 선택 */}
           <Dropdown className="mb-3 dropdown-custom">
             <Dropdown.Toggle variant="light" className="text-dark d-flex justify-content-between align-items-center">
@@ -255,21 +131,20 @@ const HospitalMain = () => {
           <>
           <div className="mt-4">
             {displayedResults.map(item => {
-              const isFavorite = favorites.includes(String(item.hospitalId));
+              const isFavorite = favorites.includes(String(item.id));
               return (
                 <Card key={item.hospitalId} className="result-card mb-3"
-                      onClick={() => navigate(`/hospitaldetail/${item.hospitalId}`)}>
+                      onClick={() => navigate(`/hospitaldetail/${item.id}`)}>
                   <Card.Body>
                     <div className="d-flex justify-content-between align-items-center mb-2">
-                      <span className="text-gray">{item.orgType && item.orgType.trim() !== "" ? item.orgType : "의료기관 정보 없음"}</span>
-                      <span className={`favorite-icon ${isFavorite ? "active" : ""}`}
-                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item.hospitalId); }}>
-                        {isFavorite ? <StarFill size={30}/> : <Star size={30}/>}
+                      <span className="text-gray">{item.orgType || "의료기관 정보 없음"}</span>
+                      <span className="favorite-icon" onClick={(e) => { e.stopPropagation(); toggle(item.id); }}>
+                        {isFavorite ? <StarFill size={30} color="#FFD43B" /> : <Star size={30} />}
                       </span>
                     </div>
 
                      <h5 className="fw-bold mb-2">
-                      {item.hospitalName}<span className="result-distance">({item.distance})</span>
+                      {item.name}<span className="result-distance">({item.distance})</span>
                     </h5>
 
                     <div className="my-3 d-flex align-items-center">
@@ -292,7 +167,7 @@ const HospitalMain = () => {
                 </Card>
               )})}
             </div>
-            {renderPagination()}
+            <PageComponent pageData={pageData} onPageChange={(n) => search(null, n)} />
           </>
         )}
       </Container>

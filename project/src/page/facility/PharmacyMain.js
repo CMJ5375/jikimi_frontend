@@ -4,154 +4,27 @@ import "../../css/Pharmacy.css";
 import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstrap";
 import { GeoAltFill, StarFill, Star, TelephoneFill, CheckCircleFill, XCircleFill } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { getDefaultPosition, addDistanceAndSort } from "../../api/geolocationApi";
-import { renderKakaoMap } from "../../api/kakaoMapApi";
-
-//FacilityBusinessHourDTO 기반, 오늘 ‘운영중’ 계산
-function isOpenNow(businessHours = []) {
-  if (!Array.isArray(businessHours) || businessHours.length === 0) return false
-  const now = new Date()
-  const dayNames = ["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"]
-  const today = dayNames[now.getDay()]
-  const todayEntry = businessHours.find(b => (b.dayOfWeek || "").toUpperCase() === today)
-  if (!todayEntry) return false
-  if (todayEntry.open24h) return true
-  if (todayEntry.closed) return false
-  if (!todayEntry.openTime || !todayEntry.closeTime) return false
-  const [oH,oM] = todayEntry.openTime.split(":").map(Number)
-  const [cH,cM] = todayEntry.closeTime.split(":").map(Number)
-  const openMins  = oH*60 + oM
-  const closeMins = cH*60 + cM
-  const nowMins   = now.getHours()*60 + now.getMinutes()
-  return nowMins >= openMins && nowMins < closeMins
-}
+import useFavorites from "../../hook/useFavorites";
+import useFacilitySearch from "../../hook/useFacilitySearch";
+import PageComponent from "../../component/common/PageComponent";
+import KakaoMapComponent from "../../component/common/KakaoMapComponent";
 
 const PharmacyMain = () => {
   const [distance, setDistance] = useState("")
   const [keyword, setKeyword] = useState("")
-  const [results, setResults] = useState([])
-  const [favorites, setFavorites] = useState([])
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
-  const [currentPos, setCurrentPos] = useState({ lat: null, lng: null })
-  const [pageData, setPageData] = useState(null);
-  const [page, setPage] = useState(0);
 
+  const { results, pageData, currentPos, search } = useFacilitySearch("pharmacy");
+  const { favorites, toggle, check } = useFavorites("PHARMACY");
   const navigate = useNavigate()
 
   //드롭다운 거리
   const distanceList = ["500m", "1km", "5km", "10km"]
 
-  //즐겨찾기 불러오기
-  useEffect(() => {
-    const stored = Object.keys(localStorage)
-      .filter(k => k.startsWith("favorite_pharmacy_") && localStorage.getItem(k) === "true")
-      .map(k => k.replace("favorite_pharmacy_", ""));
-    setFavorites(stored);
-  }, []);
-
-  //즐겨찾기 토글
-  const toggleFavorite = (id) => {
-    const idStr = String(id);
-    setFavorites(prev => {
-      const updated = prev.includes(idStr) ? prev.filter(f => f !== idStr) : [...prev, idStr];
-      localStorage.setItem(`favorite_pharmacy_${idStr}`, updated.includes(idStr));
-      return updated;
-    });
-  };
-
-  //기본으로 설정된 위치 가져오기
-  useEffect(() => {
-    getDefaultPosition().then(setCurrentPos);
-  }, []);
-
-  //검색 기능
-  const onSearch = async (e, newPage = 0) => {
-    if (e) e.preventDefault();
-    try {
-      const url = `http://localhost:8080/project/pharmacy/list?page=${newPage}&size=10`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
-      const pageJson = await res.json();
-
-      const data = Array.isArray(pageJson.content) ? pageJson.content : [];
-      const normalized = data.map(p => ({
-        pharmacyId: p.pharmacyId,
-        pharmacyName: p.pharmacyName,
-        address: p.facility?.address || "",
-        phone: p.facility?.phone || "",
-        latitude: p.facility?.latitude,
-        longitude: p.facility?.longitude,
-        open: isOpenNow(p.facilityBusinessHours || p.facility?.businessHours || []),
-        distance: p.distance
-          ? (p.distance < 1 ? `${Math.round(p.distance * 1000)}m` : `${p.distance.toFixed(1)}km`)
-          : "",
-      }));
-
-       // 현재 위치 기준 거리 계산 및 정렬
-      const withDistance = addDistanceAndSort(normalized, currentPos);
-
-      // 페이지 리스트 구성 (Noticeboard와 동일)
-      const totalPages = pageJson.totalPages;
-      const current = pageJson.number + 1;
-      const pageNumList = Array.from({ length: totalPages }, (_, i) => i + 1);
-
-      setResults(withDistance);
-      setPageData({
-        ...pageJson,
-        content: withDistance,
-        current,
-        totalPage: totalPages,
-        pageNumList,
-        prev: !pageJson.first,
-        next: !pageJson.last,
-        prevPage: newPage > 0 ? newPage - 1 : 0,
-        nextPage: newPage < totalPages - 1 ? newPage + 1 : newPage
-      });
-      setPage(newPage);
-    } catch (error) {
-      console.error("검색 실패:", error);
-    }
-  };
-
   // 즐겨찾기 필터 적용
   const displayedResults = showFavoritesOnly
     ? results.filter(r => favorites.includes(String(r.pharmacyId)))
     : results;
-
-    
-  // 지도 표시 (검색 결과 있을 때만)
-  useEffect(() => {
-    if (results.length === 0 || !currentPos.lat) return;
-    renderKakaoMap("map", currentPos, results);
-  }, [results, currentPos]);
-
-  // 페이지네이션 버튼
-  const renderPagination = () => {
-    if (!pageData) return null;
-    return (
-      <ul className="pagination justify-content-center mt-4">
-        <li className={`page-item ${!pageData.prev ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => onSearch(null, pageData.prevPage)}>
-            &laquo;
-          </button>
-        </li>
-
-        {pageData.pageNumList?.map((n) => (
-          <li key={n} className={`page-item ${n === pageData.current ? "active" : ""}`}>
-            <button className="page-link" onClick={() => onSearch(null, n - 1)}>
-              {n}
-            </button>
-          </li>
-        ))}
-
-        <li className={`page-item ${!pageData.next ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => onSearch(null, pageData.nextPage)}>
-            &raquo;
-          </button>
-        </li>
-      </ul>
-    );
-  };
 
   return (
     <>
@@ -194,7 +67,7 @@ const PharmacyMain = () => {
         </Row>
 
           {/* 검색 폼 */}
-          <Form onSubmit={onSearch}>
+          <Form onSubmit={search}>
             <Dropdown className="mb-3 dropdown-custom">
               <Dropdown.Toggle variant="light" className="text-dark d-flex justify-content-between align-items-center">
                 <span className={distance ? "" : "text-secondary"}>{distance || "거리 선택"}</span>
@@ -232,47 +105,86 @@ const PharmacyMain = () => {
             </>
           )}
 
+          {/* 지도 */}
+          {displayedResults.length > 0 && currentPos.lat && (
+            <KakaoMapComponent
+              id="map"
+              lat={currentPos.lat}
+              lng={currentPos.lng}
+              name="약국 위치"
+              height={400}
+            />
+          )}
+
           {/* 검색 결과 */}
           {displayedResults.length > 0 && (
             <>
-              <div id="map" style={{ width: "100%", height: "400px" }}></div>
               <div className="mt-4">
-                {displayedResults.map(item => {
-                  const isFavorite = favorites.includes(String(item.pharmacyId));
-                  return (
-                    <Card key={item.pharmacyId} className="result-card mb-3"
-                          onClick={() => navigate(`/pharmacydetail/${item.pharmacyId}`)}>
-                      <Card.Body>
-                        <h5 className="fw-bold my-2 d-flex justify-content-between align-items-center">
-                          <span>{item.pharmacyName}<span className="result-distance">({item.distance})</span></span>
-                          <span className={`favorite-icon ${isFavorite ? "active" : ""}`}
-                                onClick={(e) => { e.stopPropagation(); toggleFavorite(item.pharmacyId); }}>
-                            {isFavorite ? <StarFill size={30}/> : <Star size={30}/>}
-                          </span>
-                        </h5>
-                        <div className="my-3 d-flex align-items-center">
-                          <span className="badge-road">도로명</span>
-                          <span className="text-gray">{item.address}</span>
+                {displayedResults.map((item) => (
+                  <Card
+                    key={item.id}
+                    className="result-card mb-3"
+                    onClick={() => navigate(`/pharmacydetail/${item.id}`)}
+                  >
+                    <Card.Body>
+                      <h5 className="fw-bold my-2 d-flex justify-content-between align-items-center">
+                        <span>
+                          {item.name}
+                          <span className="result-distance">({item.distance})</span>
+                        </span>
+                        <span
+                          className="favorite-icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggle(item.id);
+                          }}
+                        >
+                          {favorites.includes(String(item.id)) ? (
+                            <StarFill size={30} color="#FFD43B" />
+                          ) : (
+                            <Star size={30} />
+                          )}
+                        </span>
+                      </h5>
+
+                      <div className="my-3 d-flex align-items-center">
+                        <span className="badge-road">도로명</span>
+                        <span className="text-gray">{item.address}</span>
+                      </div>
+
+                      <div className="d-flex align-items-center justify-content-between">
+                        <div className="text-gray d-flex align-items-center gap-2">
+                          <TelephoneFill className="me-1" /> {item.phone}
                         </div>
-                        <div className="d-flex align-items-center justify-content-between">
-                          <div className="text-gray d-flex align-items-center gap-2">
-                            <TelephoneFill className="me-1"/> {item.phone}
-                          </div>
-                          <div className={`small fw-semibold ${item.open ? "text-success" : "text-secondary"}`}>
-                            {item.open ? (<><CheckCircleFill size={18}/> 운영 중</>) : (<><XCircleFill size={18}/> 운영종료</>)}
-                          </div>
+                        <div
+                          className={`small fw-semibold ${
+                            item.open ? "text-success" : "text-secondary"
+                          }`}
+                        >
+                          {item.open ? (
+                            <>
+                              <CheckCircleFill size={18} /> 영업 중
+                            </>
+                          ) : (
+                            <>
+                              <XCircleFill size={18} /> 영업 종료
+                            </>
+                          )}
                         </div>
-                      </Card.Body>
-                    </Card>
-                  );
-                })}
+                      </div>
+                    </Card.Body>
+                  </Card>
+                ))}
               </div>
-              {renderPagination()}
+              <PageComponent pageData={pageData} onPageChange={(n) => search(null, n)} />
             </>
           )}
 
+          {/* 검색 결과 없음 */}
           {results.length === 0 && keyword && (
-            <div className="text-center text-secondary mt-4">검색 결과가 없습니다.</div>
+            <div className="text-center text-secondary mt-4">
+              검색 결과가 없습니다.
+            </div>
           )}
         </Container>
       </div>

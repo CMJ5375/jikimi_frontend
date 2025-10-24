@@ -57,7 +57,6 @@
 .active-item {
   background-color: #3341F3 !important;
   color: #fff !important;
-  border-radius: 12px;
 }
 
 /* 우측 콘텐츠 */
@@ -69,10 +68,55 @@
 
 /* 탭 */
 .custom-tabs {
-  border-bottom: none !important;
-  display: flex;
+  display: flex !important;
   justify-content: center;
-  gap: 60px;
+  align-items: center;
+  width: 100%;
+  border-bottom: none !important;
+  padding: 0;
+  margin: 0;
+}
+.custom-tabs .nav-item {
+  flex: 1 1 0 !important;
+  text-align: center;
+  width: 100%;
+  margin: 0 10px;
+}
+.custom-tabs .tab-link {
+  display: block !important;
+  width: 100% !important;
+  text-align: center !important;
+  position: relative;
+  color: #6c757d !important;
+  font-weight: 600;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 14px 0 !important;
+}
+.custom-tabs .tab-link::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background-color: #cccccc;
+  transition: background-color 0.3s ease;
+}
+
+/* 활성 탭 */
+.custom-tabs .tab-link.active {
+  color: #3341F3 !important;
+}
+.custom-tabs .tab-link.active::after {
+  background-color: #3341F3 !important;
+}
+.custom-tabs .tab-link:hover::after {
+  background-color: rgba(51, 65, 243, 0.4) !important;
+}
+.custom-tabs .tab-link:hover {
+  color: rgba(51, 65, 243, 0.8) !important;
 }
 
 .tab-link {
@@ -92,67 +136,118 @@
   color: #3341F3 !important;
 }
 
-.tab-link.active::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60%;
-  height: 3px;
-  background-color: #3341F3;
-  border-radius: 2px;
-}
-
 /* hover 시 같은 색상 유지 */
 .tab-link:hover {
   color: #3341F3 !important;
 }
 
+.tab-link.active::after,
 .tab-link:hover::after {
   content: "";
   position: absolute;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60%;
+  left: 0;
+  width: 100% !important;
   height: 3px;
   background-color: #3341F3;
-  opacity: 0.4;
-  border-radius: 2px;
+  transform: none !important;
+  border-radius: 0;
+  opacity: 1 !important;
 }
 
 /* 병원/약국 리스트 */
-.hospital-item {
+.list-item {
   position: relative;
-  padding: 10px 0;
+  padding: 8px 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
 }
 
-.favorite-star {
-  position: absolute;
-  right: 10px;
-  top: 10px;
-  color: #ffb400;
-  font-size: 1.2rem;
-}
-
-/* 페이지네이션 */
-.custom-pagination .page-item .page-link {
-  color: #333;
+.list-item:hover {
+  background-color: rgba(0, 0, 0, 0.03);
   border-radius: 6px;
 }
 
-.custom-pagination .page-item.active .page-link,
-.active-page .page-link {
-  background-color: #3341F3 !important;
-  border-color: #3341F3 !important;
-  color: #ffffff !important;
+.list-item .text-gray {
+  color: #555;
+  font-size: 14px;
+  font-weight: 400;
+  word-break: break-all;       /* 단어가 너무 길면 중간에서라도 줄바꿈 */
+  white-space: normal !important; /* nowrap 방지 → 줄바꿈 허용 */
+  flex-wrap: wrap;             /* flex 내부에서도 줄바꿈 허용 */
+  line-height: 1.5;            /* 가독성 향상 */
+  display: inline-block;       /* 줄바꿈 가능한 블록 형태 */
+  width: calc(100% - 85px);    /* 별 아이콘과 겹치지 않게 약간의 여유 */
 }
 
-.custom-pagination .page-link:hover {
-  background-color: #eaf1ff;
-  border-color: #eaf1ff;
-  color: #3341F3;
+
+.favorite-star {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  color: #FFD43B;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.favorite-star:hover {
+  transform: scale(1.15);
+}
+
+/* 도로명 라벨 스타일 추가 */
+.badge-road {
+  background-color: #5c5c5c;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 8px;
+  color: white;
+}
+
+/* 보조 텍스트 스타일 추가 */
+.text-gray {
+  color: #555;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* 리스트 구분선 (병원·약국 동일 적용) */
+.divider {
+  border: 0;
+  border-top: 0.5px solid #aaaaaa;
+  width: 100%;
+}
+
+/* 페이지네이션 통일 (Hospital 기준) */
+.pagination {
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.pagination .page-link {
+  color: #3B6CFF;
+  border: 1px solid #dee2e6;
+  font-size: 0.95rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: #3B6CFF;
+  border-color: #3B6CFF;
+  color: #fff;
+}
+
+.pagination .page-link:hover {
+  background-color: #eaf0ff;
+  color: #3B6CFF;
+}
+
+.pagination .page-item.disabled .page-link {
+  color: #ccc;
+  background-color: #f9f9f9;
+  border-color: #eee;
+  pointer-events: none;
 }
 
 /* 반응형 */
