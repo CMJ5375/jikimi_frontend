@@ -4,6 +4,7 @@ import '../../css/btn.css'
 import { API_SERVER_HOST } from '../../api/userApi';
 import axios from 'axios';
 import useCustomLogin from '../../hook/useCustomLogin';
+import { getKakaoLoginLink } from '../../api/kakaoApi';
 
 const initState = {
   username: '',
@@ -42,6 +43,10 @@ const Register = () => {
         alert("서버와 통신 중 오류 발생");
       }
     }
+  }
+  
+  const goKakao = () => {
+    window.location.href = getKakaoLoginLink()
   }
   
   return (
@@ -196,6 +201,7 @@ const Register = () => {
                   border: "none",
                   height: "50px",
                 }}
+                onClick={goKakao}
               >
                 <img
                   src="/image/kakao.png"
