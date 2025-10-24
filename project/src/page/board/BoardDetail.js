@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
-import '../../css/BoardDetail.css';
+import "../../css/BoardDetail.css";
 import { Eye,HandThumbsUp,Share,ThreeDots,ChevronLeft,ChevronRight,List, } from "react-bootstrap-icons";
 import { getOne, deletePost, getList, updatePost } from "../../api/postApi";
 
@@ -15,7 +15,7 @@ const BoardDetail = () => {
     content: "",
     likeCount: 0,
     createdAt: null,
-    userName: "",
+    authorName: "",
   });
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -48,7 +48,7 @@ const BoardDetail = () => {
           content: data.content ?? "",
           likeCount: data.likeCount ?? 0,
           createdAt: data.createdAt ?? null,
-          userName: data.userName ?? "",
+          authorName: (data.authorName ?? data.userName ?? `user#${data.userId ?? ""}`).toString(),
         });
         setEditTitle(data.title ?? "");
         setEditContent(data.content ?? "");
@@ -150,7 +150,7 @@ const BoardDetail = () => {
       <div className="text-muted small mb-1">게시글 {id} / 총 {totalCount}</div>
       <div className="d-flex justify-content-between align-items-center post-meta mb-3">
         <div>
-          {post.userName && <span className="fw-semibold text-dark me-2">{post.userName}</span>}
+          {post.authorName && <span className="fw-semibold text-dark me-2">{post.authorName}</span>}
           <span>{formatted.date} {formatted.time}</span>
         </div>
         <div><Eye /> 0</div>
