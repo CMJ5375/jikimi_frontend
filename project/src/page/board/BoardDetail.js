@@ -1,9 +1,35 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/BoardDetail.css";
-import { Eye,HandThumbsUp,Share,ThreeDots,ChevronLeft,ChevronRight,List, } from "react-bootstrap-icons";
-import { getOne, deletePost, getList, updatePost } from "../../api/postApi";
+import { Eye,HandThumbsUp,Share,ThreeDots,ChevronLeft,ChevronRight,List } from "react-bootstrap-icons";
+import { getOne, deletePost, getList, updatePost, increaseView } from "../../api/postApi";
+
+// 조회수 : 이 글(postId)을 이 브라우저에서 이미 셌는지 확인
+const hasViewed = (postId) => {
+  try {
+    const raw = localStorage.getItem("VIEWED_POSTS");
+    const obj = raw ? JSON.parse(raw) : {};
+    return !!obj[postId]; // true면 이미 카운트한 글
+  } catch (err) {
+    console.error("hasViewed parse fail", err);
+    return false;
+  }
+};
+
+// 조회수 : 본 걸로 표시 (다시 안 세도록 기록)
+const markViewed = (postId) => {
+  try {
+    const raw = localStorage.getItem("VIEWED_POSTS");
+    const obj = raw ? JSON.parse(raw) : {};
+    obj[postId] = true;
+    localStorage.setItem("VIEWED_POSTS", JSON.stringify(obj));
+  } catch (err) {
+    console.error("markViewed save fail", err);
+  }
+};
+
+
 
 const BoardDetail = () => {
   const { id: idParam } = useParams();
@@ -14,6 +40,7 @@ const BoardDetail = () => {
     title: "",
     content: "",
     likeCount: 0,
+    viewCount: 0,
     createdAt: null,
     authorName: "",
   });
@@ -25,6 +52,67 @@ const BoardDetail = () => {
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
 
+  // 공유 모달
+  const [showShare, setShowShare] = useState(false);
+  const pageUrl = typeof window !== "undefined" ? window.location.href : "";
+  const shareTitle = post.title || "게시글 공유";
+
+  const openShare = useCallback(async () => {
+    // 1) Web Share API 지원 시 네이티브 공유 먼저 시도
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareTitle,
+          url: pageUrl,
+        });
+        return;
+      } catch (err) {
+        // 사용자가 취소하면 그냥 끝, 그 외 에러면 우리 모달로 폴백
+        // console.debug("native share cancelled or failed:", err);
+      }
+    }
+    // 2) 폴백: 커스텀 모달 열기
+    setShowShare(true);
+  }, [shareTitle, pageUrl]);
+
+  const copyLink = useCallback(async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(pageUrl);
+      } else {
+        // 구형 브라우저 폴백
+        const ta = document.createElement("textarea");
+        ta.value = pageUrl;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      alert("링크가 복사되었습니다.");
+      setShowShare(false);
+    } catch (e) {
+      alert("복사에 실패했습니다. 직접 복사해 주세요.");
+    }
+  }, [pageUrl]);
+
+  const xShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+    shareTitle
+  )}&url=${encodeURIComponent(pageUrl)}`;
+  const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+    pageUrl
+  )}`;
+
+  // ESC로 모달 닫기
+  useEffect(() => {
+    if (!showShare) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setShowShare(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showShare]);
+
   // 날짜 포맷
   const formatted = useMemo(() => {
     if (!post.createdAt) return { date: "", time: "" };
@@ -35,31 +123,56 @@ const BoardDetail = () => {
     };
   }, [post.createdAt]);
 
-  // 단건 조회
+
+  //단건 조회
   useEffect(() => {
-    let ignore = false;
-    (async () => {
+  let ignore = false;
+
+  (async () => {
+    setLoading(true);
+
+    // 1) 조회수 증가: localStorage 기준으로 아직 안 셌으면 +1
+    if (!hasViewed(id)) {
       try {
-        setLoading(true);
-        const data = await getOne(id);
-        if (ignore) return;
-        setPost({
-          title: data.title ?? "",
-          content: data.content ?? "",
-          likeCount: data.likeCount ?? 0,
-          createdAt: data.createdAt ?? null,
-          authorName: (data.authorName ?? data.userName ?? `user#${data.userId ?? ""}`).toString(),
-        });
-        setEditTitle(data.title ?? "");
-        setEditContent(data.content ?? "");
+        await increaseView(id); // PATCH /views -> 조회수 +1
       } catch (e) {
-        console.error(e);
+        console.error("increaseView failed", e);
       } finally {
-        if (!ignore) setLoading(false);
+        markViewed(id); // 이제 이 브라우저에서는 다시 안 올림
       }
-    })();
-    return () => { ignore = true; };
-  }, [id]);
+    }
+
+    // 2) 항상 최신 글 내용 가져오기
+    try {
+      const data = await getOne(id); // GET /posts/{id}
+
+      if (ignore) return;
+
+      setPost({
+        title: data.title ?? "",
+        content: data.content ?? "",
+        likeCount: data.likeCount ?? 0,
+        viewCount: data.viewCount ?? 0,
+        createdAt: data.createdAt ?? null,
+        authorName:
+          (data.authorName ?? data.userName ?? `user#${data.userId ?? ""}`).toString(),
+      });
+
+      setEditTitle(data.title ?? "");
+      setEditContent(data.content ?? "");
+    } catch (err) {
+      console.error("getOne failed", err);
+    } finally {
+      if (!ignore) {
+        setLoading(false);
+      }
+    }
+  })();
+
+  return () => {
+    ignore = true;
+  };
+}, [id]);
 
   // 총 개수(이전/다음 계산용)
   useEffect(() => {
@@ -153,7 +266,7 @@ const BoardDetail = () => {
           {post.authorName && <span className="fw-semibold text-dark me-2">{post.authorName}</span>}
           <span>{formatted.date} {formatted.time}</span>
         </div>
-        <div><Eye /> 0</div>
+        <div><Eye /> {post.viewCount ?? 0}</div>
       </div>
 
       <hr />
@@ -187,7 +300,7 @@ const BoardDetail = () => {
           <button className="btn btn-outline-primary flex-fill py-2">
             <HandThumbsUp /> 좋아요 {post.likeCount}
           </button>
-          <button className="btn btn-outline-secondary flex-fill py-2">
+          <button className="btn btn-outline-secondary flex-fill py-2" onClick={openShare}>
             <Share /> 공유
           </button>
         </div>
@@ -266,6 +379,59 @@ const BoardDetail = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* 공유 모달 */}
+      {showShare && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 share-backdrop"
+            onClick={() => setShowShare(false)}
+          />
+          {/* Modal */}
+          <div className="position-fixed top-50 start-50 translate-middle bg-white rounded-3 shadow-lg p-3 p-md-4 share-modal" role="dialog" aria-modal="true">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <h6 className="m-0">공유하기</h6>
+              <button
+                type="button"
+                className="btn-close"
+                aria-label="Close"
+                onClick={() => setShowShare(false)}
+              />
+            </div>
+
+            <div className="small text-muted mb-3">{shareTitle}</div>
+
+            <div className="input-group mb-3">
+              <input className="form-control" readOnly value={pageUrl} onFocus={(e) => e.target.select()} />
+              <button className="btn btn-outline-secondary" onClick={copyLink}>복사</button>
+            </div>
+
+            <div className="d-flex gap-2">
+              <a
+                className="btn btn-outline-primary flex-fill"
+                href={xShareUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                X(트위터)
+              </a>
+              <a
+                className="btn btn-outline-primary flex-fill"
+                href={fbShareUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                페이스북
+              </a>
+            </div>
+
+            <div className="text-end mt-3">
+              <button className="btn btn-secondary" onClick={() => setShowShare(false)}>닫기</button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
