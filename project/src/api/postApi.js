@@ -1,4 +1,3 @@
-// src/api/postApi.js
 import axios from "axios";
 import jwtAxios from '../util/jwtUtil'
 
@@ -31,4 +30,10 @@ export const updatePost = async (postId, post) => {
 export const deletePost = async (postId) => {
   const res = await jwtAxios.delete(`${prefix}/${postId}`);
   return res.data;
+};
+
+// 조회수 증가 API
+export const increaseView = async (postId) => {
+  const res = await jwtAxios.patch(`${prefix}/${postId}/views`);
+  return res.data; // { viewCount: number }
 };
