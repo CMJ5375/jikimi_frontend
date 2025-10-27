@@ -61,6 +61,9 @@ const MyPage = () => {
   if (!isLogin) {
     return moveToLoginReturn();
   }
+  const handleClickPwChange = () => {
+    moveToPath('/finduserpw');
+  };
 
   return (
     <>
@@ -335,13 +338,22 @@ const MyPage = () => {
                           </Form.Group>
 
                           <div className="text-end">
-                            <Button
-                              variant="primary"
-                              style={{ backgroundColor: "#3341F3", borderColor: "#3341F3" }}
-                              onClick={handleClickModify}
-                            >
-                              회원정보 수정
-                            </Button>
+                            <div className="d-flex justify-content-end gap-2">
+                              <Button
+                                variant="secondary"
+                                style={{ backgroundColor: "#6c757d", borderColor: "#6c757d" }}
+                                onClick={handleClickPwChange}
+                              >
+                                비밀번호 변경
+                              </Button>
+                              <Button
+                                variant="primary"
+                                style={{ backgroundColor: "#3341F3", borderColor: "#3341F3" }}
+                                onClick={handleClickModify}
+                              >
+                                회원정보 수정
+                              </Button>
+                            </div>
                           </div>
                         </Form>
                       </div>

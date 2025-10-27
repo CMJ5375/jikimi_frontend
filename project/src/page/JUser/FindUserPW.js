@@ -218,7 +218,7 @@ const FindUserPW = () => {
                 <Nav.Link as={Link} to="/finduser" eventKey="/finduser">아이디 찾기</Nav.Link>
               </Nav.Item>
               <Nav.Item className="text-center">
-                <Nav.Link as={Link} to="/finduserpw" eventKey="/finduserpw">비밀번호 찾기</Nav.Link>
+                <Nav.Link as={Link} to="/finduserpw" eventKey="/finduserpw">비밀번호 변경</Nav.Link>
               </Nav.Item>
             </Nav>
 
