@@ -3,7 +3,7 @@ import "../../App.css";
 import "../../css/MyPage.css";
 import { Container, Row, Col, Card, ListGroup, Button, Nav, Form, Spinner } from "react-bootstrap";
 import { FaBookmark, FaCommentDots, FaStar, FaHeart, FaRegCommentDots, FaRegStar } from "react-icons/fa";
-import { getFavorites, removeFavorite, toggleFavorite } from "../../api/favoriteApi";
+import { getFavorites, toggleFavorite } from "../../api/favoriteApi";
 import { useNavigate } from "react-router-dom";
 import useCustomLogin from "../../hook/useCustomLogin";
 
@@ -28,17 +28,19 @@ const MyPage = () => {
   useEffect(() => {
     const fetchFavorites = async () => {
       try {
-        const hospitalIds = getFavorites("HOSPITAL");
-        const pharmacyIds = getFavorites("PHARMACY");
+        const hospitalIds = await getFavorites("HOSPITAL");
+        const pharmacyIds = await getFavorites("PHARMACY");
+        const hospitalArray = Array.isArray(hospitalIds) ? hospitalIds : [];
+        const pharmacyArray = Array.isArray(pharmacyIds) ? pharmacyIds : [];
 
         const hospitalData = await Promise.all(
-          hospitalIds.map((id) =>
+          hospitalArray.map((id) =>
             fetch(`http://localhost:8080/project/hospital/${id}`).then((res) => res.json())
           )
         );
 
         const pharmacyData = await Promise.all(
-          pharmacyIds.map((id) =>
+          pharmacyArray.map((id) =>
             fetch(`http://localhost:8080/project/pharmacy/${id}`).then((res) => res.json())
           )
         );
@@ -57,13 +59,17 @@ const MyPage = () => {
 
   const totalFavorites = hospitalList.length + pharmacyList.length;
 
-  // 즐겨찾기 함수
-  const handleToggleFavorite = (type, id) => {
-    const newState = toggleFavorite(type, id);
-    setUnfavorited((prev) => ({
-      ...prev,
-      [`${type}_${id}`]: !newState, // true면 해제, false면 즐겨찾기 상태로 전환
-    }));
+  // 즐겨찾기 토글
+  const handleToggleFavorite = async (type, id) => {
+    try {
+      const newState = await toggleFavorite(type, id);
+      setUnfavorited((prev) => ({
+        ...prev,
+        [`${type}_${id}`]: !newState,
+      }));
+    } catch (e) {
+      console.error("즐겨찾기 토글 실패:", e);
+    }
   };
 
   if(!isLogin) {

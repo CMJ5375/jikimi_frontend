@@ -13,8 +13,11 @@ const HospitalDetail = () => {
   const { id } = useParams()
   const [hospital, setHospital] = useState(null)
   const [open, setOpen] = useState(false)
-  const { check, toggle } = useFavorites("HOSPITAL");
+  const { favorites, toggle, isLogin } = useFavorites("HOSPITAL")
+
+  const isFavorite = hospital && favorites.includes(String(hospital.facility?.facilityId));
   const [businessHours, setBusinessHours] = useState([]);
+  const [resources, setResources] = useState([]);
 
   //병원 정보 불러오기
   useEffect(() => {
@@ -45,6 +48,22 @@ const HospitalDetail = () => {
     fetchHours();
   }, [id]);
 
+  // 의료자원 데이터 불러오기
+   useEffect(() => {
+    const fetchInstitutions = async () => {
+      try {
+        const res = await fetch(`http://localhost:8080/project/hospital/${id}/institutions`);
+        if (!res.ok) throw new Error('institutions fetch failed');
+        const list = await res.json();
+        setResources(Array.isArray(list) ? list : []);
+      } catch (error) {
+        console.error("의료자원 정보를 불러오지 못했습니다:", error);
+        setResources([]);
+      }
+    };
+    fetchInstitutions();
+  }, [id]);
+
   if (!hospital) return <div>로딩 중...</div>;
 
   const bizHours =
@@ -62,15 +81,14 @@ const HospitalDetail = () => {
         ? departmentsSrc.split(',').map(s => s.trim()).filter(Boolean)
         : []);
 
-  // 의료자원 키(resources | institutions) 모두 대응 + 배열/문자열 모두 처리
-  const resourcesSrc = hospital.resources ?? hospital.institutions ?? [];
+  // 의료자원 키 : 우선순위 - 상태(resources) → hospital.institutions → hospital.resources
+  const resourcesSrc = (resources && resources.length ? resources : (hospital.institutions ?? hospital.resources ?? []));
   const resourcesList = Array.isArray(resourcesSrc)
     ? resourcesSrc.map((r) => r?.institutionName ?? r?.name ?? String(r))
     : (typeof resourcesSrc === 'string'
         ? resourcesSrc.split(',').map(s => s.trim()).filter(Boolean)
         : []);
 
-  const isFavorite = check(id);
   const todayKey = getTodayKey();
 
   return (
@@ -104,9 +122,12 @@ const HospitalDetail = () => {
           <Col>
             <h4 className="fw-bold mb-2 d-flex align-items-center justify-content-between">
               {hospital.hospitalName}
-              <span className="favorite-icon" onClick={() => toggle(id)}>
-                {isFavorite ? <StarFill size={30} color="#FFD43B" /> : <Star size={30} />}
-              </span>
+              {/* ⭐ 로그인시에만 렌더 */}
+              {isLogin && (
+                <span className="favorite-icon" onClick={() => toggle(hospital.facility?.facilityId)}>
+                  {isFavorite ? <StarFill size={30} color="#FFD43B" /> : <Star size={30} />}
+                </span>
+              )}
             </h4>
             <div className="d-flex flex-wrap gap-3 mt-2">
               <span>{hospital.hasEmergency ? 
@@ -122,13 +143,16 @@ const HospitalDetail = () => {
         {/* 지도 + 정보 테이블 */}
         <Row className="mb-4">
           <Col md={6}>
-            <KakaoMapComponent
-              id="map"
-              lat={hospital.facility?.latitude}
-              lng={hospital.facility?.longitude}
-              name={hospital.hospitalName}
-              height={300}
-            />
+            {hospital.facility?.latitude && hospital.facility?.longitude && (
+              <KakaoMapComponent
+                id={`hospital-map-${hospital.hospitalId || "temp"}`}
+                lat={hospital.facility.latitude}
+                lng={hospital.facility.longitude}
+                name={hospital.hospitalName}
+                height={300}
+                showCenterMarker={false}
+              />
+            )}
           </Col>
           <Col md={6}>
             <Table className="mt-3 mt-md-0 small hospital-table">

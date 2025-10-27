@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import '../../App.css';
 import "../../css/Pharmacy.css";
 import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstrap";
@@ -8,6 +8,7 @@ import useFavorites from "../../hook/useFavorites";
 import useFacilitySearch from "../../hook/useFacilitySearch";
 import PageComponent from "../../component/common/PageComponent";
 import KakaoMapComponent from "../../component/common/KakaoMapComponent";
+import useCustomLogin from "../../hook/useCustomLogin";
 
 const PharmacyMain = () => {
   const [distance, setDistance] = useState("")
@@ -15,15 +16,16 @@ const PharmacyMain = () => {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
 
   const { results, pageData, currentPos, search } = useFacilitySearch("pharmacy");
-  const { favorites, toggle, check } = useFavorites("PHARMACY");
   const navigate = useNavigate()
+  const { favorites, toggle, isLogin } = useFavorites("PHARMACY")
+  const { /* isLogin: 훅 내부에서 사용 중 */ } = useCustomLogin()
 
   //드롭다운 거리
   const distanceList = ["500m", "1km", "5km", "10km"]
 
   // 즐겨찾기 필터 적용
   const displayedResults = showFavoritesOnly
-    ? results.filter(r => favorites.includes(String(r.pharmacyId)))
+    ? results.filter((r) => favorites.includes(String(r.facilityId)))
     : results;
 
   return (
@@ -67,7 +69,7 @@ const PharmacyMain = () => {
         </Row>
 
           {/* 검색 폼 */}
-          <Form onSubmit={search}>
+          <Form onSubmit={(e) => search(e, 0, { keyword, distance })}>
             <Dropdown className="mb-3 dropdown-custom">
               <Dropdown.Toggle variant="light" className="text-dark d-flex justify-content-between align-items-center">
                 <span className={distance ? "" : "text-secondary"}>{distance || "거리 선택"}</span>
@@ -92,12 +94,15 @@ const PharmacyMain = () => {
           </Form>
 
           {/* 즐겨찾기만 보기 토글 버튼 */}
-          {results.length > 0 && (
+          {isLogin && results.length > 0 && (
             <>
-              <hr className="hr-line my-3"/>
-              <div className="d-flex justify-content-start align-items-center mt-4 mb-3">
-                <Button variant="light" onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                        className="border-0 d-flex align-items-center gap-2">
+              <hr className="hr-line my-3" />
+              <div className="d-flex justify-content-start align-items-center mt-4 mb-2">
+                <Button
+                  variant="light"
+                  onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                  className="border-0 d-flex align-items-center gap-2"
+                >
                   {showFavoritesOnly ? <StarFill color="#FFD43B" size={20}/> : <Star color="#aaa" size={20}/>}
                   <span className="small">{showFavoritesOnly ? "즐겨찾기만 보기" : "전체 보기"}</span>
                 </Button>
@@ -108,11 +113,24 @@ const PharmacyMain = () => {
           {/* 지도 */}
           {displayedResults.length > 0 && currentPos.lat && (
             <KakaoMapComponent
-              id="map"
+              key={pageData?.current || displayedResults.length}
+              id="pharmacy-map-main"
               lat={currentPos.lat}
               lng={currentPos.lng}
-              name="약국 위치"
+              name="내 위치"
               height={400}
+              showCenterMarker={true}
+              locations={displayedResults
+                .filter(
+                  (p) =>
+                    (p.latitude || p.facility?.latitude) &&
+                    (p.longitude || p.facility?.longitude)
+                )
+                .map((p) => ({
+                  name: p.name || p.pharmacyName || "약국",
+                  latitude: p.latitude || p.facility?.latitude,
+                  longitude: p.longitude || p.facility?.longitude,
+                }))}
             />
           )}
 
@@ -132,19 +150,19 @@ const PharmacyMain = () => {
                           {item.name}
                           <span className="result-distance">({item.distance})</span>
                         </span>
-                        <span
-                          className="favorite-icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggle(item.id);
-                          }}
-                        >
-                          {favorites.includes(String(item.id)) ? (
-                            <StarFill size={30} color="#FFD43B" />
-                          ) : (
-                            <Star size={30} />
-                          )}
-                        </span>
+                        {/* ⭐ 즐겨찾기 버튼: 로그인시에만 렌더 */}
+                        {isLogin && (
+                          <span
+                            className="favorite-icon"
+                            onClick={(e) => { e.stopPropagation(); toggle(item.facilityId); }}
+                          >
+                            {favorites.includes(String(item.facilityId)) ? (
+                              <StarFill size={30} color="#FFD43B" />
+                            ) : (
+                              <Star size={30} />
+                            )}
+                          </span>
+                        )}
                       </h5>
 
                       <div className="my-3 d-flex align-items-center">

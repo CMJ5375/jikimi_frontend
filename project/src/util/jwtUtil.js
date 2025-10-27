@@ -3,7 +3,10 @@ import { API_SERVER_HOST } from "../api/userApi";
 import { getCookie, setCookie } from "./cookieUtil";
 
 
-const jwtAxios = axios.create()
+const jwtAxios = axios.create({
+  baseURL: API_SERVER_HOST,
+  withCredentials: true,
+})
 
 const refreshJWT = async (accessToken, refreshToken) => {
   const host = API_SERVER_HOST

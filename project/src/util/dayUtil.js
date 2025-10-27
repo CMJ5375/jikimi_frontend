@@ -94,7 +94,7 @@ export const matchForDay = (dayKey, list) => {
 
 /* 특정 요일의 진료시간 / 비고 정리 */
 export const getHoursByDay = (dayKey, businessHours) => {
-  const record = matchForDay(dayKey, businessHours); // ✅ 수정됨
+  const record = matchForDay(dayKey, businessHours);
   if (!record) return { status: "정보 없음", note: "" };
   if (record.closed) return { status: "휴무", note: "" };
 

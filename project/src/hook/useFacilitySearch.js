@@ -3,57 +3,86 @@ import { useState, useEffect } from "react";
 import { addDistanceAndSort, getDefaultPosition } from "../api/geolocationApi";
 import { openUtil } from "../util/openUtil";
 
-/**
- * 병원/약국 공용 검색 Hook
- * - HospitalMain / PharmacyMain 모두 사용 가능
- *
- * @param {string} type "hospital" | "pharmacy"
- * @returns {object} { results, pageData, currentPos, page, search }
- */
 export default function useFacilitySearch(type) {
   const [results, setResults] = useState([]);
   const [pageData, setPageData] = useState(null);
   const [currentPos, setCurrentPos] = useState({ lat: null, lng: null });
   const [page, setPage] = useState(0);
+  const [filters, setFilters] = useState({
+    keyword: "",
+    org: "",
+    dept: "",
+    emergency: false,
+    distance: "",
+  });
 
-  // 기본 위치 가져오기
   useEffect(() => {
     getDefaultPosition().then(setCurrentPos);
   }, []);
 
-  // 검색 로직
-  const search = async (e, newPage = 0) => {
+  const search = async (e, newPage = 0, newFilters) => {
     if (e) e.preventDefault();
+
+    // 병합 후 즉시 적용
+    const f = { ...filters, ...(newFilters || {}) };
+    setFilters(f);
+
     try {
-      const url = `http://localhost:8080/project/${type}/list?page=${newPage}&size=10`;
+      const params = new URLSearchParams();
+      if (f.keyword) params.append("keyword", f.keyword);
+      if (f.org) params.append("org", f.org);
+      if (f.dept) params.append("dept", f.dept);
+      if (f.emergency) params.append("emergency", f.emergency);
+      if (f.distance && String(f.distance).trim() !== "") {
+        params.append("distance", f.distance);
+      }
+      if (currentPos.lat && currentPos.lng) {
+        params.append("lat", currentPos.lat);
+        params.append("lng", currentPos.lng);
+      }
+      params.append("page", newPage);
+      params.append("size", 10);
+
+      // 약국 검색 URL 수정
+      const url =
+        type === "hospital"
+          ? `http://localhost:8080/project/hospital/search?${params.toString()}`
+          : `http://localhost:8080/project/pharmacy/search?${params.toString()}`;
+
+      console.log(`[useFacilitySearch] 요청 URL: ${url}`);
+
       const res = await fetch(url);
       if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
       const pageJson = await res.json();
 
       const data = Array.isArray(pageJson.content) ? pageJson.content : [];
 
-      // 병원/약국 공통 포맷 변환
-      const normalized = data.map((item) => ({
-        id: item[`${type}Id`],
-        name: item[`${type}Name`],
-        address: item.facility?.address || "",
-        phone: item.facility?.phone || "",
-        latitude: item.facility?.latitude,
-        longitude: item.facility?.longitude,
-        orgType: item.orgType || "",
-        hasEmergency: item.hasEmergency ?? false,
-        open: openUtil(item.facilityBusinessHours || item.facility?.businessHours || []),
-        distance: item.distance
-          ? item.distance < 1
-            ? `${Math.round(item.distance * 1000)}m`
-            : `${item.distance.toFixed(1)}km`
-          : "",
-      }));
+      const normalized = data.map((item) => {
+        let displayDistance = "";
+        const d = item.distance;
+        if (typeof d === "number" && isFinite(d)) {
+          displayDistance = d < 1 ? `${Math.round(d * 1000)}m` : `${d.toFixed(1)}km`;
+        } else if (typeof d === "string") {
+          displayDistance = d;
+        }
 
-      // 거리 계산 및 정렬
+        return {
+          id: item[`${type}Id`],
+          facilityId: item.facility?.facilityId,
+          name: item[`${type}Name`],
+          address: item.facility?.address || "",
+          phone: item.facility?.phone || "",
+          latitude: item.facility?.latitude,
+          longitude: item.facility?.longitude,
+          orgType: item.orgType || "",
+          hasEmergency: item.hasEmergency ?? false,
+          open: openUtil(item.facilityBusinessHours || item.facility?.businessHours || []),
+          distance: displayDistance,
+        };
+      });
+
       const withDistance = addDistanceAndSort(normalized, currentPos);
 
-      // 페이지네이션 데이터 구성
       const totalPages = pageJson.totalPages;
       const current = pageJson.number + 1;
       const pageNumList = Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -76,5 +105,5 @@ export default function useFacilitySearch(type) {
     }
   };
 
-  return { results, pageData, currentPos, page, search };
+  return { results, pageData, currentPos, page, search, filters, setFilters };
 }

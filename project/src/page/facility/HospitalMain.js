@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import '../../App.css';
 import "../../css/Hospital.css";
 import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstrap";
@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import useFavorites from "../../hook/useFavorites";
 import useFacilitySearch from "../../hook/useFacilitySearch";
 import PageComponent from "../../component/common/PageComponent";
+import useCustomLogin from "../../hook/useCustomLogin";
 
 const HospitalMain = () => {
   const [dept, setDept] = useState("")
@@ -16,19 +17,20 @@ const HospitalMain = () => {
 
   const { results, pageData, search } = useFacilitySearch("hospital");
   const navigate = useNavigate()
-  const { favorites, toggle, check } = useFavorites("HOSPITAL")
+ const { favorites, toggle, isLogin } = useFavorites("HOSPITAL")
+  const { /* isLogin: 훅 내부에서 사용 중 */ } = useCustomLogin()
 
   //드롭다운 진료과목/기관종류
   const deptList = useMemo(
     () => ["내과", "외과", "정형외과", "소아청소년과", "산부인과", "안과", "이비인후과", "응급의학과"], []
   )
   const orgList = useMemo(
-    () => ["상급종합병원", "종합병원", "병원", "의원", "보건소", "한방병원", "치과의원"], []
+    () => ["상급종합병원", "종합병원", "병원", "한의원", "의원", "보건소", "한방병원", "치과의원"], []
   )
 
   // 즐겨찾기 필터 적용
-  const displayedResults = showFavoritesOnly
-    ? results.filter((r) => favorites.includes(String(r.hospitalId)))
+  const displayedResults = (isLogin && showFavoritesOnly)
+    ? results.filter((r) => favorites.includes(String(r.facilityId)))
     : results;
 
   return (
@@ -71,7 +73,7 @@ const HospitalMain = () => {
         </Row>
 
         {/* 검색 폼 */}
-        <Form onSubmit={search}>
+        <Form onSubmit={(e) => search(e, 0, { keyword, org, dept })}>
           {/* 진료과목 선택 */}
           <Dropdown className="mb-3 dropdown-custom">
             <Dropdown.Toggle variant="light" className="text-dark d-flex justify-content-between align-items-center">
@@ -114,11 +116,15 @@ const HospitalMain = () => {
         </Form>
 
         {/* 즐겨찾기 토글 */}
-        {results.length > 0 && (
+        {isLogin && results.length > 0 && (
           <>
             <hr className="hr-line my-3" />
             <div className="d-flex justify-content-start align-items-center mt-4 mb-2">
-              <Button variant="light" onClick={() => setShowFavoritesOnly(!showFavoritesOnly)} className="border-0 d-flex align-items-center gap-2">
+              <Button
+                variant="light"
+                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                className="border-0 d-flex align-items-center gap-2"
+              >
                 {showFavoritesOnly ? <StarFill color="#FFD43B" size={20}/> : <Star color="#aaa" size={20}/>}
                 <span className="small">{showFavoritesOnly ? "즐겨찾기만 보기" : "전체 보기"}</span>
               </Button>
@@ -133,15 +139,21 @@ const HospitalMain = () => {
             {displayedResults.map(item => {
               const isFavorite = favorites.includes(String(item.id));
               return (
-                <Card key={item.hospitalId} className="result-card mb-3"
-                      onClick={() => navigate(`/hospitaldetail/${item.id}`)}>
-                  <Card.Body>
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      <span className="text-gray">{item.orgType || "의료기관 정보 없음"}</span>
-                      <span className="favorite-icon" onClick={(e) => { e.stopPropagation(); toggle(item.id); }}>
-                        {isFavorite ? <StarFill size={30} color="#FFD43B" /> : <Star size={30} />}
-                      </span>
-                    </div>
+                  <Card key={item.hospitalId} className="result-card mb-3"
+                        onClick={() => navigate(`/hospitaldetail/${item.id}`)}>
+                    <Card.Body>
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <span className="text-gray">{item.orgType || "의료기관 정보 없음"}</span>
+                        {/* ⭐ 즐겨찾기 버튼: 로그인시에만 렌더 */}
+                        {isLogin && (
+                          <span
+                            className="favorite-icon"
+                            onClick={(e) => { e.stopPropagation(); toggle(item.facilityId); }}
+                          >
+                            {favorites.includes(String(item.facilityId)) ? <StarFill size={30} color="#FFD43B" /> : <Star size={30} />}
+                          </span>
+                        )}
+                      </div>
 
                      <h5 className="fw-bold mb-2">
                       {item.name}<span className="result-distance">({item.distance})</span>

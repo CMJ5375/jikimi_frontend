@@ -13,7 +13,8 @@ const PharmacyDetail = () => {
   const { id } = useParams();
   const [pharmacy, setPharmacy] = useState(null);
   const [open, setOpen] = useState(false);
-  const { check, toggle } = useFavorites("PHARMACY");
+  const { favorites, toggle, isLogin } = useFavorites("PHARMACY")
+  const isFavorite = pharmacy && favorites.includes(String(pharmacy.facility?.facilityId));
 
   // 약국 정보 불러오기
   useEffect(() => {
@@ -32,7 +33,6 @@ const PharmacyDetail = () => {
 
   if (!pharmacy) return <div>로딩 중...</div>;
   const bizHours = pharmacy.facilityBusinessHours || pharmacy.facility?.businessHours || [];
-  const isFavorite = check(id);
 
   return (
     <>
@@ -68,9 +68,12 @@ const PharmacyDetail = () => {
             <Col>
               <h4 className="fw-bold mb-2 d-flex align-items-center justify-content-between">
                 <span>{pharmacy.pharmacyName}</span>
-                <span className="favorite-icon" onClick={() => toggle(id)}>
-                  {isFavorite ? <StarFill size={30} color="#FFD43B" /> : <Star size={30} />}
-                </span>
+                {/* ⭐ 로그인시에만 렌더 */}
+                {isLogin && (
+                  <span className="favorite-icon" onClick={() => toggle(pharmacy.facility?.facilityId)}>
+                    {isFavorite ? <StarFill size={30} color="#FFD43B" /> : <Star size={30} />}
+                  </span>
+                )}
               </h4>
               <div className="d-flex gap-3 mt-2">
                 {open ? (
@@ -85,13 +88,16 @@ const PharmacyDetail = () => {
           {/* 지도 + 정보 */}
           <Row className="mb-4">
             <Col md={6}>
-              <KakaoMapComponent
-                id="map"
-                lat={pharmacy.facility?.latitude}
-                lng={pharmacy.facility?.longitude}
-                name={pharmacy.pharmacyName}
-                height={300}
-              />
+              {pharmacy.facility?.latitude && pharmacy.facility?.longitude && (
+                <KakaoMapComponent
+                  id={`pharmacy-map-${pharmacy.pharmacyId}`}
+                  lat={pharmacy.facility.latitude}
+                  lng={pharmacy.facility.longitude}
+                  name={pharmacy.pharmacyName}
+                  height={300}
+                  showCenterMarker={false}
+                />
+              )}
             </Col>
             <Col md={6}>
               <Table className="mt-3 mt-md-0 small pharmacy-table">
