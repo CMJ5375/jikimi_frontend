@@ -4,7 +4,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/BoardDetail.css";
 import CommentSection from "./CommentSection";
 import { Eye,HandThumbsUp,Share,ThreeDots,ChevronLeft,ChevronRight,List } from "react-bootstrap-icons";
-import { getOne, deletePost, getList, updatePost, increaseView } from "../../api/postApi";
+import { getOne, deletePost, getList, updatePost, increaseView, increaseLike } from "../../api/postApi";
 
 // 조회수 : 이 글(postId)을 이 브라우저에서 이미 셌는지 확인
 const hasViewed = (postId) => {
@@ -31,7 +31,6 @@ const markViewed = (postId) => {
 };
 
 
-
 const BoardDetail = () => {
   const { id: idParam } = useParams();
   const navigate = useNavigate();
@@ -45,6 +44,7 @@ const BoardDetail = () => {
     createdAt: null,
     authorName: "",
   });
+
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -57,6 +57,17 @@ const BoardDetail = () => {
   const [showShare, setShowShare] = useState(false);
   const pageUrl = typeof window !== "undefined" ? window.location.href : "";
   const shareTitle = post.title || "게시글 공유";
+
+  // 좋아요
+  const handleLike = useCallback(async () => {
+  try {
+      const res = await increaseLike(id); // PATCH /{id}/likes
+      // 서버에서 { likeCount: 숫자 } 내려온다고 가정
+      setPost((prev) => ({ ...prev, likeCount: res.likeCount ?? prev.likeCount + 1 }));
+    } catch (e) {
+      console.error("like failed", e);
+    }
+  }, [id]);
 
   const openShare = useCallback(async () => {
     // 1) Web Share API 지원 시 네이티브 공유 먼저 시도
@@ -298,7 +309,7 @@ const BoardDetail = () => {
       {/* 좋아요/공유 (수정모드 숨김) */}
       {!editMode && (
         <div className="d-flex gap-3 mb-5 like-share">
-          <button className="btn btn-outline-primary flex-fill py-2">
+          <button className="btn btn-outline-primary flex-fill py-2" onClick={handleLike}>
             <HandThumbsUp /> 좋아요 {post.likeCount}
           </button>
           <button className="btn btn-outline-secondary flex-fill py-2" onClick={openShare}>
