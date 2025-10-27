@@ -208,8 +208,11 @@ export default function CommentSection({ postId, hidden = false }) {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
         />
-        <button className="btn btn-primary ms-2" onClick={submit}>
-          등록
+        <button
+            className="btn btn-primary btn-lg px-4 ms-2 text-nowrap"
+            onClick={submit}
+            >
+            등록
         </button>
       </div>
 

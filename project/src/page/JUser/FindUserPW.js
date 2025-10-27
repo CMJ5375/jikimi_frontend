@@ -26,8 +26,9 @@ const FindUserPW = () => {
   const [pErr, setPErr] = useState(false);
   const [p2Err, setP2Err] = useState(false);
 
-  // 발송 성공 안내
-  const [sendOk, setSendOk] = useState(false);
+  // 발송/재발송 안내 메시지(지속 유지)
+  const [sendMsg, setSendMsg] = useState('');   // "", "인증번호를 보냈습니다...", "인증번호를 다시 보냈습니다..."
+  const [isResend, setIsResend] = useState(false); // 재발송 여부(스타일 다르게)
 
   // 재발송 타이머 (버튼은 항상 클릭 가능)
   const [left, setLeft] = useState(0);
@@ -47,10 +48,9 @@ const FindUserPW = () => {
   const mmss = (s) =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-  // 1) 코드 발송
+  // 1) 코드 발송 (재발송 시 메시지 굵고 크게, 계속 유지)
   const handleSend = async () => {
     setError('');
-    setSendOk(false);
     setUErr(false); setEErr(false);
     setIsVerified(false);
 
@@ -60,16 +60,43 @@ const FindUserPW = () => {
     if (hasErr) return;
 
     try {
-      await sendPwdCodeApi(userId, email);
+      const wasResend = left > 0;
+
+      const resp = await sendPwdCodeApi(userId.trim(), email.trim());
+      const data = resp?.data ?? resp; // axios 응답/데이터 양쪽 대응
+
+      // ✅ 200 OK이지만 본문으로 에러를 줄 때 처리
+      if (data?.error === 'USER_EMAIL_MISMATCH') {
+        setError('아이디와 이메일이 일치하지 않습니다.');
+        setSendMsg('');
+        setIsResend(false);
+        return;
+      }
+
+      // 성공 처리 (204 또는 200 정상)
       startTimer(300);
-      setSendOk(true);
+      setIsResend(wasResend);
+      setSendMsg(
+        wasResend
+          ? '인증번호를 다시 보냈습니다. (스팸함도 확인해주세요)'
+          : '인증번호를 보냈습니다. (스팸함도 확인해주세요)'
+      );
     } catch (e) {
-      console.error('pw-send error:', e?.response?.status, e?.response?.data);
-      setError('인증번호 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      const status = e?.response?.status;
+      const errKey = e?.response?.data?.error;
+
+      if (status === 404 && errKey === 'USER_EMAIL_MISMATCH') {
+        setError('아이디와 이메일이 일치하지 않습니다.');
+      } else {
+        console.error('pw-send error:', status, e?.response?.data);
+        setError('인증번호 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      }
+      setSendMsg('');
+      setIsResend(false);
     }
   };
 
-  // 2) 코드 검증
+  // 2) 코드 검증 (발송/재발송 메시지는 유지)
   const handleVerify = async () => {
     setError('');
     setUErr(false); setEErr(false); setCErr(false);
@@ -81,19 +108,23 @@ const FindUserPW = () => {
     if (hasErr) return;
 
     try {
-      const { data } = await verifyPwdCodeApi(userId, email, code);
+      const resp = await verifyPwdCodeApi(userId.trim(), email.trim(), code.trim());
+      const data = resp?.data ?? resp;
+
+      // 백엔드가 200 OK로 실패를 줄 수도 있으니 체크
       if (!data?.verified) {
         setIsVerified(false);
         setError('인증코드가 일치하지 않거나 만료되었습니다.');
         return;
       }
       setIsVerified(true);
-      setSendOk(false);
+      // ✅ 발송/재발송 메시지는 유지
     } catch (e) {
       console.error('pw-verify error:', e?.response?.status, e?.response?.data);
       setError('확인 중 오류가 발생했습니다.');
     }
   };
+
 
   // 3) 비밀번호 변경 (길이 제한 제거, 동일 여부만 체크)
   const handleResetPassword = async () => {
@@ -111,17 +142,42 @@ const FindUserPW = () => {
     }
 
     try {
-      const { data } = await resetPasswordApi(userId, email, code, newPw);
-      if (!data?.reset) {
-        setError('비밀번호 변경에 실패했습니다.');
+      const resp = await resetPasswordApi(userId.trim(), email.trim(), code.trim(), newPw);
+      const data = resp?.data;
+
+      if (data?.error === 'VERIFY_FAILED') {
+        setError('인증코드가 일치하지 않거나 만료되었습니다.');
         return;
       }
-      navigate('/login', { replace: true });
+      if (data?.error === 'USER_EMAIL_MISMATCH') {
+        setError('아이디와 이메일이 일치하지 않습니다.');
+        return;
+      }
+
+      // 정상 성공
+      if (data?.reset) {
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      // 그 외 200인데 reset=false
+      setError('비밀번호 변경에 실패했습니다.');
     } catch (e) {
-      console.error('pw-reset error:', e?.response?.status, e?.response?.data);
-      setError('비밀번호 변경 중 오류가 발생했습니다.');
+      const status = e?.response?.status;
+      const errKey = e?.response?.data?.error;
+
+      if (status === 400 && errKey === 'VERIFY_FAILED') {
+        setError('인증코드가 일치하지 않거나 만료되었습니다.');
+      } else if (status === 404 && errKey === 'USER_EMAIL_MISMATCH') {
+        setError('아이디와 이메일이 일치하지 않습니다.');
+      } else {
+        console.error('pw-reset error:', status, e?.response?.data);
+        setError('비밀번호 변경 중 오류가 발생했습니다.');
+      }
     }
   };
+
+
 
   const resetForm = () => {
     setUserId('');
@@ -132,7 +188,8 @@ const FindUserPW = () => {
     setIsVerified(false);
     setError('');
     setUErr(false); setEErr(false); setCErr(false); setPErr(false); setP2Err(false);
-    setSendOk(false);
+    setSendMsg('');
+    setIsResend(false);
     setLeft(0);
     clearTimeout(timerRef.current);
   };
@@ -218,10 +275,15 @@ const FindUserPW = () => {
                     </Button>
                   </Form.Group>
 
+                  {/* 인라인 메시지 */}
                   {error && <div className="text-danger small mb-2">* {error}</div>}
-                  {!error && sendOk && (
-                    <div className="text-success small mb-2">
-                      인증번호를 보냈습니다. (스팸함도 확인해주세요)
+                  {!error && sendMsg && (
+                    <div
+                      className={isResend ? 'text-success mb-2 fw-bold' : 'text-success small mb-2'}
+                      style={isResend ? { fontSize: '16px' } : undefined}
+                      aria-live="polite"
+                    >
+                      {sendMsg}
                     </div>
                   )}
 
