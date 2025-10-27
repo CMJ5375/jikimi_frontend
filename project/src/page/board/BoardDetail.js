@@ -4,6 +4,10 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/BoardDetail.css";
 import { Eye,HandThumbsUp,Share,ThreeDots,ChevronLeft,ChevronRight,List } from "react-bootstrap-icons";
 import { getOne, deletePost, getList, updatePost, increaseView, increaseLike } from "../../api/postApi";
+import { getLoginUser } from "../../util/authUtil";
+import { getCookie } from "../../util/cookieUtil";
+
+
 
 // 조회수 : 이 글(postId)을 이 브라우저에서 이미 셌는지 확인
 const hasViewed = (postId) => {
@@ -29,8 +33,8 @@ const markViewed = (postId) => {
   }
 };
 
-
 const BoardDetail = () => {
+  
   const { id: idParam } = useParams();
   const navigate = useNavigate();
   const id = Number(idParam || 0);
@@ -43,6 +47,9 @@ const BoardDetail = () => {
     createdAt: null,
     authorName: "",
   });
+
+  // 현재 내가 게시글에 좋아요 눌렀는지
+  const [liked, setLiked] = useState(false);
 
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -57,16 +64,41 @@ const BoardDetail = () => {
   const pageUrl = typeof window !== "undefined" ? window.location.href : "";
   const shareTitle = post.title || "게시글 공유";
 
-  // 좋아요
-  const handleLike = useCallback(async () => {
-  try {
-      const res = await increaseLike(id); // PATCH /{id}/likes
-      // 서버에서 { likeCount: 숫자 } 내려온다고 가정
-      setPost((prev) => ({ ...prev, likeCount: res.likeCount ?? prev.likeCount + 1 }));
-    } catch (e) {
-      console.error("like failed", e);
+  // 좋아요 취소하기 위한 쿠키 가져오기 (헬퍼)
+  function getLoginUsername() {
+    try {
+      const raw = getCookie("member");
+      if (!raw) return null;
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      return parsed?.username || null;
+    } catch {
+      return null;
     }
-  }, [id]);
+  }
+
+  // 좋아요 버튼 클릭
+  const username = getLoginUsername();
+
+  const handleLike = async () => {
+  if (!username) {
+    alert("로그인 후 이용 가능합니다.");
+    return;
+  }
+
+  try {
+    // PATCH /api/posts/{id}/likes?username=tester
+    const res = await increaseLike(id, username);
+
+    // 서버에서 { likeCount: number, liked: boolean } 돌려준다고 가정
+    setPost(prev => ({
+      ...prev,
+      likeCount: res.likeCount ?? prev.likeCount,
+    }));
+    setLiked(res.liked ?? false);
+  } catch (e) {
+    console.error("like failed", e);
+  }
+  };
 
   const openShare = useCallback(async () => {
     // 1) Web Share API 지원 시 네이티브 공유 먼저 시도
@@ -308,7 +340,10 @@ const BoardDetail = () => {
       {/* 좋아요/공유 (수정모드 숨김) */}
       {!editMode && (
         <div className="d-flex gap-3 mb-5 like-share">
-          <button className="btn btn-outline-primary flex-fill py-2" onClick={handleLike}>
+          <button className={"btn flex-fill py-2 " + (liked
+            ? "btn-primary text-white"      // 눌렀을 때 파란색
+            : "btn-outline-primary")        // 안 눌렀을 때 테두리만
+        } onClick={handleLike} >
             <HandThumbsUp /> 좋아요 {post.likeCount}
           </button>
           <button className="btn btn-outline-secondary flex-fill py-2" onClick={openShare}>

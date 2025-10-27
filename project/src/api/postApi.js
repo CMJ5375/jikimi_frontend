@@ -39,7 +39,10 @@ export const increaseView = async (postId) => {
 };
 
 // 좋아요 증가 API
-export const increaseLike = async (postId) => {
-  const res = await jwtAxios.patch(`${prefix}/${postId}/likes`);
-  return res.data; // { likeCount: number }
+export const increaseLike = async (postId, username) => {
+  const res = await jwtAxios.patch(
+    `${prefix}/${postId}/likes`, null,
+    { params: { username } } // ← ?username=...
+  );
+  return res.data;
 };
