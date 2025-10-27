@@ -117,7 +117,7 @@
 /* 구분선 */
 .hr-line {
   border: 0;
-  border-top: 0.5px solid #ccc;
+  border-top: 0.5px solid #aaa;
 }
 
 /* 검색 결과 카드 */
@@ -171,7 +171,12 @@
   padding: 2px 6px;
   border-radius: 4px;
   margin-right: 8px;
-  color: white
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  line-height: 1;
+  white-space: nowrap;          
 }
 
 /* 즐겨찾기 */
@@ -240,10 +245,37 @@
   border-radius: 8px;
 }
 
-/* 테이블 헤더 */
+/* 테이블 */
+.hospital-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.hospital-table th,
+.hospital-table td {
+  vertical-align: middle;
+  padding: 8px 10px;
+  line-height: 1.6;
+}
+
 .hospital-table th {
   background-color: #f4f4f4;
   text-align: center;
+  color: #414141ff;
+  font-weight: 600;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.hospital-table td {
+  color: #6c757d; /* 진료과목 섹션과 동일한 회색 톤 */
+  border-bottom: 1px solid #dee2e6;
+  word-break: keep-all;
+  white-space: normal;
+}
+
+.hospital-table tr:last-child th,
+.hospital-table tr:last-child td {
+  border-bottom: none;
 }
 
 /* 카드 헤더 */
@@ -255,6 +287,7 @@
   align-items: center;
   padding-left: 15px;
   font-weight: bold;
+  border-bottom: 1px solid #dee2e6;
 }
 
 /* 진료시간 강조 (오늘인 경우) */
