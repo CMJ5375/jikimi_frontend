@@ -121,7 +121,7 @@
 /* 구분선 */
 .hr-line {
   border: 0;
-  border-top: 0.5px solid #ccc;
+  border-top: 0.5px solid #aaa;
 }
 
 /* 검색 결과 카드 */
@@ -176,7 +176,12 @@
   padding: 2px 6px;
   border-radius: 4px;
   margin-right: 8px;
-  color: white
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  line-height: 1;
+  white-space: nowrap;          
 }
 
 /* 즐겨찾기 */
@@ -245,10 +250,40 @@
   border-radius: 8px;
 }
 
-/* 테이블 헤더 */
+/* 약국 상세페이지 테이블 스타일 */
+.pharmacy-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.pharmacy-table th,
+.pharmacy-table td {
+  vertical-align: middle;
+  padding: 8px 10px;
+  line-height: 1.6;
+}
+
+/* 헤더 셀 */
 .pharmacy-table th {
   background-color: #f4f4f4;
   text-align: center;
+  color: #414141ff;
+  font-weight: 600;
+  border-bottom: 1px solid #dee2e6;
+}
+
+/* 본문 셀 */
+.pharmacy-table td {
+  color: #6c757d;
+  border-bottom: 1px solid #dee2e6;
+  word-break: keep-all;
+  white-space: normal;
+}
+
+/* 마지막 줄 아래선 제거 */
+.pharmacy-table tr:last-child th,
+.pharmacy-table tr:last-child td {
+  border-bottom: none;
 }
 
 /* 카드 헤더 */
@@ -260,6 +295,7 @@
   align-items: center;
   padding-left: 15px;
   font-weight: bold;
+  border-bottom: 1px solid #dee2e6;
 }
 
 /* 영업시간 강조 (오늘인 경우) */
