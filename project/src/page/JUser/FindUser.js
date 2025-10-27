@@ -11,7 +11,10 @@ const FindUser = () => {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
 
-  const [sendOk, setSendOk] = useState(false); // 발송 성공 인라인 알림
+  // 발송/재발송 안내 메시지(지속 유지)
+  const [sendMsg, setSendMsg] = useState(""); // "", "인증번호를 보냈습니다...", "인증번호를 다시 보냈습니다..."
+  const [isResend, setIsResend] = useState(false); // 재발송 여부(스타일 다르게)
+
   const [isVerified, setIsVerified] = useState(false);
   const [result, setResult] = useState({ userId: "", joinDate: "" }); // userId = 서버 username
 
@@ -41,15 +44,13 @@ const FindUser = () => {
   const mmss = (s) =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
+  // 발송/재발송 공통 처리 (메시지는 유지)
   const handleSend = async () => {
-    // 공통/필드 상태 초기화
     setError("");
-    setSendOk(false);
     setIsVerified(false);
     setResult({ userId: "", joinDate: "" });
-    setEmailError(false); // placeholder 기본 문구로 돌림
+    setEmailError(false);
 
-    // 입력 검증: 이메일 비었을 때 → placeholder로 경고
     if (!email.trim()) {
       setEmailError(true);
       return;
@@ -57,21 +58,30 @@ const FindUser = () => {
 
     try {
       await sendCodeApi(email);
+      // 항상 5분으로 리셋
       startTimer(300);
-      setSendOk(true);
+
+      // 메시지 지속 유지 + 재발송 시 크게/볼드
+      const isRe = left > 0; // 남은 시간이 있었다면 재발송
+      setIsResend(isRe);
+      setSendMsg(
+        isRe
+          ? "인증번호를 다시 보냈습니다. (스팸함도 확인해주세요)"
+          : "인증번호를 보냈습니다. (스팸함도 확인해주세요)"
+      );
     } catch (e) {
       console.error("send-code error:", e?.response?.status, e?.response?.data);
       setError("인증번호 발송에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      setSendMsg("");
+      setIsResend(false);
     }
   };
 
   const handleVerify = async () => {
-    // 공통/필드 상태 초기화
     setError("");
     setEmailError(false);
     setCodeError(false);
 
-    // 입력 검증: 이메일/코드 각각 체크 → placeholder로 경고
     let hasErr = false;
     if (!email.trim()) {
       setEmailError(true);
@@ -98,11 +108,10 @@ const FindUser = () => {
       setIsVerified(true);
       setResult({
         userId: u?.username ?? "",
-        joinDate: "" // 필요 시 백엔드 확장
+        joinDate: ""
       });
 
-      setSendOk(false); // 성공 후 안내 문구는 숨김(선택)
-
+      // ✅ 검증 성공 후에도 발송/재발송 메시지는 유지
     } catch (e) {
       if (e?.response?.status === 404) {
         setError("해당 이메일로 가입된 계정이 없습니다.");
@@ -118,7 +127,8 @@ const FindUser = () => {
     setEmail("");
     setCode("");
     setError("");
-    setSendOk(false);
+    setSendMsg("");      // 리셋 때만 메시지 초기화
+    setIsResend(false);
     setEmailError(false);
     setCodeError(false);
     setResult({ userId: "", joinDate: "" });
@@ -167,7 +177,6 @@ const FindUser = () => {
             {/* 상태별 렌더링 */}
             {!isVerified ? (
               <>
-                {/* 입력 영역 */}
                 <Form>
                   {/* 이메일 + 발송 */}
                   <Form.Group className="mb-2 d-flex align-items-center">
@@ -184,7 +193,7 @@ const FindUser = () => {
                     />
                     <Button
                       variant="light"
-                      className="ms-2 fw-bold btn-main-blue"  
+                      className="ms-2 fw-bold btn-main-blue"
                       style={{ fontSize: "14px", height: "40px", width: "76px" }}
                       onClick={handleSend}
                     >
@@ -210,7 +219,7 @@ const FindUser = () => {
                     />
                     <Button
                       variant="light"
-                      className="ms-2 fw-bold btn-outline-blue" 
+                      className="ms-2 fw-bold btn-outline-blue"
                       style={{ fontSize: "14px", height: "40px", width: "76px" }}
                       onClick={handleVerify}
                     >
@@ -218,11 +227,17 @@ const FindUser = () => {
                     </Button>
                   </Form.Group>
 
-                  {/* 인라인 공통 메시지(서버/네트워크) */}
-                  {error && <div className="text-danger small mb-2">* {error}</div>}
-                  {!error && sendOk && (
-                    <div className="text-success small mb-2">
-                      인증번호를 보냈습니다. (스팸함도 확인해주세요)
+                  {/* 인라인 메시지 영역 */}
+                  {error && (
+                    <div className="text-danger small mb-2">* {error}</div>
+                  )}
+                  {!error && sendMsg && (
+                    <div
+                      className={isResend ? "text-success mb-2 fw-bold" : "text-success small mb-2"}
+                      style={isResend ? { fontSize: "16px" } : undefined}
+                      aria-live="polite"
+                    >
+                      {sendMsg}
                     </div>
                   )}
 
@@ -238,7 +253,7 @@ const FindUser = () => {
                     </button>
                   </div>
 
-                  {/* CTA 버튼 — 항상 클릭 가능, 스타일 규칙 준수 */}
+                  {/* CTA 버튼 — 항상 클릭 가능, 스타일 유지 */}
                   <div className="d-grid gap-2">
                     <Button
                       className="w-100 fw-bold btn-main-blue"
@@ -269,7 +284,7 @@ const FindUser = () => {
                   </Card.Body>
                 </Card>
 
-                {/* PC & 태블릿 - 세로 배치 */}
+                {/* PC & 태블릿 */}
                 <div className="d-none d-md-grid gap-2">
                   <Button className="w-100 fw-bold btn-main-blue" onClick={() => navigate("/login")}>
                     확인
@@ -279,7 +294,7 @@ const FindUser = () => {
                   </Button>
                 </div>
 
-                {/* 모바일 - 가로 배치 */}
+                {/* 모바일 */}
                 <div className="d-flex d-md-none gap-2">
                   <Button
                     className="flex-fill fw-bold btn-main-blue"
