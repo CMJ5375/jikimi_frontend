@@ -17,8 +17,8 @@ export const getList = async ({ page, size, boardCategory, q }) => {
   return res.data;
 };
 
-export const createPost = async (post) => {
-  const res = await jwtAxios.post(`${prefix}/add`, post);
+export const createPost = async (postData) => {
+  const res = await jwtAxios.post(`${prefix}/add`, postData);
   return res.data;
 };
 

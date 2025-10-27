@@ -1,10 +1,10 @@
-// src/component/BoardCreate.jsx
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import '../../css/BoardCreate.css';
 import { X } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
 import { createPost } from "../../api/postApi"; // 백엔드 호출 함수 import***
+import { getCookie } from "../../util/cookieUtil";
 
 // 한글 라벨 ↔ Enum 코드 매핑 (백엔드 enum: BoardCategory)
 const CATEGORY_OPTIONS = [
@@ -12,7 +12,6 @@ const CATEGORY_OPTIONS = [
   { label: "질문해요", value: "QUESTION" },
   { label: "병원정보", value: "HOSPITAL_INFO" },
   { label: "약국정보", value: "PHARMACY_INFO" },
-  // ⚠️ 백엔드 enum에 NOTICE가 없다면 주석 처리하거나 막아두세요.
   // { label: "공지사항", value: "NOTICE" },
 ];
 
@@ -37,7 +36,6 @@ const BoardCreat = ({ onClose }) => {
     if (fileRef.current && files.length === 1) fileRef.current.value = "";
   };
 
-  // 등록
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -46,32 +44,45 @@ const BoardCreat = ({ onClose }) => {
       return;
     }
 
-    // ⚠️ 백엔드 enum에 없는 값(예: NOTICE)이면 막기
-    const enumValues = CATEGORY_OPTIONS.map((o) => o.value);
-    if (!enumValues.includes(boardCategory)) {
-      alert("지원하지 않는 카테고리입니다. 다른 카테고리를 선택해주세요.");
+    // 로그인 쿠키에서 username만 꺼내기
+    const raw = getCookie("member");
+    if (!raw) {
+      alert("로그인 후 이용해주세요.");
       return;
     }
 
+    let parsed;
     try {
-      const newPost = {
-        title,
-        content,
-        fileUrl: files.length > 0 ? files[0].name : "",
-        likeCount: 0,
-        isDeleted: false,
-        // TODO: 로그인 연동 후 실제 userId로 교체
-        userId: 1,
-        // ✅ 가장 중요: Enum 코드 그대로 보내기
-        boardCategory,
-      };
+      // getCookie가 이미 JSON string 리턴한다고 가정
+      parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    } catch (err) {
+      console.error("cookie parse fail", err);
+      alert("로그인 정보가 손상되었습니다. 다시 로그인해주세요.");
+      return;
+    }
 
-      const newId = await createPost(newPost); // POST /api/posts/add
+    const username = parsed?.username;
+    if (!username) {
+      alert("로그인 정보에 username이 없습니다. 다시 로그인해주세요.");
+      return;
+    }
+
+    const newPost = {
+      title,
+      content,
+      fileUrl: files.length > 0 ? files[0].name : "",
+      likeCount: 0,
+      isDeleted: false,
+      boardCategory,
+      authorUsername: username, // ★ 백엔드가 이걸로 글쓴이 찾는다
+    };
+
+    try {
+      const newId = await createPost(newPost); // token 안 넘김
       alert("게시글이 등록되었습니다.");
-      // 네 리스트에서 상세 이동 경로가 /boarddetails/:id 였으므로 여기도 맞춰줌
       navigate(`/boarddetails/${newId}`);
     } catch (err) {
-      console.error(err);
+      console.error("createPost failed", err);
       alert("등록 중 오류가 발생했습니다.");
     }
   };
