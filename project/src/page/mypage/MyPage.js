@@ -13,6 +13,7 @@ const initState = {
   email: '',
   name: '',
   age: 0,
+  address: '',
   roleNames: []
 }
 
@@ -28,7 +29,7 @@ const MyPage = () => {
 
   // 유저 정보 가져오기
   useEffect(() => {
-    setUser({ ...loginInfo });
+     setUser({ ...initState, ...loginInfo, address: loginInfo?.address ?? '' });
   }, [loginInfo]);
 
   const handleChange = (e) => {
@@ -290,51 +291,61 @@ const MyPage = () => {
                   )}
 
                   {/* 회원정보 수정 */}
-                  {activeMenu === "profile" && (
-                    <div className="px-3 px-md-5 py-3">
-                      <Form>
-                        <Form.Group className="mb-3" controlId="formRank">
-                          <Form.Label>등급</Form.Label>
-                          <Form.Control type="text" name="roleNames" value={`${user.roleNames}`} readOnly />
-                        </Form.Group>
+                    {activeMenu === "profile" && (
+                      <div className="px-3 px-md-5 py-3">
+                        <Form>
+                          <Form.Group className="mb-3" controlId="formAddress">
+                            <Form.Label>주소</Form.Label>
+                            <Form.Control
+                              type="text"
+                              name="address"
+                              onChange={handleChange}
+                              value={user.address ?? ''}
+                              placeholder="주소를 입력해주세요"
+                            />
+                          </Form.Group>
 
-                        <Form.Group className="mb-3" controlId="formId">
-                          <Form.Label>아이디</Form.Label>
-                          <Form.Control type="text" name="username" value={`${user.username}`} readOnly />
-                        </Form.Group>
+                          <Form.Group className="mb-3" controlId="formId">
+                            <Form.Label>아이디</Form.Label>
+                            <Form.Control type="text" name="username" value={user.username ?? ''} readOnly />
+                          </Form.Group>
 
-                        <Form.Group className="mb-4" controlId="formName">
-                          <Form.Label>이름 <span className="text-danger">*</span></Form.Label>
-                          <Form.Control type="text" name="name" value={`${user.name}`} readOnly />
-                        </Form.Group>
+                          <Form.Group className="mb-4" controlId="formName">
+                            <Form.Label>
+                              이름 <span className="text-danger">*</span>
+                            </Form.Label>
+                            <Form.Control type="text" name="name" value={user.name ?? ''} readOnly />
+                          </Form.Group>
 
-                        <Form.Group className="mb-3" controlId="formEmail">
-                          <Form.Label>이메일</Form.Label>
-                          <Form.Control type="email" name="email" onChange={handleChange} value={`${user.email}`} />
-                        </Form.Group>
+                          <Form.Group className="mb-3" controlId="formEmail">
+                            <Form.Label>이메일</Form.Label>
+                            <Form.Control type="email" name="email" onChange={handleChange} value={user.email ?? ''} />
+                          </Form.Group>
 
-                        <Form.Group className="mb-3" controlId="formPassword">
-                          <Form.Label>비밀번호</Form.Label>
-                          <Form.Control type="password" name="password" onChange={handleChange} value={`${user.password}`} />
-                        </Form.Group>
+                          <Form.Group className="mb-3" controlId="formPassword">
+                            <Form.Label>비밀번호</Form.Label>
+                            <Form.Control type="password" name="password" onChange={handleChange} value={user.password ?? ''} />
+                          </Form.Group>
 
-                        <Form.Group className="mb-4" controlId="formAge">
-                          <Form.Label>나이 <span className="text-danger">*</span></Form.Label>
-                          <Form.Control type="text" name="age" onChange={handleChange} value={`${user.age}`} />
-                        </Form.Group>
+                          <Form.Group className="mb-4" controlId="formAge">
+                            <Form.Label>
+                              나이 <span className="text-danger">*</span>
+                            </Form.Label>
+                            <Form.Control type="text" name="age" onChange={handleChange} value={user.age ?? ''} />
+                          </Form.Group>
 
-                        <div className="text-end">
-                          <Button
-                            variant="primary"
-                            style={{ backgroundColor: "#3341F3", borderColor: "#3341F3" }}
-                            onClick={handleClickModify}
-                          >
-                            회원정보 수정
-                          </Button>
-                        </div>
-                      </Form>
-                    </div>
-                  )}
+                          <div className="text-end">
+                            <Button
+                              variant="primary"
+                              style={{ backgroundColor: "#3341F3", borderColor: "#3341F3" }}
+                              onClick={handleClickModify}
+                            >
+                              회원정보 수정
+                            </Button>
+                          </div>
+                        </Form>
+                      </div>
+                    )}
                 </Card.Body>
               </Card>
             </Col>
