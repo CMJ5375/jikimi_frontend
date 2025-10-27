@@ -3,12 +3,25 @@ import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/BoardDetail.css";
 import CommentSection from "./CommentSection";
-import { Eye,HandThumbsUp,Share,ThreeDots,ChevronLeft,ChevronRight,List } from "react-bootstrap-icons";
+import { Eye,HandThumbsUp,Share,ChevronLeft,ChevronRight,List } from "react-bootstrap-icons";
 import { getOne, deletePost, getList, updatePost, increaseView, increaseLike } from "../../api/postApi";
-import { getLoginUser } from "../../util/authUtil";
 import { getCookie } from "../../util/cookieUtil";
 
+// 내가 어떤 글을 좋아요 눌렀는지 브라우저에 저장하는 키
+const LS_LIKED_KEY = "LIKED_POSTS";
 
+function loadLikedMap() {
+  try {
+    const raw = localStorage.getItem(LS_LIKED_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLikedMap(map) {
+  localStorage.setItem(LS_LIKED_KEY, JSON.stringify(map));
+}
 
 // 조회수 : 이 글(postId)을 이 브라우저에서 이미 셌는지 확인
 const hasViewed = (postId) => {
@@ -39,6 +52,18 @@ const BoardDetail = () => {
   const { id: idParam } = useParams();
   const navigate = useNavigate();
   const id = Number(idParam || 0);
+
+  // 로그인 쿠키에서 username 가져오기
+  const raw = getCookie("member");
+  let username = null;
+  if (raw) {
+    try {
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      username = parsed?.username || null;
+    } catch (err) {
+      console.error("cookie parse fail", err);
+    }
+  }
 
   const [post, setPost] = useState({
     title: "",
@@ -78,27 +103,32 @@ const BoardDetail = () => {
   }
 
   // 좋아요 버튼 클릭
-  const username = getLoginUsername();
-
   const handleLike = async () => {
-  if (!username) {
-    alert("로그인 후 이용 가능합니다.");
-    return;
-  }
+  // 유저 검사 그대로 유지
+    if (!username) {
+      alert("로그인 후 이용 가능합니다.");
+      return;
+    }
 
-  try {
-    // PATCH /api/posts/{id}/likes?username=tester
-    const res = await increaseLike(id, username);
+    try {
+      const res = await increaseLike(id, username);
+      // 서버에서 { likeCount: number, liked: boolean } 내려온다고 가정
 
-    // 서버에서 { likeCount: number, liked: boolean } 돌려준다고 가정
-    setPost(prev => ({
-      ...prev,
-      likeCount: res.likeCount ?? prev.likeCount,
-    }));
-    setLiked(res.liked ?? false);
-  } catch (e) {
-    console.error("like failed", e);
-  }
+      // 상태 반영
+      setPost(prev => ({
+        ...prev,
+        likeCount: res.likeCount ?? prev.likeCount,
+      }));
+      setLiked(res.liked ?? false);
+
+      // localStorage에도 반영
+      const likedMap = loadLikedMap();
+      likedMap[id] = !!res.liked;
+      saveLikedMap(likedMap);
+
+    } catch (e) {
+      console.error("like failed", e);
+    }
   };
 
   const openShare = useCallback(async () => {
@@ -170,53 +200,57 @@ const BoardDetail = () => {
 
   //단건 조회
   useEffect(() => {
-  let ignore = false;
+    let ignore = false;
 
-  (async () => {
-    setLoading(true);
+    (async () => {
+      setLoading(true);
 
-    // 1) 조회수 증가: localStorage 기준으로 아직 안 셌으면 +1
-    if (!hasViewed(id)) {
+      // 조회수 증가 로직 유지
+      if (!hasViewed(id)) {
+        try {
+          await increaseView(id);
+        } catch (e) {
+          console.error("increaseView failed", e);
+        } finally {
+          markViewed(id);
+        }
+      }
+
       try {
-        await increaseView(id); // PATCH /views -> 조회수 +1
-      } catch (e) {
-        console.error("increaseView failed", e);
+        const data = await getOne(id); // GET /posts/{id}
+
+        if (ignore) return;
+
+        setPost({
+          title: data.title ?? "",
+          content: data.content ?? "",
+          likeCount: data.likeCount ?? 0,
+          viewCount: data.viewCount ?? 0,
+          createdAt: data.createdAt ?? null,
+          authorName:
+            (data.authorName ?? data.userName ?? `user#${data.userId ?? ""}`).toString(),
+        });
+
+        setEditTitle(data.title ?? "");
+        setEditContent(data.content ?? "");
+
+        // 여기 추가: 로컬 히스토리에서 liked 복원
+        const likedMap = loadLikedMap();
+        setLiked(!!likedMap[id]);
+
+      } catch (err) {
+        console.error("getOne failed", err);
       } finally {
-        markViewed(id); // 이제 이 브라우저에서는 다시 안 올림
+        if (!ignore) {
+          setLoading(false);
+        }
       }
-    }
+    })();
 
-    // 2) 항상 최신 글 내용 가져오기
-    try {
-      const data = await getOne(id); // GET /posts/{id}
-
-      if (ignore) return;
-
-      setPost({
-        title: data.title ?? "",
-        content: data.content ?? "",
-        likeCount: data.likeCount ?? 0,
-        viewCount: data.viewCount ?? 0,
-        createdAt: data.createdAt ?? null,
-        authorName:
-          (data.authorName ?? data.userName ?? `user#${data.userId ?? ""}`).toString(),
-      });
-
-      setEditTitle(data.title ?? "");
-      setEditContent(data.content ?? "");
-    } catch (err) {
-      console.error("getOne failed", err);
-    } finally {
-      if (!ignore) {
-        setLoading(false);
-      }
-    }
-  })();
-
-  return () => {
-    ignore = true;
-  };
-}, [id]);
+    return () => {
+      ignore = true;
+    };
+  }, [id]);
 
   // 총 개수(이전/다음 계산용)
   useEffect(() => {
