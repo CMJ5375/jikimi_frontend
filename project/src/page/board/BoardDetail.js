@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/BoardDetail.css";
+import CommentSection from "./CommentSection";
 import { Eye,HandThumbsUp,Share,ThreeDots,ChevronLeft,ChevronRight,List } from "react-bootstrap-icons";
 import { getOne, deletePost, getList, updatePost, increaseView, increaseLike } from "../../api/postApi";
 import { getLoginUser } from "../../util/authUtil";
@@ -353,36 +354,9 @@ const BoardDetail = () => {
       )}
 
       {/* 댓글 (수정모드 숨김) */}
-      {!editMode && (
-        <>
-          <h6 className="fw-bold mb-3 mt-4">댓글 2</h6>
-          <div className="comment-input d-flex mb-4">
-            <div className="profile-img bg-light me-2"></div>
-            <input type="text" className="form-control" placeholder="댓글을 입력하세요..." />
-          </div>
-
-          <div className="comment-list">
-            {[
-              { id: 1, author: "프로단식러", datetime: "2025.09.22 23:57", text: "힘내세요. 저도 간경화 진단 받고나서는 회식 참여 전혀 안했어요. 영업직은 힘들지만 건강이 최우선이에요!" },
-              { id: 2, author: "희망찬직장인", datetime: "2025.09.23 09:15", text: "저도 비슷한 경험이 있었는데 식습관 바꾸고 운동하니 좋아졌어요!" },
-            ].map((c) => (
-              <div key={c.id} className="comment-box mb-3">
-                <div className="d-flex justify-content-between align-items-start">
-                  <div className="d-flex align-items-start">
-                    <div className="profile-img bg-light me-2"></div>
-                    <div>
-                      <div className="fw-semibold">{c.author}</div>
-                      <div className="text-muted small">{c.datetime}</div>
-                    </div>
-                  </div>
-                  <button className="btn btn-link text-secondary p-0"><ThreeDots /></button>
-                </div>
-                <p className="mt-2 mb-0 p-2">{c.text}</p>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      <CommentSection postId={id} hidden={editMode} />
+      
+      
 
       {/* 이전/다음/목록 (수정모드 숨김) */}
       {!editMode && (
