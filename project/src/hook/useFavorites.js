@@ -1,53 +1,44 @@
 // useFavorites.js
-import { useEffect, useState } from "react"
-import { getFavorites, toggleFavorite, isFavorite } from "../api/favoriteApi"
-import useCustomLogin from "./useCustomLogin"
+import { useEffect, useState } from "react";
+import { getFavorites, toggleFavorite } from "../api/favoriteApi";
+import useCustomLogin from "./useCustomLogin";
 
-// 병원/약국 공통 즐겨찾기 로직을 커스텀 훅으로 관리
-export default function useFavorites(type) {
+// user_favorite 테이블 구조에 맞게 병원/약국 ID 분리 반영
+const useFavorites = (type) => {
   const [favorites, setFavorites] = useState([]);
-  const { isLogin } = useCustomLogin()
+  const { isLogin } = useCustomLogin();
 
-  // 로그인 시 즐겨찾기 목록 불러오기
+  // 즐겨찾기 불러오기
   useEffect(() => {
-    const loadFavorites = async () => {
-      if (!isLogin) {
-        setFavorites([])
-        return
-      }
+    const fetchFavorites = async () => {
+      if (!isLogin) return;
       try {
-        const list = await getFavorites(type)
-        setFavorites(list.map(String))
+        const list = await getFavorites(type);
+        setFavorites(list.map(String));
       } catch (err) {
-        console.error("즐겨찾기 불러오기 실패:", err)
+        console.error(`${type} 즐겨찾기 불러오기 실패:`, err);
       }
-    }
-    loadFavorites()
-  }, [type, isLogin])
+    };
+    fetchFavorites();
+  }, [isLogin, type]);
 
-  // 즐겨찾기 토글 (클릭 시)
+  // 즐겨찾기 토글
   const toggle = async (id) => {
-    if (!isLogin) return false
+    if (!isLogin) return alert("로그인이 필요합니다.");
     try {
-      const newState = await toggleFavorite(type, id)
-      const updatedList = await getFavorites(type)
-      setFavorites(updatedList.map(String))
-      return newState
+      const updated = await toggleFavorite(type, id);
+      if (updated) {
+        setFavorites((prev) => [...prev, String(id)]);
+      } else {
+        setFavorites((prev) => prev.filter((fid) => fid !== String(id)));
+      }
     } catch (err) {
-      console.error("즐겨찾기 토글 실패:", err)
-      return false
+      console.error("즐겨찾기 토글 실패:", err);
     }
-  }
+  };
 
-  // 특정 항목이 즐겨찾기인지 확인
-  const check = async (id) => {
-    if (!isLogin) return false
-    try {
-      return await isFavorite(type, id)
-    } catch {
-      return favorites.includes(String(id))
-    }
-  }
+  return { favorites, toggle, isLogin };
+};
 
-  return { favorites, toggle, check, isLogin }
-}
+export default useFavorites;
+

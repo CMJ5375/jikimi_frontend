@@ -10,15 +10,15 @@ import PageComponent from "../../component/common/PageComponent";
 import useCustomLogin from "../../hook/useCustomLogin";
 
 const HospitalMain = () => {
-  const [dept, setDept] = useState("")
-  const [org, setOrg] = useState("")
-  const [keyword, setKeyword] = useState("")
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  const [dept, setDept] = useState("");
+  const [org, setOrg] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   const { results, pageData, search } = useFacilitySearch("hospital");
-  const navigate = useNavigate()
- const { favorites, toggle, isLogin } = useFavorites("HOSPITAL")
-  const { /* isLogin: 훅 내부에서 사용 중 */ } = useCustomLogin()
+  const navigate = useNavigate();
+  const { favorites, toggle, isLogin } = useFavorites("HOSPITAL");
+  const { /* isLogin: 훅 내부에서 사용 중 */ } = useCustomLogin();
 
   //드롭다운 진료과목/기관종류
   const deptList = useMemo(
@@ -29,8 +29,8 @@ const HospitalMain = () => {
   )
 
   // 즐겨찾기 필터 적용
-  const displayedResults = (isLogin && showFavoritesOnly)
-    ? results.filter((r) => favorites.includes(String(r.facilityId)))
+  const displayedResults = isLogin && showFavoritesOnly
+    ? results.filter((r) => favorites.includes(String(r.hospitalId || r.id)))
     : results;
 
   return (
@@ -115,7 +115,7 @@ const HospitalMain = () => {
           <Button type="submit" className="btn-search w-100">내 주변 병원 검색</Button>
         </Form>
 
-        {/* 즐겨찾기 토글 */}
+        {/* 즐겨찾기만 보기 */}
         {isLogin && results.length > 0 && (
           <>
             <hr className="hr-line my-3" />
@@ -135,56 +135,72 @@ const HospitalMain = () => {
         {/* 검색 결과 */}
         {displayedResults.length > 0 && (
           <>
-          <div className="mt-4">
-            {displayedResults.map(item => {
-              const isFavorite = favorites.includes(String(item.id));
-              return (
-                  <Card key={item.hospitalId} className="result-card mb-3"
-                        onClick={() => navigate(`/hospitaldetail/${item.id}`)}>
-                    <Card.Body>
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="text-gray">{item.orgType || "의료기관 정보 없음"}</span>
-                        {/* ⭐ 즐겨찾기 버튼: 로그인시에만 렌더 */}
-                        {isLogin && (
-                          <span
-                            className="favorite-icon"
-                            onClick={(e) => { e.stopPropagation(); toggle(item.facilityId); }}
-                          >
-                            {favorites.includes(String(item.facilityId)) ? <StarFill size={30} color="#FFD43B" /> : <Star size={30} />}
-                          </span>
-                        )}
-                      </div>
-
-                     <h5 className="fw-bold mb-2">
-                      {item.name}<span className="result-distance">({item.distance})</span>
+            <div className="mt-4">
+              {displayedResults.map((item) => (
+                <Card
+                  key={item.hospitalId || item.id}
+                  className="result-card mb-3"
+                  onClick={() => navigate(`/hospitaldetail/${item.hospitalId || item.id}`)}
+                >
+                  <Card.Body>
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <span className="text-gray">{item.orgType || "의료기관"}</span>
+                      {isLogin && (
+                        <span
+                          className="favorite-icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggle(item.hospitalId || item.id);
+                          }}
+                        >
+                          {favorites.includes(String(item.hospitalId || item.id)) ? (
+                            <StarFill size={30} color="#FFD43B" />
+                          ) : (
+                            <Star size={30} />
+                          )}
+                        </span>
+                      )}
+                    </div>
+                    <h5 className="fw-bold mb-2">
+                      {item.name}
+                      <span className="result-distance">({item.distance})</span>
                     </h5>
-
                     <div className="my-3 d-flex align-items-center">
                       <span className="badge-road">도로명</span>
                       <span className="text-gray">{item.address}</span>
                     </div>
-
-                     <div className="d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center justify-content-between">
                       <div className="text-gray d-flex align-items-center gap-2">
-                        <TelephoneFill className="me-1"/> {item.phone}
+                        <TelephoneFill className="me-1" /> {item.phone}
                       </div>
-                      <div className="d-flex align-items-center gap-2">
-                        {item.hasEmergency && <div className="d-flex align-items-center gap-1 text-danger fw-semibold small"><HospitalFill/> 응급실 운영</div>}
-                        <div className={`small fw-semibold ${item.open ? "text-success" : "text-secondary"}`}>
-                          {item.open ? (<><CheckCircleFill size={18}/> 운영 중</>) : (<><XCircleFill size={18}/> 운영종료</>)}
-                        </div>
+                      <div className={`small fw-semibold ${item.open ? "text-success" : "text-secondary"}`}>
+                        {item.open ? (
+                          <>
+                            <CheckCircleFill size={18} /> 운영 중
+                          </>
+                        ) : (
+                          <>
+                            <XCircleFill size={18} /> 운영 종료
+                          </>
+                        )}
                       </div>
                     </div>
                   </Card.Body>
                 </Card>
-              )})}
+              ))}
             </div>
             <PageComponent pageData={pageData} onPageChange={(n) => search(null, n)} />
           </>
         )}
+
+        {/* 검색 결과 없음 */}
+        {results.length === 0 && keyword && (
+          <div className="text-center text-secondary mt-4">
+            검색 결과가 없습니다.
+          </div>
+        )}
       </Container>
     </div>
-    
   );
 };
 

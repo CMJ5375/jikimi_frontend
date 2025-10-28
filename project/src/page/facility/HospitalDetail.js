@@ -13,11 +13,10 @@ const HospitalDetail = () => {
   const { id } = useParams()
   const [hospital, setHospital] = useState(null)
   const [open, setOpen] = useState(false)
-  const { favorites, toggle, isLogin } = useFavorites("HOSPITAL")
-
-  const isFavorite = hospital && favorites.includes(String(hospital.facility?.facilityId));
   const [businessHours, setBusinessHours] = useState([]);
   const [resources, setResources] = useState([]);
+  const { favorites, toggle, isLogin } = useFavorites("HOSPITAL");
+  const isFavorite = hospital && favorites.includes(String(id));
 
   //병원 정보 불러오기
   useEffect(() => {
@@ -124,7 +123,7 @@ const HospitalDetail = () => {
               {hospital.hospitalName}
               {/* ⭐ 로그인시에만 렌더 */}
               {isLogin && (
-                <span className="favorite-icon" onClick={() => toggle(hospital.facility?.facilityId)}>
+                <span className="favorite-icon" onClick={() => toggle(id)}>
                   {isFavorite ? <StarFill size={30} color="#FFD43B" /> : <Star size={30} />}
                 </span>
               )}
@@ -145,7 +144,7 @@ const HospitalDetail = () => {
           <Col md={6}>
             {hospital.facility?.latitude && hospital.facility?.longitude && (
               <KakaoMapComponent
-                id={`hospital-map-${hospital.hospitalId || "temp"}`}
+                id={`hospital-map-${id}`}
                 lat={hospital.facility.latitude}
                 lng={hospital.facility.longitude}
                 name={hospital.hospitalName}
