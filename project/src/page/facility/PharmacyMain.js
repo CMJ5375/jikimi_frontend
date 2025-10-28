@@ -17,15 +17,15 @@ const PharmacyMain = () => {
 
   const { results, pageData, currentPos, search } = useFacilitySearch("pharmacy");
   const navigate = useNavigate()
-  const { favorites, toggle, isLogin } = useFavorites("PHARMACY")
+  const { favorites, toggle, isLogin } = useFavorites("PHARMACY");
   const { /* isLogin: 훅 내부에서 사용 중 */ } = useCustomLogin()
 
   //드롭다운 거리
   const distanceList = ["500m", "1km", "5km", "10km"]
 
   // 즐겨찾기 필터 적용
-  const displayedResults = showFavoritesOnly
-    ? results.filter((r) => favorites.includes(String(r.facilityId)))
+  const displayedResults = isLogin && showFavoritesOnly
+    ? results.filter((r) => favorites.includes(String(r.pharmacyId || r.id)))
     : results;
 
   return (
@@ -93,7 +93,7 @@ const PharmacyMain = () => {
             <Button type="submit" className="btn-search w-100">내 주변 약국 검색</Button>
           </Form>
 
-          {/* 즐겨찾기만 보기 토글 버튼 */}
+          {/* 즐겨찾기만 보기 */}
           {isLogin && results.length > 0 && (
             <>
               <hr className="hr-line my-3" />
@@ -121,11 +121,7 @@ const PharmacyMain = () => {
               height={400}
               showCenterMarker={true}
               locations={displayedResults
-                .filter(
-                  (p) =>
-                    (p.latitude || p.facility?.latitude) &&
-                    (p.longitude || p.facility?.longitude)
-                )
+                .filter((p) => (p.latitude || p.facility?.latitude) && (p.longitude || p.facility?.longitude))
                 .map((p) => ({
                   name: p.name || p.pharmacyName || "약국",
                   latitude: p.latitude || p.facility?.latitude,
@@ -140,9 +136,9 @@ const PharmacyMain = () => {
               <div className="mt-4">
                 {displayedResults.map((item) => (
                   <Card
-                    key={item.id}
+                    key={item.pharmacyId || item.id}
                     className="result-card mb-3"
-                    onClick={() => navigate(`/pharmacydetail/${item.id}`)}
+                    onClick={() => navigate(`/pharmacydetail/${item.pharmacyId || item.id}`)}
                   >
                     <Card.Body>
                       <h5 className="fw-bold my-2 d-flex justify-content-between align-items-center">
@@ -150,13 +146,15 @@ const PharmacyMain = () => {
                           {item.name}
                           <span className="result-distance">({item.distance})</span>
                         </span>
-                        {/* ⭐ 즐겨찾기 버튼: 로그인시에만 렌더 */}
                         {isLogin && (
                           <span
                             className="favorite-icon"
-                            onClick={(e) => { e.stopPropagation(); toggle(item.facilityId); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggle(item.pharmacyId || item.id);
+                            }}
                           >
-                            {favorites.includes(String(item.facilityId)) ? (
+                            {favorites.includes(String(item.pharmacyId || item.id)) ? (
                               <StarFill size={30} color="#FFD43B" />
                             ) : (
                               <Star size={30} />
@@ -164,21 +162,15 @@ const PharmacyMain = () => {
                           </span>
                         )}
                       </h5>
-
                       <div className="my-3 d-flex align-items-center">
                         <span className="badge-road">도로명</span>
                         <span className="text-gray">{item.address}</span>
                       </div>
-
                       <div className="d-flex align-items-center justify-content-between">
                         <div className="text-gray d-flex align-items-center gap-2">
                           <TelephoneFill className="me-1" /> {item.phone}
                         </div>
-                        <div
-                          className={`small fw-semibold ${
-                            item.open ? "text-success" : "text-secondary"
-                          }`}
-                        >
+                        <div className={`small fw-semibold ${item.open ? "text-success" : "text-secondary"}`}>
                           {item.open ? (
                             <>
                               <CheckCircleFill size={18} /> 영업 중

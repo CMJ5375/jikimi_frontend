@@ -30,23 +30,21 @@ const MyPage = () => {
       try {
         const hospitalIds = await getFavorites("HOSPITAL");
         const pharmacyIds = await getFavorites("PHARMACY");
-        const hospitalArray = Array.isArray(hospitalIds) ? hospitalIds : [];
-        const pharmacyArray = Array.isArray(pharmacyIds) ? pharmacyIds : [];
 
         const hospitalData = await Promise.all(
-          hospitalArray.map((id) =>
+          hospitalIds.map((id) =>
             fetch(`http://localhost:8080/project/hospital/${id}`).then((res) => res.json())
           )
         );
 
         const pharmacyData = await Promise.all(
-          pharmacyArray.map((id) =>
+          pharmacyIds.map((id) =>
             fetch(`http://localhost:8080/project/pharmacy/${id}`).then((res) => res.json())
           )
         );
 
-        setHospitalList(hospitalData);
-        setPharmacyList(pharmacyData);
+        setHospitalList(hospitalData.filter(Boolean));
+        setPharmacyList(pharmacyData.filter(Boolean));
       } catch (err) {
         console.error("즐겨찾기 데이터를 불러오는 중 오류 발생:", err);
       } finally {
@@ -54,18 +52,20 @@ const MyPage = () => {
       }
     };
 
-    fetchFavorites();
-  }, []);
+    if (isLogin) {
+      fetchFavorites();
+    }
+  }, [isLogin]);
 
   const totalFavorites = hospitalList.length + pharmacyList.length;
 
   // 즐겨찾기 토글
-  const handleToggleFavorite = async (type, id) => {
+  const handleToggleFavorite = async (type, entityId) => {
     try {
-      const newState = await toggleFavorite(type, id);
+      const newState = await toggleFavorite(type, entityId);
       setUnfavorited((prev) => ({
         ...prev,
-        [`${type}_${id}`]: !newState,
+        [`${type}_${entityId}`]: !newState,
       }));
     } catch (e) {
       console.error("즐겨찾기 토글 실패:", e);
@@ -81,6 +81,9 @@ const MyPage = () => {
     const startIndex = (activePage - 1) * itemsPerPage;
     return list.slice(startIndex, startIndex + itemsPerPage);
   };
+
+  const pagedHospitals = paginate(hospitalList);
+  const pagedPharmacies = paginate(pharmacyList);
 
   return (
     <>
@@ -181,7 +184,7 @@ const MyPage = () => {
                       <Nav.Item>
                         <Nav.Link
                           className={`tab-link ${favoriteTab === "hospital" ? "active" : ""}`}
-                          onClick={() => setFavoriteTab("hospital")}
+                          onClick={() => { setActiveTabAndResetPage("hospital", setFavoriteTab, setActivePage); }}
                         >
                           병원
                         </Nav.Link>
@@ -189,7 +192,7 @@ const MyPage = () => {
                       <Nav.Item>
                         <Nav.Link
                           className={`tab-link ${favoriteTab === "pharmacy" ? "active" : ""}`}
-                          onClick={() => setFavoriteTab("pharmacy")}
+                          onClick={() => { setActiveTabAndResetPage("pharmacy", setFavoriteTab, setActivePage); }}
                         >
                           약국
                         </Nav.Link>
@@ -208,10 +211,10 @@ const MyPage = () => {
                     {!loading && favoriteTab === "hospital" && (
                       <>
                       {hospitalList.length === 0 ? (
-                        <p className="text-secondary small">즐겨찾기한 병원이 없습니다.</p>
+                        <p className="text-center text-secondary small mt-5">즐겨찾기한 병원이 없습니다.</p>
                       ) : (
-                        hospitalList.map((h, idx) => (
-                          <React.Fragment key={idx}>
+                        pagedHospitals.map((h, idx) => (
+                          <React.Fragment key={h.hospitalId || idx}>
                             <div
                               className="list-item p-3"
                               onClick={() => navigate(`/hospitaldetail/${h.hospitalId}`)}
@@ -230,7 +233,7 @@ const MyPage = () => {
                                     color="#ccc"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleToggleFavorite("HOSPITAL", h.hospitalId);
+                                      h.hospitalId && handleToggleFavorite("HOSPITAL", h.hospitalId);
                                     }}
                                   />
                                 ) : (
@@ -238,12 +241,12 @@ const MyPage = () => {
                                     className="favorite-star"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleToggleFavorite("HOSPITAL", h.hospitalId);
+                                      h.hospitalId && handleToggleFavorite("HOSPITAL", h.hospitalId);
                                     }}
                                   />
                                 )}
                             </div>
-                            {idx < hospitalList.length - 1 && <hr className="divider my-2" />}
+                            {idx < pagedHospitals.length - 1 && <hr className="divider my-2" />}
                           </React.Fragment>
                         ))
                       )}
@@ -254,10 +257,10 @@ const MyPage = () => {
                     {!loading && favoriteTab === "pharmacy" && (
                       <>
                         {pharmacyList.length === 0 ? (
-                          <p className="text-secondary small">즐겨찾기한 약국이 없습니다.</p>
+                          <p className="text-center text-secondary small mt-5">즐겨찾기한 약국이 없습니다.</p>
                         ) : (
-                          pharmacyList.map((p, idx) => (
-                            <React.Fragment key={idx}>
+                          pagedPharmacies.map((p, idx) => (
+                            <React.Fragment key={p.pharmacyId || idx}>
                               <div
                                 className="list-item p-3"
                                 onClick={() => navigate(`/pharmacydetail/${p.pharmacyId}`)}
@@ -276,7 +279,7 @@ const MyPage = () => {
                                     color="#ccc"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleToggleFavorite("PHARMACY", p.pharmacyId);
+                                      p.pharmacyId && handleToggleFavorite("PHARMACY", p.pharmacyId);
                                     }}
                                   />
                                 ) : (
@@ -284,12 +287,12 @@ const MyPage = () => {
                                     className="favorite-star"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleToggleFavorite("PHARMACY", p.pharmacyId);
+                                      p.pharmacyId && handleToggleFavorite("PHARMACY", p.pharmacyId);
                                     }}
                                   />
                                 )}
                               </div>
-                              {idx < pharmacyList.length - 1 && <hr className="divider my-2" />}
+                              {idx < pagedPharmacies.length - 1 && <hr className="divider my-2" />}
                             </React.Fragment>
                           ))
                         )}
@@ -361,7 +364,7 @@ const MyPage = () => {
                     )}
 
                     {postTab === "comment" && (
-                      <p className="text-center text-muted mt-5">
+                      <p className="text-center text-secondary small mt-5">
                         작성한 댓글이 없습니다.
                       </p>
                     )}
@@ -444,5 +447,10 @@ const MyPage = () => {
     </>
   );
 };
+
+function setActiveTabAndResetPage(value, setTab, setPage) {
+  setTab(value);
+  setPage(1);
+}
 
 export default MyPage;
