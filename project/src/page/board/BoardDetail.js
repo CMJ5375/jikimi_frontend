@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/BoardDetail.css";
 import CommentSection from "./CommentSection";
-import { Eye,HandThumbsUp,Share,ChevronLeft,ChevronRight,List } from "react-bootstrap-icons";
+import { Eye,HandThumbsUp,Share,ChevronLeft,ChevronRight,List,Folder } from "react-bootstrap-icons";
 import { getOne, deletePost, getList, updatePost, increaseView, increaseLike } from "../../api/postApi";
 import { getCookie } from "../../util/cookieUtil";
 
@@ -87,6 +87,12 @@ const BoardDetail = () => {
   const [showShare, setShowShare] = useState(false);
   const pageUrl = typeof window !== "undefined" ? window.location.href : "";
   const shareTitle = post.title || "게시글 공유";
+  
+  //첨부파일
+  const [showAttachPopup, setShowAttachPopup] = useState(false);
+  const [attachments, setAttachments] = useState([
+    { name: "간수치_상세표.xlsx", url: "/files/liver_data.xlsx" },
+  ]);
 
   // 좋아요 토글
   const handleLike = async () => {
@@ -202,7 +208,20 @@ const BoardDetail = () => {
           authorName:
             (data.authorName ?? data.userName ?? `user#${data.userId ?? ""}`).toString(),
           authorUsername: data.authorUsername ?? "", // ★ 작성자 username 받아서 저장
+          fileUrl: data.fileUrl ?? "",
         });
+
+        // 첨부파일: 서버는 fileUrl 하나만 줘 (문자열). 그걸 UI에서 배열처럼 취급해주자.
+        if (data.fileUrl && data.fileUrl.trim() !== "") {
+          setAttachments([
+            {
+              name: data.fileUrl,      // 화면에 보일 이름
+              url: data.fileUrl        // 클릭 시 열 주소(일단 동일하게 사용)
+            }
+          ]);
+        } else {
+          setAttachments([]);
+        }
 
         setEditTitle(data.title ?? "");
         setEditContent(data.content ?? "");
@@ -384,6 +403,46 @@ const BoardDetail = () => {
       </div>
 
       <hr />
+
+      {/* 첨부파일 줄 */}
+      {attachments.length > 0 && (
+        <div className="text-end position-relative mb-3">
+          <div
+            className="d-inline-flex align-items-center gap-1 text-muted small popup-trigger"
+            onClick={() => setShowAttachPopup(!showAttachPopup)}
+            style={{ cursor: "pointer" }}
+          >
+            <Folder size={16} />
+            첨부파일{" "}
+            <span className="text-primary fw-semibold">
+              {attachments.length}
+            </span>
+          </div>
+
+          {showAttachPopup && (
+            <div className="attachment-popup shadow-sm border rounded bg-white p-3 mt-2">
+              {attachments.map((file, index) => (
+                <div
+                  key={index}
+                  className="d-flex justify-content-between align-items-center"
+                  style={{ minWidth: "220px" }}
+                >
+                  <span className="text-truncate small fw-semibold" style={{ maxWidth: "140px" }}>
+                    {file.name}
+                  </span>
+                  <span className="text-muted mx-2">|</span>
+                  <button
+                    className="btn btn-link btn-sm p-0 text-decoration-none text-secondary"
+                    onClick={() => window.open(file.url, "_blank")}
+                  >
+                    내PC 저장
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 본문 */}
       <div className="post-body">

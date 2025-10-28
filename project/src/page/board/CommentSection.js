@@ -85,6 +85,8 @@ export default function CommentSection({ postId, hidden = false }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
+  const [pressing, setPressing] = useState(false); //버튼 깜빡임
+
   // 내 정보
   const me = useCurrentUser();
 
@@ -199,7 +201,9 @@ export default function CommentSection({ postId, hidden = false }) {
 
       {/* 입력창: 로그인 전용 게시판이라 항상 활성화 */}
       <div className="comment-input d-flex mb-4">
-        <div className="profile-img bg-light me-2"></div>
+        {/* 프로필 (정사각형, 동그라미, 찌그러지지 않게) */}
+        <div className="bg-light me-2" style={{ width: "40px",height: "40px", borderRadius: "50%", flexShrink: 0,}}></div>
+        
         <input
           type="text"
           className="form-control"
@@ -208,12 +212,17 @@ export default function CommentSection({ postId, hidden = false }) {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
         />
-        <button
-            className="btn btn-primary btn-lg px-4 ms-2 text-nowrap"
-            onClick={submit}
-            >
-            등록
-        </button>
+        <button className={
+          "btn btn-sm px-4 ms-2 text-nowrap " +
+          (pressing ? "text-white" : "btn-outline-secondary")
+        }
+        style={{ fontSize: "0.9rem", lineHeight: 1.2, paddingTop: "6px",paddingBottom: "6px",}}
+        onMouseUp={() => setPressing(false)}    // 떼면 회색
+        onMouseLeave={() => setPressing(false)} // 밖으로 나가면 회색
+        onClick={submit}                        // 실제 전송
+      >
+        등록
+      </button>
       </div>
 
       {err && <div className="text-danger small mb-2">{err}</div>}

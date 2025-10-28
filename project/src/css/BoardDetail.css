@@ -83,3 +83,16 @@
   .post-actions { justify-content: flex-end; }
 }
 
+/* 첨부파일 팝업 위치/느낌 유지 */
+.attachment-popup {
+  position: absolute;
+  right: 0;
+  z-index: 10;
+  background-color: #fff;
+  min-width: 220px;
+}
+
+/* (선택) hover 느낌 주고 싶으면 */
+.popup-trigger:hover {
+  color: #000;
+}
