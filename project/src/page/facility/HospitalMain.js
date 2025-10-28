@@ -15,7 +15,7 @@ const HospitalMain = () => {
   const [keyword, setKeyword] = useState("");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
-  const { results, pageData, search } = useFacilitySearch("hospital");
+  const { results, pageData, search, setFilters } = useFacilitySearch("hospital");
   const navigate = useNavigate();
   const { favorites, toggle, isLogin } = useFavorites("HOSPITAL");
   const { /* isLogin: 훅 내부에서 사용 중 */ } = useCustomLogin();
@@ -28,10 +28,19 @@ const HospitalMain = () => {
     () => ["상급종합병원", "종합병원", "병원", "한의원", "의원", "보건소", "한방병원", "치과의원"], []
   )
 
-  // 즐겨찾기 필터 적용
-  const displayedResults = isLogin && showFavoritesOnly
-    ? results.filter((r) => favorites.includes(String(r.hospitalId || r.id)))
-    : results;
+  //즐겨찾기
+  const displayedResults = results;
+
+  const handleSubmit = (e) => {
+    search(e, 0, { keyword, org, dept, onlyFavorites: showFavoritesOnly });
+  };
+
+  const handleToggleFavoritesOnly = () => {
+    const next = !showFavoritesOnly;
+    setShowFavoritesOnly(next);
+    setFilters((prev) => ({ ...prev, onlyFavorites: next }));
+    search(null, 0, { keyword, org, dept, onlyFavorites: next });
+  };
 
   return (
     <div className="bg-white">
@@ -73,7 +82,7 @@ const HospitalMain = () => {
         </Row>
 
         {/* 검색 폼 */}
-        <Form onSubmit={(e) => search(e, 0, { keyword, org, dept })}>
+        <Form onSubmit={handleSubmit}>
           {/* 진료과목 선택 */}
           <Dropdown className="mb-3 dropdown-custom">
             <Dropdown.Toggle variant="light" className="text-dark d-flex justify-content-between align-items-center">
@@ -122,8 +131,9 @@ const HospitalMain = () => {
             <div className="d-flex justify-content-start align-items-center mt-4 mb-2">
               <Button
                 variant="light"
-                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                onClick={handleToggleFavoritesOnly}
                 className="border-0 d-flex align-items-center gap-2"
+                title="즐겨찾기 목록만 보기"
               >
                 {showFavoritesOnly ? <StarFill color="#FFD43B" size={20}/> : <Star color="#aaa" size={20}/>}
                 <span className="small">{showFavoritesOnly ? "즐겨찾기만 보기" : "전체 보기"}</span>
@@ -189,7 +199,13 @@ const HospitalMain = () => {
                 </Card>
               ))}
             </div>
-            <PageComponent pageData={pageData} onPageChange={(n) => search(null, n)} />
+            {/* 페이지네이션 */}
+            <PageComponent
+              pageData={pageData}
+              onPageChange={(n) =>
+                search(null, n, { keyword, org, dept, onlyFavorites: showFavoritesOnly })
+              }
+            />
           </>
         )}
 

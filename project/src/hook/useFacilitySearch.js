@@ -25,70 +25,99 @@ export default function useFacilitySearch(type) {
   const search = async (e, newPage = 0, newFilters) => {
     if (e) e.preventDefault();
 
-    // 병합 후 즉시 적용
     const f = { ...filters, ...(newFilters || {}) };
     setFilters(f);
 
-   try {
+    try {
       const params = new URLSearchParams();
+
       if (f.keyword) params.append("keyword", f.keyword);
-      if (f.org && type === "hospital") params.append("org", f.org);
-      if (f.dept && type === "hospital") params.append("dept", f.dept);
-      if (typeof f.emergency === "boolean" && type === "hospital") {
-        params.append("emergency", String(f.emergency));
+      if (type === "hospital") {
+        if (f.org) params.append("org", f.org);
+        if (f.dept) params.append("dept", f.dept);
+        if (typeof f.emergency === "boolean")
+          params.append("emergency", String(f.emergency));
+      } else if (type === "pharmacy") {
+        if (f.distance) params.append("distance", f.distance);
       }
-      if (f.distance && type === "pharmacy") params.append("distance", f.distance);
 
-      // 즐겨찾기만 보기 서버 연동
-      if (f.onlyFavorites) params.append("onlyFavorites", "true");
+      // 즐겨찾기만 보기 플래그 항상 전달
+      params.append("onlyFavorites", String(!!f.onlyFavorites));
 
-      // 위치가 있으면 전달 (거리 계산/정렬용)
+      // 현재 위치 전달 (거리 계산용)
       if (currentPos.lat != null && currentPos.lng != null) {
         params.append("lat", currentPos.lat);
         params.append("lng", currentPos.lng);
       }
+
       params.append("page", newPage);
       params.append("size", 10);
 
-      const url =
+      const base =
         type === "hospital"
-          ? `http://localhost:8080/project/hospital/search?${params.toString()}`
-          : `http://localhost:8080/project/pharmacy/search?${params.toString()}`;
+          ? "http://localhost:8080/project/hospital/search"
+          : "http://localhost:8080/project/pharmacy/search";
 
-      console.log(`[useFacilitySearch] 요청 URL: ${url}`);
-
-      const res = await fetch(url);
+      const url = `${base}?${params.toString()}`;
+      const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
-      const pageJson = await res.json();
 
+      const pageJson = await res.json();
       const data = Array.isArray(pageJson.content) ? pageJson.content : [];
 
       const normalized = data.map((item) => {
+        const fac = item.facility || {};
+
+        // 거리 계산 (서버 값이 없으면 프론트에서 계산)
+        const lat = fac.latitude ?? null;
+        const lng = fac.longitude ?? null;
+
+        let distanceValue = item.distance;
+        if (distanceValue == null && currentPos.lat && currentPos.lng && lat && lng) {
+          const R = 6371;
+          const toRad = (deg) => (deg * Math.PI) / 180;
+          const dLat = toRad(lat - currentPos.lat);
+          const dLng = toRad(lng - currentPos.lng);
+          const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(currentPos.lat)) *
+              Math.cos(toRad(lat)) *
+              Math.sin(dLng / 2) *
+              Math.sin(dLng / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          distanceValue = R * c;
+        }
+
         let displayDistance = "";
-        const d = item.distance;
-        if (typeof d === "number" && isFinite(d)) {
-          displayDistance = d < 1 ? `${Math.round(d * 1000)}m` : `${d.toFixed(1)}km`;
-        } else if (typeof d === "string") {
-          displayDistance = d;
+        if (typeof distanceValue === "number" && isFinite(distanceValue)) {
+          displayDistance =
+            distanceValue < 1
+              ? `${Math.round(distanceValue * 1000)}m`
+              : `${distanceValue.toFixed(1)}km`;
+        } else if (typeof distanceValue === "string") {
+          displayDistance = distanceValue;
         }
 
         return {
           id: item[`${type}Id`],
-          [`${type}Id`]: item[`${type}Id`],
-          name: item.name || item.hospitalName || item.pharmacyName,
-          address: item.address || item.roadAddress || item.addr,
-          phone: item.phone || item.tel,
-          open: item.open,
+          facilityId: fac.facilityId,
+          name: item[`${type}Name`],
+          address: fac.address || "",
+          phone: fac.phone || "",
+          latitude: fac.latitude,
+          longitude: fac.longitude,
+          orgType: item.orgType || "",
+          hasEmergency: item.hasEmergency ?? false,
+          open: openUtil(item.facilityBusinessHours || fac.businessHours || []),
           distance: displayDistance,
-          lat: item.lat ?? item.latitude,
-          lng: item.lng ?? item.longitude,
-          raw: item,
         };
       });
 
-      setResults(normalized);
+      // 프론트 거리 기준으로 정렬
+      const sorted = addDistanceAndSort(normalized, currentPos);
+      setResults(sorted);
 
-      // 페이지네이션 정보 매핑 (서버 응답 기반)
+      // 페이지네이션 매핑
       const totalPages = pageJson.totalPages ?? 0;
       const current = pageJson.number ?? 0;
       const pageNumList = Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -102,6 +131,7 @@ export default function useFacilitySearch(type) {
         prevPage: newPage > 0 ? newPage - 1 : 0,
         nextPage: newPage < totalPages - 1 ? newPage + 1 : newPage,
       });
+
       setPage(newPage);
     } catch (error) {
       console.error("검색 실패:", error);
