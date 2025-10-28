@@ -228,7 +228,7 @@ const BoardDetail = () => {
       }
     })();
   }, []);
-
+  //커밋 테스트xxxx
   // 수정/삭제
   const handleEditStart = () => {
     setEditTitle(post.title);
