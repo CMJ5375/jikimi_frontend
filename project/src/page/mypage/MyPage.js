@@ -105,7 +105,7 @@ const MyPage = () => {
         {/* 상단 타이틀 */}
         <Row className="text-center mb-5">
           <Col>
-            <h2 className="mypage-title fw-bold">마이페이지ㅇㅇ</h2>
+            <h2 className="mypage-title fw-bold">마이페이지</h2>
           </Col>
         </Row>
 
