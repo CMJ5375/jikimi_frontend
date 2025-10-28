@@ -8,11 +8,10 @@ import { getCookie } from "../../util/cookieUtil";
 export default function MyCommentsPanel() {
   const navigate = useNavigate();
 
-  // 1) 로그인 가드
+  // 1) 로그인 상태 훅 (훅은 무조건 컴포넌트 최상단에서)
   const { isLogin, moveToLoginReturn } = useCustomLogin();
-  if (!isLogin) return moveToLoginReturn();
 
-  // 2) accessToken 준비 여부 확인 (쿠키가 문자열로 들어오는 경우 대비)
+  // 2) accessToken 준비 여부 확인 (항상 호출)
   const tokenReady = useMemo(() => {
     try {
       const raw = getCookie("member");
@@ -23,6 +22,7 @@ export default function MyCommentsPanel() {
     }
   }, []);
 
+  // 3) 상태 훅들 (항상 호출)
   const [list, setList] = useState([]);
   const [page, setPage] = useState(1);
   const size = 10;
@@ -30,6 +30,7 @@ export default function MyCommentsPanel() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
+  // 4) 데이터 로더
   const load = async (p = 1) => {
     try {
       setLoading(true);
@@ -44,16 +45,21 @@ export default function MyCommentsPanel() {
     }
   };
 
-  // 3) 토큰이 준비된 뒤에만 로드
+  // 5) 토큰 준비된 뒤에만 호출
   useEffect(() => {
-    if (tokenReady) {
-      load(page);
-    }
+    if (!tokenReady) return;
+    load(page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenReady, page]);
 
   const totalPages = Math.ceil(total / size);
 
+  // ✅ 여기서 분기한다 (렌더 단계에서만 가드)
+  if (!isLogin) {
+    return moveToLoginReturn();
+  }
+
+  // 나머지 렌더
   return (
     <>
       {loading && <p className="text-center text-muted mt-4">불러오는 중…</p>}
@@ -68,7 +74,14 @@ export default function MyCommentsPanel() {
             <div className="d-flex justify-content-between align-items-start">
               <div>
                 <div className="small text-muted mb-1">
-                  게시글 #{c.postId} · {new Date(c.createdAt).toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  게시글 #{c.postId} ·{" "}
+                  {new Date(c.createdAt).toLocaleString("ko-KR", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </div>
                 <div style={{ whiteSpace: "pre-line" }}>{c.content}</div>
               </div>
@@ -88,7 +101,11 @@ export default function MyCommentsPanel() {
         <div className="d-flex justify-content-center mt-4">
           <Pagination className="custom-pagination">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <Pagination.Item key={p} active={page === p} onClick={() => setPage(p)}>
+              <Pagination.Item
+                key={p}
+                active={page === p}
+                onClick={() => setPage(p)}
+              >
                 {p}
               </Pagination.Item>
             ))}

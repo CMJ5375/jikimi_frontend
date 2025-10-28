@@ -70,6 +70,7 @@ const BoardDetail = () => {
     authorName: "",
     authorUsername: "",
     fileUrl: "",
+    likedUsernames: [],
   });
 
   const [liked, setLiked] = useState(false);
@@ -103,20 +104,27 @@ const BoardDetail = () => {
       const res = await increaseLike(id, usernameForLike);
       // res: { likeCount, liked }
 
-      setPost((prev) => ({
-        ...prev,
-        likeCount: res.likeCount ?? prev.likeCount,
-      }));
-      setLiked(res.liked ?? false);
+      
+      setPost((prev) => {
+        let updatedUsers = [...(prev.likedUsernames || [])];
+        if (res.liked) {
+          if (!updatedUsers.includes(usernameForLike))
+            updatedUsers.push(usernameForLike);
+        } else {
+          updatedUsers = updatedUsers.filter(u => u !== usernameForLike);
+        }
 
-      // localStorage 캐싱
-      const likedMap = loadLikedMap();
-      likedMap[id] = !!res.liked;
-      saveLikedMap(likedMap);
+        return {
+          ...prev,
+          likeCount: res.likeCount ?? prev.likeCount,
+          likedUsernames: updatedUsers,
+        };
+      });
     } catch (e) {
       console.error("like failed", e);
     }
   };
+
 
   // 공유 버튼 클릭
   const openShare = useCallback(async () => {
@@ -182,6 +190,7 @@ const BoardDetail = () => {
               `user#${data.userId ?? ""}`).toString(),
           authorUsername: data.authorUsername ?? "",
           fileUrl: data.fileUrl ?? "",
+          likedUsernames: Array.isArray(data.likedUsernames) ? data.likedUsernames : [],
         });
 
         // 첨부파일 세팅 (우린 fileUrl 단일 필드만 쓰므로 배열 1개짜리로)
@@ -223,12 +232,13 @@ const BoardDetail = () => {
       try {
         const data = await getList({ page: 1, size: 1 });
         setTotalCount(data.totalCount ?? 0);
+        console.log(data)
       } catch (e) {
         console.error(e);
       }
     })();
   }, []);
-  //커밋 테스트xxxxdwdd
+
   // 수정/삭제
   const handleEditStart = () => {
     setEditTitle(post.title);
@@ -265,10 +275,10 @@ const BoardDetail = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("정말 삭제하시겠습니까?")) return;
+    if (!window.confirm("정말 삭제하시겠습니까?" + id)) return;
     try {
       await deletePost(id);
-      alert("게시글이 삭제되었습니다.");
+      alert("게시글이 삭제되었습니다." + id);
       navigate("/noticeboards");
     } catch (e) {
       console.error(e);
@@ -459,14 +469,17 @@ const BoardDetail = () => {
       {/* 좋아요 & 공유 버튼 */}
       {!editMode && (
         <div className="d-flex gap-3 mb-5 like-share">
-          <button
-            className={
-              "btn flex-fill py-2 " +
-              (liked ? "btn-primary text-white" : "btn-outline-primary")
-            }
-            onClick={handleLike}
-          ><HandThumbsUp /> 좋아요 {post.likeCount}
-          </button>
+         <button
+          className={
+            "btn flex-fill py-2 " +
+            (post.likedUsernames?.includes(usernameForLike)
+              ? "btn-primary text-white"
+              : "btn-outline-primary")
+          }
+          onClick={handleLike}
+        >
+          <HandThumbsUp /> 좋아요 {post.likeCount}
+        </button>
 
           <button
             className="btn btn-outline-secondary flex-fill py-2"
