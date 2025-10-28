@@ -1,7 +1,7 @@
 :root {
   --main-blue: #3341F3;
 }
-
+/*내꺼 브렌치 테스트 */
 .btn-main-blue {
   background-color: var(--main-blue);
   color: #fff;
