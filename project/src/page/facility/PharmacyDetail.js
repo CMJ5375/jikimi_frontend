@@ -5,16 +5,17 @@ import { Container, Row, Col, Table, Card } from "react-bootstrap";
 import { useParams, Link } from 'react-router-dom';
 import { StarFill, Star, CheckCircleFill, XCircleFill } from "react-bootstrap-icons";
 import { openUtil } from "../../util/openUtil";
-import { DAY_KEYS, matchForDay, getTodayKey } from "../../util/dayUtil";
+import { DAY_KEYS, getTodayKey, getKoreanDayName, getHoursByDay } from "../../util/dayUtil";
 import useFavorites from "../../hook/useFavorites";
 import KakaoMapComponent from "../../component/common/KakaoMapComponent";
 
 const PharmacyDetail = () => {
   const { id } = useParams();
   const [pharmacy, setPharmacy] = useState(null);
+  const [businessHours, setBusinessHours] = useState([]);
   const [open, setOpen] = useState(false);
   const { favorites, toggle, isLogin } = useFavorites("PHARMACY")
-  const isFavorite = pharmacy && favorites.includes(String(pharmacy.facility?.facilityId));
+  const isFavorite = pharmacy && favorites.includes(String(id));
 
   // 약국 정보 불러오기
   useEffect(() => {
@@ -23,7 +24,7 @@ const PharmacyDetail = () => {
         const res = await fetch(`http://localhost:8080/project/pharmacy/${id}`);
         const data = await res.json();
         setPharmacy(data);
-        setOpen(openUtil(data.facilityBusinessHours || data.facility?.businessHours || []));
+        setOpen(openUtil(data.facilityBusinessHours || []));
       } catch (error) {
         console.error("약국 정보를 불러오지 못했습니다:", error);
       }
@@ -31,8 +32,29 @@ const PharmacyDetail = () => {
     fetchPharmacy();
   }, [id]);
 
+  // 진료시간(영업시간) 불러오기
+  useEffect(() => {
+    const fetchHours = async () => {
+      try {
+        const res = await fetch(`http://localhost:8080/project/pharmacy/${id}/business-hours`);
+        const data = await res.json();
+        setBusinessHours(data);
+      } catch (err) {
+        console.error("영업시간 로드 실패:", err);
+      }
+    };
+    fetchHours();
+  }, [id]);
+
   if (!pharmacy) return <div>로딩 중...</div>;
-  const bizHours = pharmacy.facilityBusinessHours || pharmacy.facility?.businessHours || [];
+
+  const bizHours =
+    pharmacy.facilityBusinessHours ||
+    pharmacy.facilityBusinessHourList ||
+    pharmacy.facility?.businessHours ||
+    businessHours;
+
+  const todayKey = getTodayKey();
 
   return (
     <>
@@ -70,7 +92,7 @@ const PharmacyDetail = () => {
                 <span>{pharmacy.pharmacyName}</span>
                 {/* ⭐ 로그인시에만 렌더 */}
                 {isLogin && (
-                  <span className="favorite-icon" onClick={() => toggle(pharmacy.facility?.facilityId)}>
+                  <span className="favorite-icon" onClick={() => toggle(id)}>
                     {isFavorite ? <StarFill size={30} color="#FFD43B" /> : <Star size={30} />}
                   </span>
                 )}
@@ -90,7 +112,7 @@ const PharmacyDetail = () => {
             <Col md={6}>
               {pharmacy.facility?.latitude && pharmacy.facility?.longitude && (
                 <KakaoMapComponent
-                  id={`pharmacy-map-${pharmacy.pharmacyId}`}
+                  id={`pharmacy-map-${id}`}
                   lat={pharmacy.facility.latitude}
                   lng={pharmacy.facility.longitude}
                   name={pharmacy.pharmacyName}
@@ -131,25 +153,18 @@ const PharmacyDetail = () => {
                 <Card.Body className="small text-secondary">
                   <Row>
                     {DAY_KEYS.map((dayKey, idx) => {
-                      const matched = matchForDay(dayKey, bizHours);
-                      const today = getTodayKey();
-                      const isToday = dayKey === today;
-                      const labelMap = {
-                        MON: "월", TUE: "화", WED: "수", THU: "목",
-                        FRI: "금", SAT: "토", SUN: "일",
-                      };
-
-                      return (
-                        <Col key={idx} xs={6} md={6} className="mb-1">
-                          <strong style={isToday ? { color: "#2563eb" } : {}}>
-                            {labelMap[dayKey]}
-                          </strong>{" "}
-                          {matched
-                            ? `${matched.openTime}~${matched.closeTime}`
-                            : <strong style={{ color: "#eb2525ff" }}>휴무</strong>}
-                        </Col>
-                      );
-                    })}
+                    const row = getHoursByDay(dayKey, bizHours);
+                    const isToday = dayKey === todayKey;
+                    return (
+                      <Col key={idx} xs={6} className={`mb-2 ${isToday ? "today" : ""}`}>
+                        <div className="fw-bold">{getKoreanDayName(dayKey)}</div>
+                        <div className={row.status === "휴무" ? "text-danger" : "text-dark"}>
+                          {row.status}
+                        </div>
+                        <div className="text-muted small">{row.note}</div>
+                      </Col>
+                    );
+                  })}
                   </Row>
                 </Card.Body>
               </Card>
