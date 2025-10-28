@@ -39,10 +39,22 @@ export const increaseView = async (postId) => {
 };
 
 // 좋아요 증가 API
+// 버튼을 눌렀을대 호출되는 아이
+// 1. 이미 좋아요 눌렀으면 취소 2.안눌렀다면 좋아요 추가
 export const increaseLike = async (postId, username) => {
   const res = await jwtAxios.patch(
     `${prefix}/${postId}/likes`, null,
     { params: { username } } // ← ?username=...
   );
+  return res.data;
+};
+
+// 페이지를 처음 열때 호출되는 아이
+// 1.이 로그인 유저가 이글을 좋아요 한적이 있는가? 2.좋아요 수가 몇개인가
+export const getLikeStatus = async (postId, username) => {
+  const res = await jwtAxios.get(`${prefix}/${postId}/likes/status`, {
+    params: { username },
+  });
+  // res.data 형태: { liked: boolean, likeCount: number }
   return res.data;
 };

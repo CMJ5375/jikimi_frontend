@@ -1,5 +1,3 @@
-// src/util/jwtUtil.js
-
 import axios from "axios";
 import { getCookie, setCookie } from "./cookieUtil";
 

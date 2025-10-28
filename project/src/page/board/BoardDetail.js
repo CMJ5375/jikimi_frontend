@@ -3,11 +3,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/BoardDetail.css";
 import CommentSection from "./CommentSection";
-import { Eye,HandThumbsUp,Share,ChevronLeft,ChevronRight,List,Folder } from "react-bootstrap-icons";
-import { getOne, deletePost, getList, updatePost, increaseView, increaseLike } from "../../api/postApi";
+import NavModel from "./NavModel";
+import ShareModal from "./ShareModal";
+import { Eye, HandThumbsUp, Share, Folder, } from "react-bootstrap-icons";
+import { getOne, deletePost, getList, updatePost, increaseView, increaseLike, getLikeStatus } from "../../api/postApi";
 import { getCookie } from "../../util/cookieUtil";
 
-// ---- localStorage helpers ----
+// ==== localStorage helpers ====
 const LS_LIKED_KEY = "LIKED_POSTS";
 
 function loadLikedMap() {
@@ -23,27 +25,23 @@ function saveLikedMap(map) {
   localStorage.setItem(LS_LIKED_KEY, JSON.stringify(map));
 }
 
-// 조회수 로직
+// 조회수 helper
 const hasViewed = (postId) => {
   try {
     const raw = localStorage.getItem("VIEWED_POSTS");
     const obj = raw ? JSON.parse(raw) : {};
     return !!obj[postId];
-  } catch (err) {
-    console.error("hasViewed parse fail", err);
+  } catch {
     return false;
   }
 };
-
 const markViewed = (postId) => {
   try {
     const raw = localStorage.getItem("VIEWED_POSTS");
     const obj = raw ? JSON.parse(raw) : {};
     obj[postId] = true;
     localStorage.setItem("VIEWED_POSTS", JSON.stringify(obj));
-  } catch (err) {
-    console.error("markViewed save fail", err);
-  }
+  } catch {}
 };
 
 const BoardDetail = () => {
@@ -51,16 +49,15 @@ const BoardDetail = () => {
   const navigate = useNavigate();
   const id = Number(idParam || 0);
 
-  // 로그인 쿠키에서 username 추출 (좋아요 API에 보내줄 값)
+  // 로그인 사용자 (좋아요 etc)
   const rawCookie = getCookie("member");
   let usernameForLike = null;
   if (rawCookie) {
     try {
-      const parsed = typeof rawCookie === "string" ? JSON.parse(rawCookie) : rawCookie;
+      const parsed =
+        typeof rawCookie === "string" ? JSON.parse(rawCookie) : rawCookie;
       usernameForLike = parsed?.username || null;
-    } catch (err) {
-      console.error("cookie parse fail", err);
-    }
+    } catch {}
   }
 
   // 게시글 상태
@@ -71,7 +68,8 @@ const BoardDetail = () => {
     viewCount: 0,
     createdAt: null,
     authorName: "",
-    authorUsername: "", // 작성자 username (백엔드 DTO에서 꼭 내려와야 함!)
+    authorUsername: "",
+    fileUrl: "",
   });
 
   const [liked, setLiked] = useState(false);
@@ -83,16 +81,16 @@ const BoardDetail = () => {
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
 
+  // 첨부파일 팝업
+  const [showAttachPopup, setShowAttachPopup] = useState(false);
+  const [attachments, setAttachments] = useState([]);
+
   // 공유 모달
   const [showShare, setShowShare] = useState(false);
+
+  // 페이지 URL/공유용 제목
   const pageUrl = typeof window !== "undefined" ? window.location.href : "";
   const shareTitle = post.title || "게시글 공유";
-  
-  //첨부파일
-  const [showAttachPopup, setShowAttachPopup] = useState(false);
-  const [attachments, setAttachments] = useState([
-    { name: "간수치_상세표.xlsx", url: "/files/liver_data.xlsx" },
-  ]);
 
   // 좋아요 토글
   const handleLike = async () => {
@@ -103,25 +101,26 @@ const BoardDetail = () => {
 
     try {
       const res = await increaseLike(id, usernameForLike);
-      // res = { likeCount: number, liked: boolean } 라고 가정
+      // res: { likeCount, liked }
 
-      setPost(prev => ({
+      setPost((prev) => ({
         ...prev,
         likeCount: res.likeCount ?? prev.likeCount,
       }));
       setLiked(res.liked ?? false);
 
-      // localStorage 동기화
+      // localStorage 캐싱
       const likedMap = loadLikedMap();
       likedMap[id] = !!res.liked;
       saveLikedMap(likedMap);
-
     } catch (e) {
       console.error("like failed", e);
     }
   };
 
+  // 공유 버튼 클릭
   const openShare = useCallback(async () => {
+    // 모바일 브라우저 등에서 네이티브 공유 먼저 시도
     if (navigator.share) {
       try {
         await navigator.share({
@@ -130,60 +129,32 @@ const BoardDetail = () => {
           url: pageUrl,
         });
         return;
-      } catch (err) {
-        // 무시 (취소 등)
+      } catch {
+        /* 사용자가 취소한 경우 등은 무시 */
       }
     }
+    // 안 되면 우리 모달 켜기
     setShowShare(true);
   }, [shareTitle, pageUrl]);
-
-  const copyLink = useCallback(async () => {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(pageUrl);
-      } else {
-        const ta = document.createElement("textarea");
-        ta.value = pageUrl;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-      }
-      alert("링크가 복사되었습니다.");
-      setShowShare(false);
-    } catch (e) {
-      alert("복사에 실패했습니다. 직접 복사해 주세요.");
-    }
-  }, [pageUrl]);
-
-  // ESC로 공유모달 닫기
-  useEffect(() => {
-    if (!showShare) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") setShowShare(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [showShare]);
 
   // 날짜 포맷
   const formatted = useMemo(() => {
     if (!post.createdAt) return { date: "", time: "" };
     const d = new Date(post.createdAt);
     return {
-      date: d.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }),
-      time: d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      date: d.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", }),
+      time: d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, }),
     };
   }, [post.createdAt]);
 
-  // 단건 조회 + 조회수 증가
+  // 게시글 로드 + 조회수 증가
   useEffect(() => {
     let ignore = false;
 
     (async () => {
       setLoading(true);
 
-      // 조회수 증가 (localStorage 기반)
+      // 아직 안 본 글이면 조회수 +1
       if (!hasViewed(id)) {
         try {
           await increaseView(id);
@@ -194,11 +165,11 @@ const BoardDetail = () => {
         }
       }
 
-      try {
-        const data = await getOne(id); // 백엔드 /api/posts/{id}
+      try {const data = await getOne(id); // /api/posts/{id}
 
         if (ignore) return;
 
+        // 본문 세팅
         setPost({
           title: data.title ?? "",
           content: data.content ?? "",
@@ -206,30 +177,32 @@ const BoardDetail = () => {
           viewCount: data.viewCount ?? 0,
           createdAt: data.createdAt ?? null,
           authorName:
-            (data.authorName ?? data.userName ?? `user#${data.userId ?? ""}`).toString(),
-          authorUsername: data.authorUsername ?? "", // ★ 작성자 username 받아서 저장
+            (data.authorName ??
+              data.userName ??
+              `user#${data.userId ?? ""}`).toString(),
+          authorUsername: data.authorUsername ?? "",
           fileUrl: data.fileUrl ?? "",
         });
 
-        // 첨부파일: 서버는 fileUrl 하나만 줘 (문자열). 그걸 UI에서 배열처럼 취급해주자.
+        // 첨부파일 세팅 (우린 fileUrl 단일 필드만 쓰므로 배열 1개짜리로)
         if (data.fileUrl && data.fileUrl.trim() !== "") {
           setAttachments([
             {
-              name: data.fileUrl,      // 화면에 보일 이름
-              url: data.fileUrl        // 클릭 시 열 주소(일단 동일하게 사용)
-            }
+              name: data.fileUrl,
+              url: data.fileUrl,
+            },
           ]);
         } else {
           setAttachments([]);
         }
 
+        // 수정 모드 초기값
         setEditTitle(data.title ?? "");
         setEditContent(data.content ?? "");
 
-        // 좋아요 상태 복원
+        // 좋아요 여부 복원
         const likedMap = loadLikedMap();
         setLiked(!!likedMap[id]);
-
       } catch (err) {
         console.error("getOne failed", err);
       } finally {
@@ -244,7 +217,7 @@ const BoardDetail = () => {
     };
   }, [id]);
 
-  // 총 개수(이전/다음 계산용)
+  // 전체 글 개수 (다음글/이전글 계산용)
   useEffect(() => {
     (async () => {
       try {
@@ -256,7 +229,7 @@ const BoardDetail = () => {
     })();
   }, []);
 
-  // 수정/삭제 핸들러
+  // 수정/삭제
   const handleEditStart = () => {
     setEditTitle(post.title);
     setEditContent(post.content);
@@ -275,10 +248,12 @@ const BoardDetail = () => {
       content: (editContent || "").trim(),
       likeCount: post.likeCount ?? 0,
     };
+
     if (!payload.title) {
-        alert("제목을 입력해 주세요.");
-        return;
+      alert("제목을 입력해 주세요.");
+      return;
     }
+
     try {
       await updatePost(id, payload);
       alert("수정되었습니다.");
@@ -301,10 +276,54 @@ const BoardDetail = () => {
     }
   };
 
-  // 이전/다음 (연속 id 가정)
+  // prev/next id (지금은 단순히 id-1/id+1 로 가정)
   const prevId = id > 1 ? id - 1 : null;
   const nextId = totalCount && id < totalCount ? id + 1 : null;
 
+  // 로그인 사용자 정보 (수정/삭제 권한)
+  let loginUsername = null;
+  let loginRoles = [];
+
+  const rawMember = getCookie("member");
+  if (rawMember) {
+    try {
+      const parsed =
+        typeof rawMember === "string" ? JSON.parse(rawMember) : rawMember;
+
+      loginUsername = parsed?.username || null;
+
+      // roles가 없으면 roleNames, 그것도 없으면 빈 배열
+      loginRoles = parsed?.roles || parsed?.roleNames || [];
+      if (!Array.isArray(loginRoles)) {
+        // 혹시 문자열 하나만 오는 경우도 대비
+        loginRoles = [loginRoles].filter(Boolean);
+      }
+
+      console.log("DBG front auth:",
+        "username=", loginUsername,
+        "roles=", loginRoles
+      );
+    } catch (err) {
+      console.error("failed to parse member cookie", err);
+    }
+  }
+
+  // 작성자인가?
+  const isOwner =
+    loginUsername &&
+    post.authorUsername &&
+    loginUsername === post.authorUsername;
+
+  // 관리자냐?
+  const isAdmin =
+    Array.isArray(loginRoles) &&
+    (loginRoles.includes("ROLE_ADMIN") || loginRoles.includes("ADMIN"));
+
+  // 최종 버튼 노출 조건
+  const canDelete = isOwner || isAdmin;
+  const canEdit = isOwner; // 관리자는 수정 못 하게 할 거라 그 규칙 유지
+
+  // 로딩 스피너
   if (loading) {
     return (
       <div className="container post-detail py-5 text-center text-muted">
@@ -313,41 +332,9 @@ const BoardDetail = () => {
     );
   }
 
-  // 여기서 현재 로그인한 유저 정보 다시 읽어서 버튼 노출 여부 계산
-  let loginUsername = null;
-  let loginRoles = [];
-
-  const rawMember = getCookie("member");
-  if (rawMember) {
-    try {
-      const parsed = typeof rawMember === "string" ? JSON.parse(rawMember) : rawMember;
-      loginUsername = parsed?.username || null;
-      // roles 라는 키가 없고 roleNames로 줄 수도 있으니 둘 다 봄
-      loginRoles = parsed?.roles || parsed?.roleNames || [];
-    } catch (err) {
-      console.error("failed to parse member cookie", err);
-    }
-  }
-
-  // 내가 이 글 주인인가?
-  const isOwner =
-    loginUsername &&
-    post.authorUsername &&
-    loginUsername === post.authorUsername;
-
-  // 나는 관리자 권한인가?
-  const isAdmin =
-    Array.isArray(loginRoles) &&
-    loginRoles.includes("ROLE_ADMIN");
-
-
-  console.log("DBG loginUsername=", loginUsername,
-            "authorUsername=", post.authorUsername,
-            "roles=", loginRoles);
-  // === JSX ===
   return (
     <div className="container post-detail">
-      {/* 상단: 제목 + (보기모드일 때만) 수정/삭제 */}
+      {/* 제목 + 수정/삭제 */}
       <div className="d-flex justify-content-between align-items-start mb-3">
         {!editMode ? (
           <h3 className="fw-bold post-title">{post.title}</h3>
@@ -362,27 +349,17 @@ const BoardDetail = () => {
 
         {!editMode && (
           <div className="post-actions d-none d-md-flex">
-            {/* 수정: 글쓴이만 */}
-            {isOwner && (
-              <button className="btn-ghost" onClick={handleEditStart}>
-                수정
-              </button>
+            {canEdit && (
+              <button className="btn-ghost" onClick={handleEditStart}> 수정 </button>
             )}
-
-            {/* 삭제: 글쓴이 또는 관리자 */}
             {(isOwner || isAdmin) && (
-              <button
-                className="btn-ghost btn-ghost-danger"
-                onClick={handleDelete}
-              >
-                삭제
-              </button>
+              <button className="btn-ghost btn-ghost-danger" onClick={handleDelete}> 삭제 </button>
             )}
           </div>
         )}
       </div>
 
-      {/* 게시글 번호/메타 */}
+      {/* 글 메타 */}
       <div className="text-muted small mb-1">
         게시글 {id} / 총 {totalCount}
       </div>
@@ -404,7 +381,7 @@ const BoardDetail = () => {
 
       <hr />
 
-      {/* 첨부파일 줄 */}
+      {/* 첨부파일 */}
       {attachments.length > 0 && (
         <div className="text-end position-relative mb-3">
           <div
@@ -427,7 +404,10 @@ const BoardDetail = () => {
                   className="d-flex justify-content-between align-items-center"
                   style={{ minWidth: "220px" }}
                 >
-                  <span className="text-truncate small fw-semibold" style={{ maxWidth: "140px" }}>
+                  <span
+                    className="text-truncate small fw-semibold"
+                    style={{ maxWidth: "140px" }}
+                  >
                     {file.name}
                   </span>
                   <span className="text-muted mx-2">|</span>
@@ -461,7 +441,7 @@ const BoardDetail = () => {
         )}
       </div>
 
-      {/* 수정모드일 때 저장/취소 */}
+      {/* 수정모드 저장/취소 */}
       {editMode && (
         <div className="d-flex justify-content-end gap-3 mt-3 post-actions">
           <button className="btn-ghost" onClick={handleEditSave}>
@@ -476,25 +456,22 @@ const BoardDetail = () => {
         </div>
       )}
 
-      {/* 좋아요/공유 */}
+      {/* 좋아요 & 공유 버튼 */}
       {!editMode && (
         <div className="d-flex gap-3 mb-5 like-share">
           <button
             className={
               "btn flex-fill py-2 " +
-              (liked
-                ? "btn-primary text-white"
-                : "btn-outline-primary")
+              (liked ? "btn-primary text-white" : "btn-outline-primary")
             }
             onClick={handleLike}
-          >
-            <HandThumbsUp /> 좋아요 {post.likeCount}
+          ><HandThumbsUp /> 좋아요 {post.likeCount}
           </button>
+
           <button
             className="btn btn-outline-secondary flex-fill py-2"
             onClick={openShare}
-          >
-            <Share /> 공유
+          ><Share /> 공유
           </button>
         </div>
       )}
@@ -502,139 +479,25 @@ const BoardDetail = () => {
       {/* 댓글 */}
       <CommentSection postId={id} hidden={editMode} />
 
-      {/* 이전/다음/목록 */}
+      {/* 이전글 / 다음글 / 목록으로 */}
       {!editMode && (
-        <div className="post-nav">
-          <div className="nav-row">
-            <div className="nav-side">
-              <ChevronLeft />
-              {prevId ? (
-                <span
-                  className="nav-link"
-                  onClick={() => navigate(`/boarddetails/${prevId}`)}
-                >
-                  이전글
-                </span>
-              ) : (
-                <span className="empty">이전글이 없습니다</span>
-              )}
-            </div>
-            {prevId && (
-              <span
-                className="go"
-                onClick={() => navigate(`/boarddetails/${prevId}`)}
-              >
-                이동
-              </span>
-            )}
-          </div>
-
-          <div className="nav-row">
-            <div className="nav-side">
-              <ChevronRight />
-              {nextId ? (
-                <span
-                  className="nav-link"
-                  onClick={() => navigate(`/boarddetails/${nextId}`)}
-                >
-                  다음글
-                </span>
-              ) : (
-                <span className="empty">다음글이 없습니다</span>
-              )}
-            </div>
-            {nextId && (
-              <span
-                className="go"
-                onClick={() => navigate(`/boarddetails/${nextId}`)}
-              >
-                이동
-              </span>
-            )}
-          </div>
-
-          <div className="list-wrap">
-            <button
-              type="button"
-              className="btn btn-outline-secondary btn-list px-4"
-              onClick={() => navigate("/noticeboards")}
-            >
-              <List className="me-1" /> 목록으로
-            </button>
-          </div>
-        </div>
+        <NavModel
+          prevId={prevId}
+          nextId={nextId}
+          totalCount={totalCount}
+          onGoPrev={() => prevId && navigate(`/boarddetails/${prevId}`)}
+          onGoNext={() => nextId && navigate(`/boarddetails/${nextId}`)}
+          onGoList={() => navigate("/noticeboards")}
+        />
       )}
 
       {/* 공유 모달 */}
-      {showShare && (
-        <>
-          <div
-            className="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 share-backdrop"
-            onClick={() => setShowShare(false)}
-          />
-          <div
-            className="position-fixed top-50 start-50 translate-middle bg-white rounded-3 shadow-lg p-3 p-md-4 share-modal"
-            role="dialog"
-            aria-modal="true"
-          >
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <h6 className="m-0">공유하기</h6>
-              <button
-                type="button"
-                className="btn-close"
-                aria-label="Close"
-                onClick={() => setShowShare(false)}
-              />
-            </div>
-
-            <div className="small text-muted mb-3">{shareTitle}</div>
-
-            <div className="input-group mb-3">
-              <input
-                className="form-control"
-                readOnly
-                value={pageUrl}
-                onFocus={(e) => e.target.select()}
-              />
-              <button className="btn btn-outline-secondary" onClick={copyLink}>
-                복사
-              </button>
-            </div>
-
-            <div className="d-flex gap-2">
-              <a
-                className="btn btn-outline-primary flex-fill"
-                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                  shareTitle
-                )}&url=${encodeURIComponent(pageUrl)}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                X(트위터)
-              </a>
-              <a
-                className="btn btn-outline-primary flex-fill"
-                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
-                  pageUrl
-                )}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                페이스북
-              </a>
-            </div>
-
-            <div className="text-end mt-3">
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowShare(false)}
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      <ShareModal
+        show={showShare}
+        onClose={() => setShowShare(false)}
+        shareTitle={shareTitle}
+        pageUrl={pageUrl}
+      />
     </div>
   );
 };
