@@ -71,8 +71,24 @@ export const resetPasswordApi = (username, email, code, newPassword) =>
  */
 
 
-// 회원정보 수정
 export const modifyUser = async (user) => {
-    const res = await jwtAxios.put(`${host}/modify/${user.username}`, user)
-    return res.data
-}
+  // age를 숫자 또는 null로 정리
+  const ageNum =
+    user.age === "" || user.age === null || user.age === undefined
+      ? null
+      : Number(user.age);
+
+  const payload = {
+    email: user.email ?? null,
+    address: user.address ?? null,
+    age: Number.isNaN(ageNum) ? null : ageNum,
+  };
+
+  const usernamePath = encodeURIComponent(user.username);
+  const { data } = await jwtAxios.put(
+    `/project/user/modify/${usernamePath}`,
+    payload,
+    { headers: { "Content-Type": "application/json" } }
+  );
+  return data;
+};
