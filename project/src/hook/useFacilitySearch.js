@@ -8,12 +8,14 @@ export default function useFacilitySearch(type) {
   const [pageData, setPageData] = useState(null);
   const [currentPos, setCurrentPos] = useState({ lat: null, lng: null });
   const [page, setPage] = useState(0);
+
   const [filters, setFilters] = useState({
     keyword: "",
     org: "",
     dept: "",
     emergency: false,
     distance: "",
+    onlyFavorites: false,
   });
 
   useEffect(() => {
@@ -27,23 +29,27 @@ export default function useFacilitySearch(type) {
     const f = { ...filters, ...(newFilters || {}) };
     setFilters(f);
 
-    try {
+   try {
       const params = new URLSearchParams();
       if (f.keyword) params.append("keyword", f.keyword);
-      if (f.org) params.append("org", f.org);
-      if (f.dept) params.append("dept", f.dept);
-      if (f.emergency) params.append("emergency", f.emergency);
-      if (f.distance && String(f.distance).trim() !== "") {
-        params.append("distance", f.distance);
+      if (f.org && type === "hospital") params.append("org", f.org);
+      if (f.dept && type === "hospital") params.append("dept", f.dept);
+      if (typeof f.emergency === "boolean" && type === "hospital") {
+        params.append("emergency", String(f.emergency));
       }
-      if (currentPos.lat && currentPos.lng) {
+      if (f.distance && type === "pharmacy") params.append("distance", f.distance);
+
+      // 즐겨찾기만 보기 서버 연동
+      if (f.onlyFavorites) params.append("onlyFavorites", "true");
+
+      // 위치가 있으면 전달 (거리 계산/정렬용)
+      if (currentPos.lat != null && currentPos.lng != null) {
         params.append("lat", currentPos.lat);
         params.append("lng", currentPos.lng);
       }
       params.append("page", newPage);
       params.append("size", 10);
 
-      // 약국 검색 URL 수정
       const url =
         type === "hospital"
           ? `http://localhost:8080/project/hospital/search?${params.toString()}`
@@ -68,29 +74,26 @@ export default function useFacilitySearch(type) {
 
         return {
           id: item[`${type}Id`],
-          facilityId: item.facility?.facilityId,
-          name: item[`${type}Name`],
-          address: item.facility?.address || "",
-          phone: item.facility?.phone || "",
-          latitude: item.facility?.latitude,
-          longitude: item.facility?.longitude,
-          orgType: item.orgType || "",
-          hasEmergency: item.hasEmergency ?? false,
-          open: openUtil(item.facilityBusinessHours || item.facility?.businessHours || []),
+          [`${type}Id`]: item[`${type}Id`],
+          name: item.name || item.hospitalName || item.pharmacyName,
+          address: item.address || item.roadAddress || item.addr,
+          phone: item.phone || item.tel,
+          open: item.open,
           distance: displayDistance,
+          lat: item.lat ?? item.latitude,
+          lng: item.lng ?? item.longitude,
+          raw: item,
         };
       });
 
-      const withDistance = addDistanceAndSort(normalized, currentPos);
+      setResults(normalized);
 
-      const totalPages = pageJson.totalPages;
-      const current = pageJson.number + 1;
+      // 페이지네이션 정보 매핑 (서버 응답 기반)
+      const totalPages = pageJson.totalPages ?? 0;
+      const current = pageJson.number ?? 0;
       const pageNumList = Array.from({ length: totalPages }, (_, i) => i + 1);
 
-      setResults(withDistance);
       setPageData({
-        ...pageJson,
-        content: withDistance,
         current,
         totalPage: totalPages,
         pageNumList,
