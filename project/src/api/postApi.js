@@ -17,9 +17,57 @@ export const getList = async ({ page, size, boardCategory, q }) => {
   return res.data;
 };
 
-export const createPost = async (postData) => {
-  const res = await jwtAxios.post(`${prefix}/add`, postData);
-  return res.data;
+// export const createPost = async (postData) => {
+//   const res = await jwtAxios.post(`${prefix}/add`, postData);
+//   return res.data;
+// };
+
+// ✅ 멀티파트로 글 + 파일 같이 보내는 최종 버전
+export const createPost = async (postData, token) => {
+  // postData는 BoardCreat에서 넘길 예정:
+  // {
+  //   title,
+  //   content,
+  //   boardCategory,
+  //   authorUsername,
+  //   files: [File, File, ...]  // input[type=file]에서 온 File[]
+  // }
+
+  const formData = new FormData();
+
+  // 백엔드는 @RequestPart("post") JPostDTO dto 로 받으니까
+  // 이 "post"라는 키에 JSON을 Blob으로 싸서 넣어준다.
+  const postJson = {
+    title: postData.title,
+    content: postData.content,
+    boardCategory: postData.boardCategory,
+    authorUsername: postData.authorUsername,
+  };
+
+  formData.append(
+    "post",
+    new Blob([JSON.stringify(postJson)], { type: "application/json" })
+  );
+
+  // 파일은 @RequestPart("file") MultipartFile file 로 받으니까
+  // key 이름은 "file"이어야 하고 딱 하나만 보낼 거라고 가정
+  if (postData.files && postData.files.length > 0) {
+    formData.append("file", postData.files[0]);
+  }
+
+  const res = await axios.post(
+    `${prefix}/add`,
+    formData,
+    {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        // ❌ 절대 수동으로 Content-Type 넣지 말 것.
+        // axios가 FormData 주면 boundary 포함된 올바른 multipart/form-data로 넣어줌
+      },
+    }
+  );
+
+  return res.data; // 새 postId(Long) 리턴
 };
 
 export const updatePost = async (postId, post) => {
