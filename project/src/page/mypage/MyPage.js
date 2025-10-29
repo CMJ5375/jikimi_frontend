@@ -236,15 +236,7 @@ const MyPage = () => {
             {/* 우측 콘텐츠 */}
             <Col xs={12} lg={9}>
               <Card className="content-card border-0 shadow-sm">
-                <Card.Body
-                  className={`${
-                    (hospitalList.length === 0 && favoriteTab === "hospital") ||
-                    (pharmacyList.length === 0 && favoriteTab === "pharmacy")
-                      ? "d-flex justify-content-center align-items-center"
-                      : ""
-                  }`}
-                  style={{ minHeight: "400px" }}
-                >
+                <Card.Body>
                   {/* 즐겨찾기 */}
                   {activeMenu === "favorite" && (
                     <>

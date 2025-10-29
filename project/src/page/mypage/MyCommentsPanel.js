@@ -10,7 +10,6 @@ export default function MyCommentsPanel() {
 
   // 1) 로그인 가드
   const { isLogin, moveToLoginReturn } = useCustomLogin();
-  if (!isLogin) return moveToLoginReturn();
 
   // 2) accessToken 준비 여부 확인 (쿠키가 문자열로 들어오는 경우 대비)
   const tokenReady = useMemo(() => {
@@ -53,6 +52,7 @@ export default function MyCommentsPanel() {
   }, [tokenReady, page]);
 
   const totalPages = Math.ceil(total / size);
+  if (!isLogin) return moveToLoginReturn();
 
   return (
     <>
