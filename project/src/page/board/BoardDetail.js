@@ -195,10 +195,17 @@ const BoardDetail = () => {
 
         // 첨부파일 세팅 (우린 fileUrl 단일 필드만 쓰므로 배열 1개짜리로)
         if (data.fileUrl && data.fileUrl.trim() !== "") {
+          // data.fileUrl = "/files/35/Group.png"
+          // 여기서 파일명만 뽑자
+          const parts = data.fileUrl.split("/");
+          // ["", "files", "35", "Group.png"]
+          const fileName = parts[parts.length - 1];   // "Group.png"
+          const postIdFromUrl = parts[parts.length - 2]; // "35"
+
           setAttachments([
             {
-              name: data.fileUrl,
-              url: data.fileUrl,
+              postId: postIdFromUrl,
+              fileName: fileName,
             },
           ]);
         } else {
@@ -275,10 +282,10 @@ const BoardDetail = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("정말 삭제하시겠습니까?" + id)) return;
+    if (!window.confirm(id + "번 게시물을 정말 삭제하시겠습니까?")) return;
     try {
       await deletePost(id);
-      alert("게시글이 삭제되었습니다." + id);
+      alert("게시글이 삭제되었습니다.");
       navigate("/noticeboards");
     } catch (e) {
       console.error(e);
@@ -414,16 +421,24 @@ const BoardDetail = () => {
                   className="d-flex justify-content-between align-items-center"
                   style={{ minWidth: "220px" }}
                 >
+                  {/* ✅ 파일명 표시 */}
                   <span
-                    className="text-truncate small fw-semibold"
+                    className="text-truncate small fw-semibold text-dark"
                     style={{ maxWidth: "140px" }}
+                    title={file.fileName} // 마우스 올리면 전체 이름 툴팁으로 보이게
                   >
-                    {file.name}
+                    {file.fileName || "(이름 없음)"}
                   </span>
+
                   <span className="text-muted mx-2">|</span>
+
+                  {/* 다운로드 버튼 */}
                   <button
                     className="btn btn-link btn-sm p-0 text-decoration-none text-secondary"
-                    onClick={() => window.open(file.url, "_blank")}
+                    onClick={() => {
+                      const downloadUrl = `http://localhost:8080/files/${file.postId}/${file.fileName}`;
+                      window.open(downloadUrl, "_blank");
+                    }}
                   >
                     내PC 저장
                   </button>

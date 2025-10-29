@@ -37,14 +37,14 @@ const BoardCreat = ({ onClose }) => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
     if (!title.trim() || !content.trim()) {
       alert("제목과 내용을 입력해주세요.");
       return;
     }
 
-    // 로그인 쿠키에서 username만 꺼내기
+    // 로그인 쿠키에서 username / token 꺼내던 기존 로직 그대로 유지
     const raw = getCookie("member");
     if (!raw) {
       alert("로그인 후 이용해주세요.");
@@ -53,32 +53,31 @@ const BoardCreat = ({ onClose }) => {
 
     let parsed;
     try {
-      // getCookie가 이미 JSON string 리턴한다고 가정
       parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
     } catch (err) {
-      console.error("cookie parse fail", err);
       alert("로그인 정보가 손상되었습니다. 다시 로그인해주세요.");
       return;
     }
 
+    const token = parsed?.accessToken;
     const username = parsed?.username;
-    if (!username) {
-      alert("로그인 정보에 username이 없습니다. 다시 로그인해주세요.");
+
+    if (!token || !username) {
+      alert("로그인 정보가 올바르지 않습니다.");
       return;
     }
 
-    const newPost = {
+    // ✅ createPost에 넘길 payload
+    const postPayload = {
       title,
       content,
-      fileUrl: files.length > 0 ? files[0].name : "",
-      likeCount: 0,
-      isDeleted: false,
       boardCategory,
-      authorUsername: username, // ★ 백엔드가 이걸로 글쓴이 찾는다
+      authorUsername: username,
+      files, // 여기! File 객체 배열 그대로
     };
 
     try {
-      const newId = await createPost(newPost); // token 안 넘김
+      const newId = await createPost(postPayload, token);
       alert("게시글이 등록되었습니다.");
       navigate(`/boarddetails/${newId}`);
     } catch (err) {
@@ -86,7 +85,7 @@ const BoardCreat = ({ onClose }) => {
       alert("등록 중 오류가 발생했습니다.");
     }
   };
-
+  
   // 라벨 표시용 (현재 선택 값 → 한글)
   const selectedLabel =
     CATEGORY_OPTIONS.find((o) => o.value === boardCategory)?.label || "자유글";
