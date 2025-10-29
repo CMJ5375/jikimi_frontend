@@ -53,8 +53,7 @@ export default function useFacilitySearch(type) {
       if (type === "hospital") {
         if (f.org) params.append("org", f.org);
         if (f.dept) params.append("dept", f.dept);
-        if (typeof f.emergency === "boolean")
-          params.append("emergency", String(f.emergency));
+        if (f.emergency === true) params.append("emergency", "true");
       } else if (type === "pharmacy") {
         if (f.distance) params.append("distance", f.distance);
       }
