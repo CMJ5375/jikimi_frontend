@@ -1,16 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, Spinner } from "react-bootstrap";
+import { Spinner } from "react-bootstrap";
 import { FaHeart, FaRegCommentDots } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import useCustomLogin from "../../hook/useCustomLogin";
 import { getCookie } from "../../util/cookieUtil";
 import { fetchMyPosts } from "../../api/postApi";
+import PageComponent from "../../component/common/PageComponent";
 
-export default function MyPostsPanel() {
+export default function MyPostsPanel({ pageSize = 10 }) {
   const navigate = useNavigate();
   const { isLogin, moveToLoginReturn } = useCustomLogin();
 
-  // 토큰 준비 여부 (댓글 패널과 동일 로직)
+  // 토큰 준비 여부
   const tokenReady = useMemo(() => {
     try {
       const raw = getCookie("member");
@@ -24,13 +25,14 @@ export default function MyPostsPanel() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [posts, setPosts] = useState([]);
+  const [page, setPage] = useState(1); // 1-based
 
   useEffect(() => {
     if (!tokenReady) return;
     (async () => {
       setLoading(true);
       try {
-        const list = await fetchMyPosts();
+        const list = await fetchMyPosts(); // 전체 목록 한 번에
         setPosts(Array.isArray(list) ? list : []);
         setErr("");
       } catch (e) {
@@ -41,9 +43,8 @@ export default function MyPostsPanel() {
     })();
   }, [tokenReady]);
 
-  if (!isLogin) {
-    return moveToLoginReturn();
-  }
+  // 로그인 가드
+  if (!isLogin) return moveToLoginReturn();
 
   if (loading) {
     return (
@@ -54,9 +55,7 @@ export default function MyPostsPanel() {
     );
   }
 
-  if (err) {
-    return <p className="text-center text-danger mt-4">{err}</p>;
-  }
+  if (err) return <p className="text-center text-danger mt-4">{err}</p>;
 
   if (!posts || posts.length === 0) {
     return (
@@ -66,22 +65,28 @@ export default function MyPostsPanel() {
     );
   }
 
+  // --- 클라이언트 페이징 ---
+  const totalPages = Math.ceil(posts.length / pageSize);
+  const start = (page - 1) * pageSize;
+  const end = start + pageSize;
+  const visible = posts.slice(start, end);
+
+  const pageData = {
+    current: page, // 1-based
+    pageNumList: Array.from({ length: totalPages }, (_, i) => i + 1),
+    prev: page > 1,
+    next: page < totalPages,
+  };
+
   return (
     <>
-      {posts.map((post, idx) => {
+      {visible.map((post, idx) => {
         const likeCount =
-          post.likeCount ??
-          post.likes ??
-          post.like?.count ??
-          0;
+          post.likeCount ?? post.likes ?? post.like?.count ?? 0;
         const commentCount =
-          post.commentCount ??
-          post.commentsCount ??
-          post.comments?.length ??
-          0;
+          post.commentCount ?? post.commentsCount ?? post.comments?.length ?? 0;
         const summary =
-          post.summary ??
-          (post.content ? String(post.content).slice(0, 100) : "");
+          post.summary ?? (post.content ? String(post.content).slice(0, 100) : "");
 
         return (
           <React.Fragment key={post.postId ?? idx}>
@@ -93,12 +98,8 @@ export default function MyPostsPanel() {
               <strong>{post.title ?? "제목 없음"}</strong>
               <p className="text-muted mb-2">{summary}</p>
               <div className="d-flex gap-3 text-muted">
-                <span>
-                  <FaHeart /> {likeCount}
-                </span>
-                <span>
-                  <FaRegCommentDots /> {commentCount}
-                </span>
+                <span><FaHeart /> {likeCount}</span>
+                <span><FaRegCommentDots /> {commentCount}</span>
               </div>
               {post.createdAt && (
                 <div className="small text-muted mt-1">
@@ -112,10 +113,17 @@ export default function MyPostsPanel() {
                 </div>
               )}
             </div>
-            {idx < posts.length - 1 && <hr className="divider my-2" />}
+            {idx < visible.length - 1 && <hr className="divider my-2" />}
           </React.Fragment>
         );
       })}
+
+      {totalPages > 1 && (
+        <PageComponent
+          pageData={pageData}
+          onPageChange={(zeroBased) => setPage(zeroBased + 1)} // 0->1 보정
+        />
+      )}
     </>
   );
 }

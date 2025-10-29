@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Pagination } from "react-bootstrap";
+import { Button, Spinner } from "react-bootstrap";
 import { fetchMyComments } from "../../api/commentApi";
 import { useNavigate } from "react-router-dom";
 import useCustomLogin from "../../hook/useCustomLogin";
 import { getCookie } from "../../util/cookieUtil";
+import PageComponent from "../../component/common/PageComponent";
 
 export default function MyCommentsPanel() {
   const navigate = useNavigate();
-
-  // 1) 로그인 상태 훅 (훅은 무조건 컴포넌트 최상단에서)
   const { isLogin, moveToLoginReturn } = useCustomLogin();
 
-  // 2) accessToken 준비 여부 확인 (항상 호출)
+  // 액세스 토큰 준비 여부
   const tokenReady = useMemo(() => {
     try {
       const raw = getCookie("member");
@@ -22,19 +21,19 @@ export default function MyCommentsPanel() {
     }
   }, []);
 
-  // 3) 상태 훅들 (항상 호출)
+  // 상태
   const [list, setList] = useState([]);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(1); // 1-based
   const size = 10;
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // 4) 데이터 로더
+  // 로더
   const load = async (p = 1) => {
     try {
       setLoading(true);
-      const data = await fetchMyComments({ page: p, size });
+      const data = await fetchMyComments({ page: p, size }); // 1-based 유지
       setList(data.dtoList || []);
       setTotal(data.totalCount ?? 0);
       setErr("");
@@ -45,25 +44,37 @@ export default function MyCommentsPanel() {
     }
   };
 
-  // 5) 토큰 준비된 뒤에만 호출
+  // 토큰 준비 후 호출
   useEffect(() => {
     if (!tokenReady) return;
     load(page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenReady, page]);
 
+  // 로그인 가드
+  if (!isLogin) return moveToLoginReturn();
+
   const totalPages = Math.ceil(total / size);
 
-  // ✅ 여기서 분기한다 (렌더 단계에서만 가드)
-  if (!isLogin) {
-    return moveToLoginReturn();
-  }
+  // PageComponent에 맞춘 데이터
+  const pageData = {
+    current: page, // 1-based
+    pageNumList: Array.from({ length: totalPages }, (_, i) => i + 1),
+    prev: page > 1,
+    next: page < totalPages,
+  };
 
-  // 나머지 렌더
   return (
     <>
-      {loading && <p className="text-center text-muted mt-4">불러오는 중…</p>}
+      {loading && (
+        <div className="text-center my-4">
+          <Spinner animation="border" />
+          <p className="mt-2 text-secondary small">불러오는 중…</p>
+        </div>
+      )}
+
       {err && <p className="text-center text-danger mt-4">{err}</p>}
+
       {!loading && !err && list.length === 0 && (
         <p className="text-center text-muted mt-5">작성한 댓글이 없습니다.</p>
       )}
@@ -98,19 +109,10 @@ export default function MyCommentsPanel() {
       </div>
 
       {totalPages > 1 && (
-        <div className="d-flex justify-content-center mt-4">
-          <Pagination className="custom-pagination">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <Pagination.Item
-                key={p}
-                active={page === p}
-                onClick={() => setPage(p)}
-              >
-                {p}
-              </Pagination.Item>
-            ))}
-          </Pagination>
-        </div>
+        <PageComponent
+          pageData={pageData}
+          onPageChange={(zeroBased) => setPage(zeroBased + 1)} // 0->1 보정
+        />
       )}
     </>
   );
