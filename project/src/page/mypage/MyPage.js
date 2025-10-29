@@ -145,6 +145,18 @@ const MyPage = () => {
   const endIdx = startIdx + pageData.size;
   const displayedHospitals = hospitalList.slice(startIdx, endIdx);
   const displayedPharmacies = pharmacyList.slice(startIdx, endIdx);
+  const totalPagesHospital = Math.ceil(hospitalList.length / pageData.size) || 1;
+  const totalPagesPharmacy = Math.ceil(pharmacyList.length / pageData.size) || 1;
+
+  const currentTotalPages = favoriteTab === "hospital" ? totalPagesHospital : totalPagesPharmacy;
+  const pageNumList = Array.from({ length: currentTotalPages }, (_, i) => i + 1);
+
+  const pageDataForComponent = {
+    current: pageData.current + 1,
+    pageNumList,
+    prev: pageData.current > 0,
+    next: pageData.current < currentTotalPages - 1,
+  };
 
   return (
     <>
@@ -337,25 +349,8 @@ const MyPage = () => {
                           )}
                           {hospitalList.length > 0 && (
                             <PageComponent
-                              pageResponse={{
-                                dtoList: [],
-                                page: pageData.current + 1,
-                                start: 1,
-                                end: Math.ceil(
-                                  hospitalList.length / pageData.size
-                                ),
-                                prev: pageData.current > 0,
-                                next:
-                                  pageData.current <
-                                  Math.ceil(
-                                    hospitalList.length / pageData.size
-                                  ) -
-                                    1,
-                                totalPages: Math.ceil(
-                                  hospitalList.length / pageData.size
-                                ),
-                              }}
-                              movePage={(num) => handlePageChange(num - 1)}
+                              pageData={pageDataForComponent}
+                              onPageChange={(numZeroBased) => handlePageChange(numZeroBased)}
                             />
                           )}
                         </>
@@ -421,25 +416,8 @@ const MyPage = () => {
                           )}
                           {pharmacyList.length > 0 && (
                             <PageComponent
-                              pageResponse={{
-                                dtoList: [],
-                                page: pageData.current + 1,
-                                start: 1,
-                                end: Math.ceil(
-                                  pharmacyList.length / pageData.size
-                                ),
-                                prev: pageData.current > 0,
-                                next:
-                                  pageData.current <
-                                  Math.ceil(
-                                    pharmacyList.length / pageData.size
-                                  ) -
-                                    1,
-                                totalPages: Math.ceil(
-                                  pharmacyList.length / pageData.size
-                                ),
-                              }}
-                              movePage={(num) => handlePageChange(num - 1)}
+                              pageData={pageDataForComponent}
+                              onPageChange={(numZeroBased) => handlePageChange(numZeroBased)}
                             />
                           )}
                         </>

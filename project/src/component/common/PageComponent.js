@@ -18,13 +18,14 @@ const PageComponent = ({ pageData, onPageChange }) => {
       {/* 맨 앞으로 이동 */}
       <Pagination.First
         onClick={() => onPageChange(0)}
-        disabled={!pageData.prev}
+        disabled={currentPage === 1}
       />
 
       {/* 이전 블록으로 이동 */}
-      {startPage > 1 && (
-        <Pagination.Prev onClick={() => onPageChange(startPage - 2)} />
-      )}
+      <Pagination.Prev
+        onClick={() => onPageChange(currentPage - 2)}
+        disabled={currentPage === 1}
+      />
 
       {/* 현재 블록의 페이지 목록 */}
       {visiblePages.map((pageNum) => (
@@ -38,14 +39,15 @@ const PageComponent = ({ pageData, onPageChange }) => {
       ))}
 
       {/* 다음 블록으로 이동 */}
-      {endPage < totalPages && (
-        <Pagination.Next onClick={() => onPageChange(endPage)} />
-      )}
+      <Pagination.Next
+        onClick={() => onPageChange(currentPage)}
+        disabled={currentPage === totalPages}
+      />
 
       {/* 맨 끝으로 이동 */}
       <Pagination.Last
         onClick={() => onPageChange(totalPages - 1)}
-        disabled={!pageData.next}
+        disabled={currentPage === totalPages}
       />
     </Pagination>
   );

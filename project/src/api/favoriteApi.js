@@ -38,7 +38,7 @@ export const isFavorite = async (type, targetId) => {
 export const addFavorite = async (type, targetId) => {
   try {
     const t = String(type).toUpperCase();
-    await jwtAxios.post(`/project/favorite/${targetId}`, null, {
+    await jwtAxios.post(`/project/favorite/add/${targetId}`, null, {
       params: { type: t },
     });
   } catch (err) {
@@ -51,7 +51,7 @@ export const addFavorite = async (type, targetId) => {
 export const removeFavorite = async (type, targetId) => {
   try {
     const t = String(type).toUpperCase();
-    await jwtAxios.delete(`/project/favorite/${targetId}`, {
+    await jwtAxios.delete(`/project/favorite/remove/${targetId}`, {
       params: { type: t },
     });
   } catch (err) {
@@ -68,13 +68,13 @@ export const toggleFavorite = async (type, targetId) => {
 
     if (fav) {
       // 이미 즐겨찾기면 삭제
-      await jwtAxios.delete(`/project/favorite/${targetId}`, {
+      await jwtAxios.delete(`/project/favorite/remove/${targetId}`, {
         params: { type: t },
       });
       return false;
     } else {
       // 즐겨찾기 등록
-      await jwtAxios.post(`/project/favorite/${targetId}`, null, {
+      await jwtAxios.post(`/project/favorite/add/${targetId}`, null, {
         params: { type: t },
       });
       return true;

@@ -26,9 +26,11 @@ const useFavorites = (type) => {
   const toggle = async (id) => {
     if (!isLogin) return alert("로그인이 필요합니다.");
     try {
-      const updated = await toggleFavorite(type, id);
-      if (updated) {
-        setFavorites((prev) => [...prev, String(id)]);
+      const added = await toggleFavorite(type, id);
+      if (added) {
+        setFavorites((prev) =>
+          prev.includes(String(id)) ? prev : [...prev, String(id)]
+        );
       } else {
         setFavorites((prev) => prev.filter((fid) => fid !== String(id)));
       }

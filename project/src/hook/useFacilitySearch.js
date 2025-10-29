@@ -22,6 +22,24 @@ export default function useFacilitySearch(type) {
     getDefaultPosition().then(setCurrentPos);
   }, []);
 
+  const calculateDistance = (lat1, lng1, lat2, lng2) => {
+    if (!lat1 || !lng1 || !lat2 || !lng2) return "";
+    const R = 6371;
+    const toRad = (deg) => (deg * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distanceValue = R * c;
+    if (distanceValue < 1) return `${Math.round(distanceValue * 1000)}m`;
+    return `${distanceValue.toFixed(1)}km`;
+  };
+
   const search = async (e, newPage = 0, newFilters) => {
     if (e) e.preventDefault();
 
@@ -41,10 +59,8 @@ export default function useFacilitySearch(type) {
         if (f.distance) params.append("distance", f.distance);
       }
 
-      // 즐겨찾기만 보기 플래그 항상 전달
       params.append("onlyFavorites", String(!!f.onlyFavorites));
 
-      // 현재 위치 전달 (거리 계산용)
       if (currentPos.lat != null && currentPos.lng != null) {
         params.append("lat", currentPos.lat);
         params.append("lng", currentPos.lng);
@@ -67,35 +83,28 @@ export default function useFacilitySearch(type) {
 
       const normalized = data.map((item) => {
         const fac = item.facility || {};
-
-        // 거리 계산 (서버 값이 없으면 프론트에서 계산)
         const lat = fac.latitude ?? null;
         const lng = fac.longitude ?? null;
 
         let distanceValue = item.distance;
-        if (distanceValue == null && currentPos.lat && currentPos.lng && lat && lng) {
-          const R = 6371;
-          const toRad = (deg) => (deg * Math.PI) / 180;
-          const dLat = toRad(lat - currentPos.lat);
-          const dLng = toRad(lng - currentPos.lng);
-          const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(toRad(currentPos.lat)) *
-              Math.cos(toRad(lat)) *
-              Math.sin(dLng / 2) *
-              Math.sin(dLng / 2);
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          distanceValue = R * c;
+        if (
+          distanceValue == null &&
+          currentPos.lat &&
+          currentPos.lng &&
+          lat &&
+          lng
+        ) {
+          distanceValue = calculateDistance(currentPos.lat, currentPos.lng, lat, lng);
         }
 
         let displayDistance = "";
-        if (typeof distanceValue === "number" && isFinite(distanceValue)) {
+        if (typeof distanceValue === "string") {
+          displayDistance = distanceValue;
+        } else if (typeof distanceValue === "number" && isFinite(distanceValue)) {
           displayDistance =
             distanceValue < 1
               ? `${Math.round(distanceValue * 1000)}m`
               : `${distanceValue.toFixed(1)}km`;
-        } else if (typeof distanceValue === "string") {
-          displayDistance = distanceValue;
         }
 
         return {
@@ -113,11 +122,9 @@ export default function useFacilitySearch(type) {
         };
       });
 
-      // 프론트 거리 기준으로 정렬
       const sorted = addDistanceAndSort(normalized, currentPos);
       setResults(sorted);
 
-      // 페이지네이션 매핑
       const totalPages = pageJson.totalPages ?? 0;
       const current = pageJson.number ?? 0;
       const pageNumList = Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -138,5 +145,5 @@ export default function useFacilitySearch(type) {
     }
   };
 
-  return { results, pageData, currentPos, page, search, filters, setFilters };
+  return { results, pageData, currentPos, page, search, filters, setFilters, calculateDistance };
 }
