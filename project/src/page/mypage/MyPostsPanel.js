@@ -1,52 +1,49 @@
-import React, { useEffect, useState } from "react";
-import { Spinner } from "react-bootstrap";
+import React, { useEffect, useMemo, useState } from "react";
+import { Button, Spinner } from "react-bootstrap";
 import { FaHeart, FaRegCommentDots } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import useCustomLogin from "../../hook/useCustomLogin";
+import { getCookie } from "../../util/cookieUtil";
+import { fetchMyPosts } from "../../api/postApi";
 
-// 옵션:
-// - fetcher: (async ({page, size}) => { posts: [], totalPages: n }) 형태로 주면 API 연동 모드
-// - pageSize: 페이지당 개수 (기본 10)
-export default function MyPostsPanel({ fetcher = null, pageSize = 10 }) {
-  const [loading, setLoading] = useState(!!fetcher); // fetcher 없으면 바로 렌더
-  const [posts, setPosts] = useState([]);
-  const [page, setPage] = useState(1); // 1-based
-  const [totalPages, setTotalPages] = useState(1);
+export default function MyPostsPanel() {
+  const navigate = useNavigate();
+  const { isLogin, moveToLoginReturn } = useCustomLogin();
 
-  // 처음엔 더미 표시(네가 쓰던 느낌 그대로)
-  useEffect(() => {
-    if (!fetcher) {
-      setPosts([
-        {
-          postId: 1,
-          title: "간경화 진단을 받았습니다..",
-          summary: "최근 회식이 잦긴 했는데 이렇게 갑자기...",
-          likeCount: 25,
-          commentCount: 11,
-        },
-        {
-          postId: 2,
-          title: "간경화 진단을 받았습니다..",
-          summary: "최근 회식이 잦긴 했는데 이렇게 갑자기...",
-          likeCount: 25,
-          commentCount: 11,
-        },
-      ]);
-      setTotalPages(1);
-      return;
+  // 토큰 준비 여부 (댓글 패널과 동일 로직)
+  const tokenReady = useMemo(() => {
+    try {
+      const raw = getCookie("member");
+      const obj = typeof raw === "string" ? JSON.parse(raw) : raw;
+      return !!obj?.accessToken;
+    } catch {
+      return false;
     }
+  }, []);
 
-    // fetcher가 있으면 API로 교체
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [posts, setPosts] = useState([]);
+
+  useEffect(() => {
+    if (!tokenReady) return;
     (async () => {
       setLoading(true);
       try {
-        const res = await fetcher({ page: page - 1, size: pageSize }); // page-1: 0-based 서버 대비
-        // 기대 형태: { posts: [], totalPages: n }
-        setPosts(res?.posts ?? []);
-        setTotalPages(res?.totalPages ?? 1);
+        const list = await fetchMyPosts();
+        setPosts(Array.isArray(list) ? list : []);
+        setErr("");
+      } catch (e) {
+        setErr(e?.response?.data?.message || "내 게시글을 불러오지 못했습니다.");
       } finally {
         setLoading(false);
       }
     })();
-  }, [fetcher, page, pageSize]);
+  }, [tokenReady]);
+
+  if (!isLogin) {
+    return moveToLoginReturn();
+  }
 
   if (loading) {
     return (
@@ -55,6 +52,10 @@ export default function MyPostsPanel({ fetcher = null, pageSize = 10 }) {
         <p className="mt-2 text-secondary small">불러오는 중…</p>
       </div>
     );
+  }
+
+  if (err) {
+    return <p className="text-center text-danger mt-4">{err}</p>;
   }
 
   if (!posts || posts.length === 0) {
@@ -67,41 +68,54 @@ export default function MyPostsPanel({ fetcher = null, pageSize = 10 }) {
 
   return (
     <>
-      {posts.map((post, idx) => (
-        <React.Fragment key={post.postId ?? idx}>
-          <div className="list-item p-3">
-            <strong>{post.title ?? "제목 없음"}</strong>
-            <p className="text-muted mb-2">
-              {post.summary ?? post.content?.slice(0, 100) ?? ""}
-            </p>
-            <div className="d-flex gap-3 text-muted">
-              <span>
-                <FaHeart /> {post.likeCount ?? 0}
-              </span>
-              <span>
-                <FaRegCommentDots /> {post.commentCount ?? 0}
-              </span>
-            </div>
-          </div>
-          {idx < posts.length - 1 && <hr className="divider my-2" />}
-        </React.Fragment>
-      ))}
+      {posts.map((post, idx) => {
+        const likeCount =
+          post.likeCount ??
+          post.likes ??
+          post.like?.count ??
+          0;
+        const commentCount =
+          post.commentCount ??
+          post.commentsCount ??
+          post.comments?.length ??
+          0;
+        const summary =
+          post.summary ??
+          (post.content ? String(post.content).slice(0, 100) : "");
 
-      {/* 간단 페이지네이션 (더미/간단 용) */}
-      {totalPages > 1 && (
-        <ul className="pagination justify-content-center mt-4">
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <li
-              key={i}
-              className={`page-item ${page === i + 1 ? "active" : ""}`}
+        return (
+          <React.Fragment key={post.postId ?? idx}>
+            <div
+              className="list-item p-3"
+              onClick={() => navigate(`/boarddetails/${post.postId}`)}
+              style={{ cursor: "pointer" }}
             >
-              <button className="page-link" onClick={() => setPage(i + 1)}>
-                {i + 1}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+              <strong>{post.title ?? "제목 없음"}</strong>
+              <p className="text-muted mb-2">{summary}</p>
+              <div className="d-flex gap-3 text-muted">
+                <span>
+                  <FaHeart /> {likeCount}
+                </span>
+                <span>
+                  <FaRegCommentDots /> {commentCount}
+                </span>
+              </div>
+              {post.createdAt && (
+                <div className="small text-muted mt-1">
+                  {new Date(post.createdAt).toLocaleString("ko-KR", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </div>
+              )}
+            </div>
+            {idx < posts.length - 1 && <hr className="divider my-2" />}
+          </React.Fragment>
+        );
+      })}
     </>
   );
 }

@@ -10,6 +10,7 @@ import { useSelector } from "react-redux";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
 import MyCommentsPanel from "./MyCommentsPanel";
+import MyPostsPanel from "./MyPostsPanel";
 
 
 const MyPage = () => {
@@ -404,29 +405,7 @@ const MyPage = () => {
                       </Nav.Item>
                     </Nav>
 
-                    {postTab === "post" && (
-                      <>
-                        {[1, 2].map((n, idx) => ( // 예시: 2개 더미 게시글
-                          <React.Fragment key={idx}>
-                            <div className="list-item p-3">
-                              <strong>간경화 진단을 받았습니다..</strong>
-                              <p className="text-muted mb-2">
-                                최근 회식이 잦긴 했는데 이렇게 갑자기...
-                              </p>
-                              <div className="d-flex gap-3 text-muted">
-                                <span>
-                                  <FaHeart /> 25
-                                </span>
-                                <span>
-                                  <FaRegCommentDots /> 11
-                                </span>
-                              </div>
-                            </div>
-                            {idx < 1 && <hr className="divider my-2" />}
-                          </React.Fragment>
-                        ))}
-                      </>
-                    )}
+                    {postTab === "post" && <MyPostsPanel />}
 
                     {postTab === "comment" && <MyCommentsPanel />}
 

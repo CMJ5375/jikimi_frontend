@@ -58,3 +58,17 @@ export const getLikeStatus = async (postId, username) => {
   // res.data 형태: { liked: boolean, likeCount: number }
   return res.data;
 };
+
+export async function fetchMyPosts() {
+  try {
+    const res = await jwtAxios.get("/api/posts/my"); // 백엔드 경로에 맞춰 조정 가능
+    const data = res.data;
+    if (Array.isArray(data)) return data;
+    if (data?.data && Array.isArray(data.data)) return data.data;
+    console.warn("fetchMyPosts: 예상치 못한 응답", data);
+    return [];
+  } catch (err) {
+    console.error("fetchMyPosts 실패:", err);
+    throw err;
+  }
+}
