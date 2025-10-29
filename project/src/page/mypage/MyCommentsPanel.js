@@ -55,6 +55,7 @@ export default function MyCommentsPanel() {
   if (!isLogin) return moveToLoginReturn();
 
   const totalPages = Math.ceil(total / size);
+  if (!isLogin) return moveToLoginReturn();
 
   // PageComponent에 맞춘 데이터
   const pageData = {

@@ -128,6 +128,18 @@ const MyPage = () => {
   const endIdx = startIdx + pageData.size;
   const displayedHospitals = hospitalList.slice(startIdx, endIdx);
   const displayedPharmacies = pharmacyList.slice(startIdx, endIdx);
+  const totalPagesHospital = Math.ceil(hospitalList.length / pageData.size) || 1;
+  const totalPagesPharmacy = Math.ceil(pharmacyList.length / pageData.size) || 1;
+
+  const currentTotalPages = favoriteTab === "hospital" ? totalPagesHospital : totalPagesPharmacy;
+  const pageNumList = Array.from({ length: currentTotalPages }, (_, i) => i + 1);
+
+  const pageDataForComponent = {
+    current: pageData.current + 1,
+    pageNumList,
+    prev: pageData.current > 0,
+    next: pageData.current < currentTotalPages - 1,
+  };
 
   return (
     <>
@@ -211,26 +223,20 @@ const MyPage = () => {
             </Card>
           </Col>
 
-          {/* 우측 콘텐츠 */}
-          <Col xs={12} lg={9}>
-            <Card className="content-card border-0 shadow-sm">
-              <Card.Body
-                className={`${
-                      (hospitalList.length === 0 && favoriteTab === "hospital") ||
-                      (pharmacyList.length === 0 && favoriteTab === "pharmacy")
-                        ? "d-flex justify-content-center align-items-center"
-                        : ""
-                    }`}
-                    style={{ minHeight: "400px" }}
-                  >
-                {/* 즐겨찾기 */}
-                {activeMenu === "favorite" && (
-                  <>
-                    <Nav className="custom-tabs mb-4">
-                      <Nav.Item>
-                        <Nav.Link
-                          className={`tab-link ${favoriteTab === "hospital" ? "active" : ""}`}
-                          onClick={() => {
+            {/* 우측 콘텐츠 */}
+            <Col xs={12} lg={9}>
+              <Card className="content-card border-0 shadow-sm">
+                <Card.Body>
+                  {/* 즐겨찾기 */}
+                  {activeMenu === "favorite" && (
+                    <>
+                      <Nav className="custom-tabs mb-4">
+                        <Nav.Item>
+                          <Nav.Link
+                            className={`tab-link ${
+                              favoriteTab === "hospital" ? "active" : ""
+                            }`}
+                            onClick={() => {
                               setFavoriteTab("hospital");
                               setPageData((prev) => ({ ...prev, current: 0 }));
                             }}
@@ -259,66 +265,70 @@ const MyPage = () => {
                       </div>
                     )}
 
-                    {/* 병원 즐겨찾기 */}
-                    {!loading && favoriteTab === "hospital" && (
-                      <>
-                      {hospitalList.length === 0 ? (
-                        <p className="text-center text-secondary small mt-5">즐겨찾기한 병원이 없습니다.</p>
-                      ) : (
-                        displayedHospitals.map((h, idx) => (
-                          <React.Fragment key={h.hospitalId || idx}>
-                            <div
-                              className="list-item p-3"
-                              onClick={() => navigate(`/hospitaldetail/${h.hospitalId}`)}
-                            >
-                              <strong>{h.hospitalName}</strong>
-                              <div className="my-2 d-flex align-items-center">
-                                <span className="badge-road me-2">도로명</span>
-                                <span className="text-gray">
-                                  {h.facility?.address || "주소 정보 없음"}
-                                </span>
-                              </div>
-                              {unfavorited[`HOSPITAL_${h.hospitalId}`] ? (
-                                  <FaRegStar
-                                    className="favorite-star"
-                                    color="#ccc"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleFavorite("HOSPITAL", h.hospitalId);
-                                    }}
-                                  />
-                                ) : (
-                                  <FaStar
-                                    className="favorite-star"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleFavorite("HOSPITAL", h.hospitalId);
-                                    }}
-                                  />
+                      {/* 병원 즐겨찾기 */}
+                      {!loading && favoriteTab === "hospital" && (
+                        <>
+                          {hospitalList.length === 0 ? (
+                            <p className="text-center text-secondary small mt-5">
+                              즐겨찾기한 병원이 없습니다.
+                            </p>
+                          ) : (
+                            displayedHospitals.map((h, idx) => (
+                              <React.Fragment key={h.hospitalId || idx}>
+                                <div
+                                  className="list-item p-3"
+                                  onClick={() =>
+                                    navigate(`/hospitaldetail/${h.hospitalId}`)
+                                  }
+                                >
+                                  <strong>{h.hospitalName}</strong>
+                                  <div className="my-2 d-flex align-items-center">
+                                    <span className="badge-road me-2">
+                                      도로명
+                                    </span>
+                                    <span className="text-gray">
+                                      {h.facility?.address || "주소 정보 없음"}
+                                    </span>
+                                  </div>
+                                  {unfavorited[`HOSPITAL_${h.hospitalId}`] ? (
+                                    <FaRegStar
+                                      className="favorite-star"
+                                      color="#ccc"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleFavorite(
+                                          "HOSPITAL",
+                                          h.hospitalId
+                                        );
+                                      }}
+                                    />
+                                  ) : (
+                                    <FaStar
+                                      className="favorite-star"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleFavorite(
+                                          "HOSPITAL",
+                                          h.hospitalId
+                                        );
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                                {idx < displayedHospitals.length - 1 && (
+                                  <hr className="divider my-2" />
                                 )}
-                            </div>
-                            {idx < displayedHospitals.length - 1 && ( <hr className="divider my-2" /> )}
-                          </React.Fragment>
-                        ))
+                              </React.Fragment>
+                            ))
+                          )}
+                          {hospitalList.length > 0 && (
+                            <PageComponent
+                              pageData={pageDataForComponent}
+                              onPageChange={(numZeroBased) => handlePageChange(numZeroBased)}
+                            />
+                          )}
+                        </>
                       )}
-                      {hospitalList.length > 0 && (
-                        <PageComponent
-                          pageResponse={{
-                            dtoList: [],
-                            page: pageData.current + 1,
-                            start: 1,
-                            end: Math.ceil(hospitalList.length / pageData.size),
-                            prev: pageData.current > 0,
-                            next:
-                              pageData.current <
-                              Math.ceil(hospitalList.length / pageData.size) - 1,
-                            totalPages: Math.ceil(hospitalList.length / pageData.size),
-                          }}
-                          movePage={(num) => handlePageChange(num - 1)}
-                        />
-                      )}
-                    </>
-                    )}
 
                     {/* 약국 즐겨찾기 */}
                     {!loading && favoriteTab === "pharmacy" && (
@@ -360,28 +370,18 @@ const MyPage = () => {
                               </div>
                               {idx < displayedPharmacies.length - 1 && ( <hr className="divider my-2" /> )}
                               </React.Fragment>
-                          ))
-                        )}
-                        {pharmacyList.length > 0 && (
-                          <PageComponent
-                            pageResponse={{
-                              dtoList: [],
-                              page: pageData.current + 1,
-                              start: 1,
-                              end: Math.ceil(pharmacyList.length / pageData.size),
-                              prev: pageData.current > 0,
-                              next:
-                                pageData.current <
-                                Math.ceil(pharmacyList.length / pageData.size) - 1,
-                              totalPages: Math.ceil(pharmacyList.length / pageData.size),
-                            }}
-                            movePage={(num) => handlePageChange(num - 1)}
-                          />
-                        )}
-                      </>
-                    )}
-                  </>
-                )}
+                            ))
+                          )}
+                          {pharmacyList.length > 0 && (
+                            <PageComponent
+                              pageData={pageDataForComponent}
+                              onPageChange={(numZeroBased) => handlePageChange(numZeroBased)}
+                            />
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
 
                 {/* 내가 쓴 글 */} 
                 {activeMenu === "mypost" && (

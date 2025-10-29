@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import '../../App.css';
 import "../../css/Pharmacy.css";
 import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstrap";
@@ -9,13 +9,17 @@ import useFacilitySearch from "../../hook/useFacilitySearch";
 import PageComponent from "../../component/common/PageComponent";
 import KakaoMapComponent from "../../component/common/KakaoMapComponent";
 import useCustomLogin from "../../hook/useCustomLogin";
+import jwtAxios from "../../util/jwtUtil";
 
 const PharmacyMain = () => {
   const [distance, setDistance] = useState("")
   const [keyword, setKeyword] = useState("")
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  const [favoriteResults, setFavoriteResults] = useState([]);
+  const [pageData, setPageData] = useState({ current: 0, size: 10 });
+  const [searched, setSearched] = useState(false);
 
-  const { results, pageData, currentPos, search } = useFacilitySearch("pharmacy");
+  const { results, pageData: searchPageData, currentPos, search, setFilters, calculateDistance } = useFacilitySearch("pharmacy");
   const navigate = useNavigate()
   const { favorites, toggle, isLogin } = useFavorites("PHARMACY");
   const { /* isLogin: 훅 내부에서 사용 중 */ } = useCustomLogin()
@@ -23,10 +27,69 @@ const PharmacyMain = () => {
   //드롭다운 거리
   const distanceList = ["500m", "1km", "5km", "10km"]
 
-  // 즐겨찾기 필터 적용
-  const displayedResults = isLogin && showFavoritesOnly
-    ? results.filter((r) => favorites.includes(String(r.pharmacyId || r.id)))
+  // 전체 즐겨찾기 약국 정보 로드
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!isLogin || !showFavoritesOnly) return;
+      try {
+        const allData = await Promise.all(
+          favorites.map(async (id) => {
+            const res = await jwtAxios.get(`/project/pharmacy/${id}`);
+            const item = res.data;
+            if (currentPos?.lat && item.facility?.latitude) {
+              item.distance = calculateDistance(
+                currentPos.lat,
+                currentPos.lng,
+                item.facility.latitude,
+                item.facility.longitude
+              );
+            }
+            return item;
+          })
+        );
+        setFavoriteResults(allData.filter(Boolean));
+        setPageData((prev) => ({ ...prev, current: 0 }));
+      } catch (e) {
+        console.error("즐겨찾기 약국 불러오기 실패:", e);
+      }
+    };
+    fetchFavorites();
+  }, [showFavoritesOnly, favorites, isLogin, currentPos]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    search(e, 0, { keyword, distance });
+    setSearched(true);
+  };
+
+  const handleToggleFavoritesOnly = () => {
+    const next = !showFavoritesOnly;
+    setShowFavoritesOnly(next);
+    setFilters((prev) => ({ ...prev, onlyFavorites: next }));
+  };
+
+  const displayedResults = showFavoritesOnly
+    ? favoriteResults.slice(pageData.current * pageData.size, (pageData.current + 1) * pageData.size)
     : results;
+
+  const totalPages = showFavoritesOnly
+    ? Math.ceil(favoriteResults.length / pageData.size)
+    : (searchPageData?.pageNumList?.length || 1);
+
+  const pagination = {
+    current: (showFavoritesOnly ? pageData.current : searchPageData?.current || 0) + 1,
+    pageNumList: Array.from({ length: totalPages }, (_, i) => i + 1),
+    prev: (showFavoritesOnly ? pageData.current : searchPageData?.current || 0) > 0,
+    next: (showFavoritesOnly ? pageData.current : searchPageData?.current || 0) < totalPages - 1,
+  };
+
+  const handlePageChange = (n) => {
+    if (showFavoritesOnly) {
+      setPageData((prev) => ({ ...prev, current: n }));
+    } else {
+      search(null, n, { keyword, distance });
+    }
+  };
 
   return (
     <>
@@ -69,7 +132,7 @@ const PharmacyMain = () => {
         </Row>
 
           {/* 검색 폼 */}
-          <Form onSubmit={(e) => search(e, 0, { keyword, distance })}>
+          <Form onSubmit={handleSubmit}>
             <Dropdown className="mb-3 dropdown-custom">
               <Dropdown.Toggle variant="light" className="text-dark d-flex justify-content-between align-items-center">
                 <span className={distance ? "" : "text-secondary"}>{distance || "거리 선택"}</span>
@@ -94,21 +157,21 @@ const PharmacyMain = () => {
           </Form>
 
           {/* 즐겨찾기만 보기 */}
-          {isLogin && results.length > 0 && (
-            <>
-              <hr className="hr-line my-3" />
-              <div className="d-flex justify-content-start align-items-center mt-4 mb-2">
-                <Button
-                  variant="light"
-                  onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                  className="border-0 d-flex align-items-center gap-2"
-                >
-                  {showFavoritesOnly ? <StarFill color="#FFD43B" size={20}/> : <Star color="#aaa" size={20}/>}
-                  <span className="small">{showFavoritesOnly ? "즐겨찾기만 보기" : "전체 보기"}</span>
-                </Button>
-              </div>
-            </>
-          )}
+          {isLogin && searched && (
+          <>
+            <hr className="hr-line my-3" />
+            <div className="d-flex justify-content-start align-items-center mt-4 mb-2">
+              <Button
+                variant="light"
+                onClick={handleToggleFavoritesOnly}
+                className="border-0 d-flex align-items-center gap-2"
+              >
+                {showFavoritesOnly ? <StarFill color="#FFD43B" size={20}/> : <Star color="#aaa" size={20}/>}
+                <span className="small">{showFavoritesOnly ? "즐겨찾기만 보기" : "전체 보기"}</span>
+              </Button>
+            </div>
+          </>
+        )}
 
           {/* 지도 */}
           {displayedResults.length > 0 && currentPos.lat && (
@@ -131,63 +194,69 @@ const PharmacyMain = () => {
           )}
 
           {/* 검색 결과 */}
-          {displayedResults.length > 0 && (
-            <>
-              <div className="mt-4">
-                {displayedResults.map((item) => (
-                  <Card
-                    key={item.pharmacyId || item.id}
-                    className="result-card mb-3"
-                    onClick={() => navigate(`/pharmacydetail/${item.pharmacyId || item.id}`)}
-                  >
-                    <Card.Body>
-                      <h5 className="fw-bold my-2 d-flex justify-content-between align-items-center">
-                        <span>
-                          {item.name}
-                          <span className="result-distance">({item.distance})</span>
-                        </span>
-                        {isLogin && (
-                          <span
-                            className="favorite-icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggle(item.pharmacyId || item.id);
-                            }}
-                          >
-                            {favorites.includes(String(item.pharmacyId || item.id)) ? (
-                              <StarFill size={30} color="#FFD43B" />
-                            ) : (
-                              <Star size={30} />
-                            )}
-                          </span>
-                        )}
-                      </h5>
-                      <div className="my-3 d-flex align-items-center">
-                        <span className="badge-road">도로명</span>
-                        <span className="text-gray">{item.address}</span>
-                      </div>
-                      <div className="d-flex align-items-center justify-content-between">
-                        <div className="text-gray d-flex align-items-center gap-2">
-                          <TelephoneFill className="me-1" /> {item.phone}
-                        </div>
-                        <div className={`small fw-semibold ${item.open ? "text-success" : "text-secondary"}`}>
-                          {item.open ? (
-                            <>
-                              <CheckCircleFill size={18} /> 영업 중
-                            </>
+          {displayedResults.length > 0 ? (
+          <>
+            <div className="mt-4">
+              {displayedResults.map((item) => (
+                <Card
+                  key={item.pharmacyId || item.id}
+                  className="result-card mb-3"
+                  onClick={() => navigate(`/pharmacydetail/${item.pharmacyId || item.id}`)}
+                >
+                  <Card.Body>
+                    <h5 className="fw-bold my-2 d-flex justify-content-between align-items-center">
+                      <span>
+                        {item.pharmacyName || item.name}
+                        <span className="result-distance">({item.distance || "거리정보 없음"})</span>
+                      </span>
+                      {isLogin && (
+                        <span
+                          className="favorite-icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggle(item.pharmacyId || item.id);
+                          }}
+                        >
+                          {favorites.includes(String(item.pharmacyId || item.id)) ? (
+                            <StarFill size={30} color="#FFD43B" />
                           ) : (
-                            <>
-                              <XCircleFill size={18} /> 영업 종료
-                            </>
+                            <Star size={30} />
                           )}
-                        </div>
+                        </span>
+                      )}
+                    </h5>
+                    <div className="my-3 d-flex align-items-center">
+                      <span className="badge-road">도로명</span>
+                      <span className="text-gray">{item.facility?.address || item.address || "주소 정보 없음"}</span>
+                    </div>
+                    <div className="d-flex align-items-center justify-content-between">
+                      <div className="text-gray d-flex align-items-center gap-2">
+                        <TelephoneFill className="me-1" /> {item.facility?.phone || item.phone || "전화 정보 없음"}
                       </div>
-                    </Card.Body>
-                  </Card>
-                ))}
+                      <div className={`small fw-semibold ${item.open ? "text-success" : "text-secondary"}`}>
+                        {item.open ? (
+                          <>
+                            <CheckCircleFill size={18} /> 영업 중
+                          </>
+                        ) : (
+                          <>
+                            <XCircleFill size={18} /> 영업 종료
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </Card.Body>
+                </Card>
+              ))}
+            </div>
+            <PageComponent pageData={pagination} onPageChange={handlePageChange} />
+          </>
+          ) : (
+            showFavoritesOnly && (
+              <div className="text-center text-secondary mt-4">
+                즐겨찾기한 약국이 없습니다.
               </div>
-              <PageComponent pageData={pageData} onPageChange={(n) => search(null, n)} />
-            </>
+            )
           )}
 
           {/* 검색 결과 없음 */}

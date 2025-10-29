@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import '../../App.css';
 import "../../css/Hospital.css";
 import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstrap";
@@ -8,14 +8,18 @@ import useFavorites from "../../hook/useFavorites";
 import useFacilitySearch from "../../hook/useFacilitySearch";
 import PageComponent from "../../component/common/PageComponent";
 import useCustomLogin from "../../hook/useCustomLogin";
+import jwtAxios from "../../util/jwtUtil";
 
 const HospitalMain = () => {
   const [dept, setDept] = useState("");
   const [org, setOrg] = useState("");
   const [keyword, setKeyword] = useState("");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [favoriteResults, setFavoriteResults] = useState([]);
+  const [pageData, setPageData] = useState({ current: 0, size: 10 });
+  const [searched, setSearched] = useState(false);
 
-  const { results, pageData, search } = useFacilitySearch("hospital");
+  const { results, pageData: searchPageData, currentPos, search, setFilters, calculateDistance } = useFacilitySearch("hospital");
   const navigate = useNavigate();
   const { favorites, toggle, isLogin } = useFavorites("HOSPITAL");
   const { /* isLogin: 훅 내부에서 사용 중 */ } = useCustomLogin();
@@ -28,10 +32,69 @@ const HospitalMain = () => {
     () => ["상급종합병원", "종합병원", "병원", "한의원", "의원", "보건소", "한방병원", "치과의원"], []
   )
 
-  // 즐겨찾기 필터 적용
-  const displayedResults = isLogin && showFavoritesOnly
-    ? results.filter((r) => favorites.includes(String(r.hospitalId || r.id)))
+  //즐겨찾기 목록 전체 가져오기
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!isLogin || !showFavoritesOnly) return;
+      try {
+        const allData = await Promise.all(
+          favorites.map(async (id) => {
+            const res = await jwtAxios.get(`/project/hospital/${id}`);
+            const item = res.data;
+            if (currentPos?.lat && item.facility?.latitude) {
+              item.distance = calculateDistance(
+                currentPos.lat,
+                currentPos.lng,
+                item.facility.latitude,
+                item.facility.longitude
+              );
+            }
+            return item;
+          })
+        );
+        setFavoriteResults(allData.filter(Boolean));
+        setPageData((prev) => ({ ...prev, current: 0 }));
+      } catch (e) {
+        console.error("즐겨찾기 병원 불러오기 실패:", e);
+      }
+    };
+    fetchFavorites();
+  }, [showFavoritesOnly, favorites, isLogin, currentPos]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    search(e, 0, { keyword, org, dept });
+    setSearched(true);
+  };
+
+  const handleToggleFavoritesOnly = () => {
+    const next = !showFavoritesOnly;
+    setShowFavoritesOnly(next);
+    setFilters((prev) => ({ ...prev, onlyFavorites: next }));
+  };
+
+  const displayedResults = showFavoritesOnly
+    ? favoriteResults.slice(pageData.current * pageData.size, (pageData.current + 1) * pageData.size)
     : results;
+
+  const totalPages = showFavoritesOnly
+    ? Math.ceil(favoriteResults.length / pageData.size)
+    : (searchPageData?.pageNumList?.length || 1);
+
+  const pagination = {
+    current: (showFavoritesOnly ? pageData.current : searchPageData?.current || 0) + 1,
+    pageNumList: Array.from({ length: totalPages }, (_, i) => i + 1),
+    prev: (showFavoritesOnly ? pageData.current : searchPageData?.current || 0) > 0,
+    next: (showFavoritesOnly ? pageData.current : searchPageData?.current || 0) < totalPages - 1,
+  };
+
+  const handlePageChange = (n) => {
+    if (showFavoritesOnly) {
+      setPageData((prev) => ({ ...prev, current: n }));
+    } else {
+      search(null, n, { keyword, org, dept });
+    }
+  };
 
   return (
     <div className="bg-white">
@@ -73,7 +136,7 @@ const HospitalMain = () => {
         </Row>
 
         {/* 검색 폼 */}
-        <Form onSubmit={(e) => search(e, 0, { keyword, org, dept })}>
+        <Form onSubmit={handleSubmit}>
           {/* 진료과목 선택 */}
           <Dropdown className="mb-3 dropdown-custom">
             <Dropdown.Toggle variant="light" className="text-dark d-flex justify-content-between align-items-center">
@@ -116,13 +179,13 @@ const HospitalMain = () => {
         </Form>
 
         {/* 즐겨찾기만 보기 */}
-        {isLogin && results.length > 0 && (
+        {isLogin && searched && (
           <>
             <hr className="hr-line my-3" />
             <div className="d-flex justify-content-start align-items-center mt-4 mb-2">
               <Button
                 variant="light"
-                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                onClick={handleToggleFavoritesOnly}
                 className="border-0 d-flex align-items-center gap-2"
               >
                 {showFavoritesOnly ? <StarFill color="#FFD43B" size={20}/> : <Star color="#aaa" size={20}/>}
@@ -133,7 +196,7 @@ const HospitalMain = () => {
         )}
 
         {/* 검색 결과 */}
-        {displayedResults.length > 0 && (
+        {displayedResults.length > 0 ? (
           <>
             <div className="mt-4">
               {displayedResults.map((item) => (
@@ -144,7 +207,7 @@ const HospitalMain = () => {
                 >
                   <Card.Body>
                     <div className="d-flex justify-content-between align-items-center mb-2">
-                      <span className="text-gray">{item.orgType || "의료기관"}</span>
+                      <span className="text-gray">{item.orgType || item.facility?.orgType || "의료기관"}</span>
                       {isLogin && (
                         <span
                           className="favorite-icon"
@@ -162,36 +225,51 @@ const HospitalMain = () => {
                       )}
                     </div>
                     <h5 className="fw-bold mb-2">
-                      {item.name}
-                      <span className="result-distance">({item.distance})</span>
+                      {item.hospitalName || item.name}
+                      <span className="result-distance">({item.distance || "거리정보 없음"})</span>
                     </h5>
                     <div className="my-3 d-flex align-items-center">
                       <span className="badge-road">도로명</span>
-                      <span className="text-gray">{item.address}</span>
+                      <span className="text-gray">{item.facility?.address || item.address || "주소 정보 없음"}</span>
                     </div>
                     <div className="d-flex align-items-center justify-content-between">
                       <div className="text-gray d-flex align-items-center gap-2">
-                        <TelephoneFill className="me-1" /> {item.phone}
+                        <TelephoneFill className="me-1" /> {item.facility?.phone || item.phone || "전화 정보 없음"}
                       </div>
-                      <div className={`small fw-semibold ${item.open ? "text-success" : "text-secondary"}`}>
-                        {item.open ? (
-                          <>
-                            <CheckCircleFill size={18} /> 운영 중
-                          </>
-                        ) : (
-                          <>
-                            <XCircleFill size={18} /> 운영 종료
-                          </>
+                      <div className="d-flex align-items-center gap-3">
+                        {item.hasEmergency && (
+                          <div className="d-flex align-items-center text-danger small fw-semibold">
+                            <HospitalFill size={18} className="me-1" />
+                            응급실 운영
+                          </div>
                         )}
+
+                        <div className={`small fw-semibold ${item.open ? "text-success" : "text-secondary"}`}>
+                          {item.open ? (
+                            <>
+                              <CheckCircleFill size={18} /> 운영 중
+                            </>
+                          ) : (
+                            <>
+                              <XCircleFill size={18} /> 운영 종료
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </Card.Body>
                 </Card>
               ))}
             </div>
-            <PageComponent pageData={pageData} onPageChange={(n) => search(null, n)} />
+            <PageComponent pageData={pagination} onPageChange={handlePageChange} />
           </>
-        )}
+          ) : (
+            showFavoritesOnly && (
+              <div className="text-center text-secondary mt-4">
+                즐겨찾기한 병원이 없습니다.
+              </div>
+            )
+          )}
 
         {/* 검색 결과 없음 */}
         {results.length === 0 && keyword && (
