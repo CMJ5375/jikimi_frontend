@@ -10,14 +10,15 @@ const Myfooter = () => {
         {/* ===== PC / 태블릿 이상 ===== */}
         <div className="d-none d-md-block">
           {/* 상단: 고객센터 + 우측 로고 */}
-          <div className="row align-items-center border-bottom pb-3 mb-3">
+          <div className="row align-items-center pb-1">
             <div className="col-md-8">
-              <h6 className="fw-bold mb-1">
+              <h5 className="fw-bold mb-1">
                 고객센터 <span className="text-secondary fw-normal fs-6">(평일 09:00~18:00)</span>
-              </h6>
+              </h5>
               <h4 className="fw-bold mb-0">+82 031-742-1234</h4>
             </div>
           </div>
+          <hr className="border-secondary border-opacity-75 pb-1" />
 
           {/* 상세정보 (라벨/값 좌우) */}
           <div className="row mb-4">
@@ -34,7 +35,7 @@ const Myfooter = () => {
                 </a>
               </div>
               <div className="py-1">최민준</div>
-              <div className="py-1">류종혁&nbsp;&nbsp;이유진&nbsp;&nbsp;임도윤</div>
+              <div className="py-1">이유진&nbsp;&nbsp;임도윤&nbsp;&nbsp;류종혁</div>
               <div className="py-1">
                 광명로 4, 성남동 3219번지 아트팰리스 4층,5층, Jungwon-gu, Seongnam-si, Gyeonggi-do
               </div>
@@ -57,18 +58,18 @@ const Myfooter = () => {
         {/* ===== 모바일 전용 ===== */}
         <div className="row d-md-none">
           {/* 상단: 고객센터/전화번호 */}
-          <div className="col">
-            <h6 className="fw-bold mb-1">
+          <div className="col pb-2">
+            <h6 className="fw-bold mb-2">
               고객센터 <span className="text-secondary fw-normal">(평일 09:00~18:00)</span>
             </h6>
-            <h2 className="fw-bold mb-3">+82 031-742-1234</h2>
+            <h3 className="fw-bold mb-3">+82 031-742-1234</h3>
           </div>
           <div className="col">
             <div className="col-md-4 text-end">
                   <img src="/image/mj.png" alt="민준복지부" height="35" className="mx-4" />
             </div>
           </div>
-          <hr className="border-secondary border-opacity-25" />
+          <hr className="border-secondary border-opacity-75" />
 
           {/* 라벨/값 2칸 행 */}
           <div className="row g-2">
