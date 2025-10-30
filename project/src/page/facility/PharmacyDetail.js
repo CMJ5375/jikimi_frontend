@@ -1,46 +1,49 @@
-import React, { useEffect, useState } from "react";
-import '../../App.css';
+// src/page/pharmacy/PharmacyDetail.jsx
+import React, { useEffect, useState, useMemo } from "react";
+import "../../App.css";
 import "../../css/Pharmacy.css";
 import { Container, Row, Col, Table, Card } from "react-bootstrap";
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link } from "react-router-dom";
 import { StarFill, Star, CheckCircleFill, XCircleFill } from "react-bootstrap-icons";
 import { openUtil } from "../../util/openUtil";
 import { DAY_KEYS, getTodayKey, getKoreanDayName, getHoursByDay } from "../../util/dayUtil";
 import useFavorites from "../../hook/useFavorites";
 import KakaoMapComponent from "../../component/common/KakaoMapComponent";
+import { pharmacyItemToBusinessHours } from "../../util/pharmacyAdapter";
 
 const PharmacyDetail = () => {
   const { id } = useParams();
   const [pharmacy, setPharmacy] = useState(null);
   const [businessHours, setBusinessHours] = useState([]);
   const [open, setOpen] = useState(false);
-  const { favorites, toggle, isLogin } = useFavorites("PHARMACY")
+  const { favorites, toggle, isLogin } = useFavorites("PHARMACY");
   const isFavorite = pharmacy && favorites.includes(String(id));
 
-  // 약국 정보 불러오기
+  // 약국 기본정보
   useEffect(() => {
     const fetchPharmacy = async () => {
       try {
         const res = await fetch(`http://localhost:8080/project/pharmacy/${id}`);
         const data = await res.json();
         setPharmacy(data);
-        setOpen(openUtil(data.facilityBusinessHours || []));
+        setOpen(openUtil(data?.facilityBusinessHours || []));
       } catch (error) {
-        console.error("약국 정보를 불러오지 못했습니다:", error);
+        console.error("[PharmacyDetail] 약국 정보를 불러오지 못했습니다:", error);
       }
     };
     fetchPharmacy();
   }, [id]);
 
-  // 진료시간(영업시간) 불러오기
+  // DB 영업시간
   useEffect(() => {
     const fetchHours = async () => {
       try {
         const res = await fetch(`http://localhost:8080/project/pharmacy/${id}/business-hours`);
         const data = await res.json();
-        setBusinessHours(data);
+        setBusinessHours(Array.isArray(data) ? data : []);
+        console.log("[PharmacyDetail] DB businessHours:", data);
       } catch (err) {
-        console.error("영업시간 로드 실패:", err);
+        console.error("[PharmacyDetail] 영업시간 로드 실패:", err);
       }
     };
     fetchHours();
@@ -49,10 +52,11 @@ const PharmacyDetail = () => {
   if (!pharmacy) return <div>로딩 중...</div>;
 
   const bizHours =
-    pharmacy.facilityBusinessHours ||
-    pharmacy.facilityBusinessHourList ||
-    pharmacy.facility?.businessHours ||
-    businessHours;
+    pharmacy?.facilityBusinessHours ||
+    pharmacy?.facilityBusinessHourList ||
+    pharmacy?.facility?.businessHours ||
+    businessHours ||
+    [];
 
   const todayKey = getTodayKey();
 
@@ -65,11 +69,11 @@ const PharmacyDetail = () => {
             <Col>
               <div className="d-flex align-items-center gap-2 mb-3">
                 <Link to="/" className="text-route">HOME</Link>
-                <span>{'>'}</span>
+                <span>{">"}</span>
                 <Link to="/pharmacy" className="text-route">약국찾기</Link>
-                <span>{'>'}</span>
+                <span>{">"}</span>
                 <span className="breadcrumb-current">{pharmacy?.pharmacyName || "약국상세"}</span>
-            </div>
+              </div>
             </Col>
           </Row>
 
@@ -90,7 +94,6 @@ const PharmacyDetail = () => {
             <Col>
               <h4 className="fw-bold mb-2 d-flex align-items-center justify-content-between">
                 <span>{pharmacy.pharmacyName}</span>
-                {/* ⭐ 로그인시에만 렌더 */}
                 {isLogin && (
                   <span className="favorite-icon" onClick={() => toggle(id)}>
                     {isFavorite ? <StarFill size={30} color="#FFD43B" /> : <Star size={30} />}
@@ -110,7 +113,7 @@ const PharmacyDetail = () => {
           {/* 지도 + 정보 */}
           <Row className="mb-4">
             <Col md={6}>
-              {pharmacy.facility?.latitude && pharmacy.facility?.longitude && (
+              {pharmacy?.facility?.latitude && pharmacy?.facility?.longitude && (
                 <KakaoMapComponent
                   id={`pharmacy-map-${id}`}
                   lat={pharmacy.facility.latitude}
@@ -126,11 +129,11 @@ const PharmacyDetail = () => {
                 <tbody>
                   <tr>
                     <th className="w-25">주소</th>
-                    <td>{pharmacy.facility?.address || "-"}</td>
+                    <td>{pharmacy?.facility?.address || "-"}</td>
                   </tr>
                   <tr>
                     <th>대표전화</th>
-                    <td>{pharmacy.facility?.phone || "-"}</td>
+                    <td>{pharmacy?.facility?.phone || "-"}</td>
                   </tr>
                   <tr>
                     <th>기관구분</th>
@@ -145,27 +148,17 @@ const PharmacyDetail = () => {
             </Col>
           </Row>
 
-          {/* 운영시간 */}
+          {/* 운영시간 (DB → 없으면 실시간 RAW) */}
           <Row className="mb-4">
             <Col xs={12}>
               <Card className="shadow-sm border-0 h-100">
                 <Card.Header className="pharmacy-card-header">운영시간</Card.Header>
                 <Card.Body className="small text-secondary">
-                  <Row>
-                    {DAY_KEYS.map((dayKey, idx) => {
-                    const row = getHoursByDay(dayKey, bizHours);
-                    const isToday = dayKey === todayKey;
-                    return (
-                      <Col key={idx} xs={6} className={`mb-2 ${isToday ? "today" : ""}`}>
-                        <div className="fw-bold">{getKoreanDayName(dayKey)}</div>
-                        <div className={row.status === "휴무" ? "text-danger" : "text-dark"}>
-                          {row.status}
-                        </div>
-                        <div className="text-muted small">{row.note}</div>
-                      </Col>
-                    );
-                  })}
-                  </Row>
+                  <PharmacyHoursBlock
+                    name={pharmacy.pharmacyName}
+                    facility={pharmacy.facility}
+                    fallbackHours={bizHours}
+                  />
                 </Card.Body>
               </Card>
             </Col>
@@ -180,8 +173,8 @@ const PharmacyDetail = () => {
               >
                 <p className="mb-1">
                   <strong>비고:</strong>{" "}
-                  {bizHours.find(bh => bh.note)?.note
-                    ? bizHours.find(bh => bh.note).note.replace("Lunch", "점심시간")
+                  {bizHours.find((bh) => bh?.note)?.note
+                    ? bizHours.find((bh) => bh?.note).note.replace(/Lunch/gi, "점심시간")
                     : "점심시간 정보 없음"}
                 </p>
                 <p className="mb-0">
@@ -197,4 +190,137 @@ const PharmacyDetail = () => {
   );
 };
 
-export default PharmacyDetail
+export default PharmacyDetail;
+
+/* =========================
+   아래는 운영시간 전용 블록
+   ========================= */
+
+function PharmacyHoursBlock({ name, facility, fallbackHours }) {
+  const [rtHours, setRtHours] = useState([]);  // 실시간 변환 결과
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  const hasDb = Array.isArray(fallbackHours) && fallbackHours.length > 0;
+  const todayKey = getTodayKey();
+
+  // DB가 비어있을 때만 실시간 조회
+  useEffect(() => {
+    if (hasDb) {
+      setRtHours([]);
+      setErr("");
+      return;
+    }
+    const addr = facility?.address || "";
+    const { q0, q1 } = extractQ0Q1(addr);
+    if (!q0 || !q1) {
+      console.log("[PharmacyHoursBlock] Q0/Q1 추출 실패. addr=", addr);
+      return;
+    }
+
+    (async () => {
+      setLoading(true);
+      setErr("");
+      try {
+        const url = `/project/realtime/pharm/pharmacies/raw?q0=${encodeURIComponent(q0)}&q1=${encodeURIComponent(q1)}&page=1&size=50`;
+        const res = await fetch(url);
+        const text = await res.text(); // RAW(XML or JSON-string)
+        const items = parsePharmXmlToItems(text);
+        console.log("[PharmacyHoursBlock] parsed items:", items?.length);
+        const picked = pickBestItem(items, name, addr);
+        console.log("[PharmacyHoursBlock] picked:", picked);
+        const hours = picked ? pharmacyItemToBusinessHours(picked) : [];
+        setRtHours(hours);
+      } catch (e) {
+        console.error("[PharmacyHoursBlock] RAW 조회/파싱 실패:", e);
+        setErr("실시간 운영시간을 불러오지 못했습니다.");
+        setRtHours([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [hasDb, facility, name]);
+
+  const hoursSource = useMemo(
+    () => (hasDb ? fallbackHours : rtHours),
+    [hasDb, fallbackHours, rtHours]
+  );
+
+  if (loading) return <div>불러오는 중…</div>;
+  if (err) return <div className="text-danger">{err}</div>;
+  if (!Array.isArray(hoursSource) || hoursSource.length === 0) {
+    return <div className="text-muted">운영시간 정보 없음</div>;
+  }
+
+  return (
+    <Row>
+      {DAY_KEYS.map((dayKey, idx) => {
+        const row = getHoursByDay(dayKey, hoursSource);
+        const isToday = dayKey === todayKey;
+        return (
+          <Col key={idx} xs={6} className={`mb-2 ${isToday ? "today" : ""}`}>
+            <div className="fw-bold">{getKoreanDayName(dayKey)}</div>
+            <div className={row.status === "휴무" ? "text-danger" : "text-dark"}>
+              {row.status}
+            </div>
+            <div className="text-muted small">{row.note}</div>
+          </Col>
+        );
+      })}
+    </Row>
+  );
+}
+
+/* ===== 유틸: 주소→Q0/Q1, RAW 파서, 매칭 ===== */
+
+/** 주소에서 Q0=시/도, Q1=시군구(공백 제거) 추출 */
+function extractQ0Q1(address) {
+  const s = String(address || "").trim();
+  // 예: "경기도 성남시 분당구 ..." 또는 "대전광역시 동구 ..."
+  const m = s.match(/^([^ ]+?(도|시))\s+([^ ]+?(군|구|시))/);
+  if (!m) return { q0: "", q1: "" };
+  const q0 = m[1];                         // "경기도", "대전광역시"
+  const q1 = m[3].replace(/\s+/g, "");     // "성남시분당구" / "동구" …
+  return { q0, q1 };
+}
+
+/** 약국 RAW(XML or XML-String) → item 배열 (대문자 태그명) */
+function parsePharmXmlToItems(xmlText) {
+  try {
+    const doc = new DOMParser().parseFromString(xmlText, "text/xml");
+    let nodes = Array.from(doc.getElementsByTagName("item"));
+    if (nodes.length === 0) nodes = Array.from(doc.getElementsByTagName("row"));
+    if (nodes.length === 0) nodes = Array.from(doc.getElementsByTagName("ROW"));
+    return nodes.map((el) => {
+      const obj = {};
+      Array.from(el.children).forEach((c) => {
+        obj[c.tagName.toUpperCase()] = (c.textContent || "").trim();
+      });
+      return obj;
+    });
+  } catch (e) {
+    console.error("[parsePharmXmlToItems] XML 파싱 실패:", e);
+    return [];
+  }
+}
+
+/** 가장 그럴듯한 아이템 고르기 (이름/주소 간단 매칭) */
+function pickBestItem(list, name, address) {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  const norm = (s) => String(s || "").replace(/\s+/g, "").toLowerCase();
+  const nName = norm(name);
+  const nAddr = norm(address);
+
+  let best = null;
+  let bestScore = -1;
+  for (const it of list) {
+    const sName = it.DUTYNAME ? (norm(it.DUTYNAME).includes(nName) ? 10 : 0) : 0;
+    const sAddr = it.DUTYADDR ? (norm(it.DUTYADDR).includes(nAddr.slice(0, 12)) ? 5 : 0) : 0;
+    const sc = sName + sAddr;
+    if (sc > bestScore) {
+      best = it;
+      bestScore = sc;
+    }
+  }
+  return best || list[0];
+}
