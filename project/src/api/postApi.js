@@ -10,9 +10,10 @@ export const getOne = async (postId) => {
   return res.data;
 };
 
-export const getList = async ({ page, size, boardCategory, q }) => {
+//카테고리 + 인기글
+export const getList = async ({ page=1, size=10, q="", boardCategory="", sort="DEFAULT", days="7" }) => {
   const res = await jwtAxios.get(`${prefix}/list`, {
-    params: { page, size, boardCategory, q },
+    params: { page, size, q, boardCategory, sort, days }
   });
   return res.data;
 };
@@ -20,9 +21,9 @@ export const getList = async ({ page, size, boardCategory, q }) => {
 // export const createPost = async (postData) => {
 //   const res = await jwtAxios.post(`${prefix}/add`, postData);
 //   return res.data;
-// };
+// }; 기존의 createPost
 
-// ✅ 멀티파트로 글 + 파일 같이 보내는 최종 버전
+// 멀티파트로 글 + 파일 같이 보내는 최종 버전
 export const createPost = async (postData, token) => {
   // postData는 BoardCreat에서 넘길 예정:
   // {
@@ -80,13 +81,13 @@ export const deletePost = async (postId) => {
   return res.data;
 };
 
-// 조회수 증가 API
+// 조회수
 export const increaseView = async (postId) => {
   const res = await jwtAxios.patch(`${prefix}/${postId}/views`);
   return res.data; // { viewCount: number }
 };
 
-// 좋아요 증가 API
+// 좋아요
 // 버튼을 눌렀을대 호출되는 아이
 // 1. 이미 좋아요 눌렀으면 취소 2.안눌렀다면 좋아요 추가
 export const increaseLike = async (postId, username) => {
