@@ -84,7 +84,7 @@ const PharmacyMain = () => {
     };
     fetchFavorites();
     // calculateDistance를 의존성에 포함 (메모이즈되어 있다면 영향 없음)
-  }, [showFavoritesOnly, favorites, isLogin, currentPos, calculateDistance]);
+  }, [showFavoritesOnly, favorites, isLogin, currentPos]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
