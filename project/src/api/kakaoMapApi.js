@@ -1,8 +1,13 @@
 // src/api/KakaoMapApi.js
-const kakao_app_key = `485d664e9dbeef94c4a676b73b34a111`;
+const kakao_js_key = `485d664e9dbeef94c4a676b73b34a111`;
 const TAG = "[kakaoMapApi]";
-
 const okNum = (n) => typeof n === "number" && isFinite(n);
+
+// 기본 위치 - 성남 모란 두드림 IT학원
+const DEFAULT_LOCATION = {
+  lat: 37.432764,
+  lng: 127.129637,
+};
 
 // Kakao Map SDK 로드 (중복 방지)
 export const loadKakaoMap = () =>
@@ -16,7 +21,7 @@ export const loadKakaoMap = () =>
 
       console.debug(`${TAG} SDK 스크립트 삽입`);
       const script = document.createElement("script");
-      script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${kakao_app_key}&autoload=false`;
+      script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${kakao_js_key}&autoload=false`;
       script.async = true;
       script.onload = () => {
         console.debug(`${TAG} SDK onload → maps.load 호출`);
@@ -175,3 +180,43 @@ export const renderKakaoMap = async (containerId, center, locations = [], showCe
     return null;
   }
 };
+
+// 기본 좌표 반환 (네비게이션/검색 기본 위치)
+export function getDefaultPosition() {
+  console.log("기본 위치(성남 두드림IT학원)로 설정되었습니다.");
+  return Promise.resolve(DEFAULT_LOCATION);
+}
+
+// 백엔드에서 카카오 주소 받아오기
+export async function getAddressFromBackend(lat, lon) { 
+  try {
+    // ※ 현재 프론트에 이미 쓰고 있는 엔드포인트 유지
+    const response = await fetch(
+      `http://localhost:8080/project/map/reverse?lat=${lat}&lon=${lon}`,
+      { method: "GET" }
+    );
+    if (!response.ok) throw new Error(`서버 응답 오류: ${response.status}`);
+
+    const data = await response.json();
+
+    if (data.documents && data.documents.length > 0) {
+      const doc = data.documents[0];
+      const road = doc.road_address;
+      const addr = doc.address;
+
+      if (road) {
+        const fullRoad =
+          `${road.region_1depth_name} ${road.region_2depth_name} ${road.region_3depth_name} ${road.road_name} ${road.main_building_no || ""}`.trim();
+        return fullRoad;
+      } else if (addr) {
+        const fullAddr =
+          `${addr.region_1depth_name} ${addr.region_2depth_name} ${addr.region_3depth_name} ${addr.main_address_no || ""}`.trim();
+        return fullAddr;
+      }
+    }
+    return "주소 정보를 가져올 수 없습니다.";
+  } catch (err) {
+    console.error("카카오 주소 백엔드 호출 중 오류:", err);
+    return "주소 정보를 가져올 수 없습니다.";
+  }
+}

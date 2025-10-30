@@ -1,0 +1,45 @@
+/* 네비게이션 메뉴 글씨 색 */
+.navbar .nav-link,
+.navbar .dropdown-toggle {
+  color: #555 !important;
+}
+/* hover */
+.navbar .nav-link:hover,
+.navbar .dropdown-toggle:hover {
+  color: #3B6CFF !important;
+}
+
+/* 공통 아이콘 그룹 */
+.nav-mobile-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+  text-decoration: none;
+}
+
+/* hover */
+.nav-mobile-icon:hover {
+  color: #3B6CFF;
+  text-decoration: none;
+}
+
+/* 아이콘 크기 균일화 */
+.nav-mobile-icon svg {
+  width: 36px;
+  height: 36px;
+}
+
+/* 텍스트 (로그인 / 로그아웃 / 전체메뉴) 간격 */
+.nav-mobile-icon small {
+  font-size: 0.8rem;
+}
+
+/* 아이콘 그룹 간 간격 */
+.nav-mobile-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+}

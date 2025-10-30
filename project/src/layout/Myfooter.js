@@ -22,13 +22,13 @@ const Myfooter = () => {
 
           {/* 상세정보 (라벨/값 좌우) */}
           <div className="row mb-4">
-            <div className="col-12 col-md-3 text-secondary fw-semibold">
+            <div className="col-12 col-md-2 text-secondary fw-semibold">
               <div className="py-1">대표 이메일</div>
               <div className="py-1">대표 이사</div>
               <div className="py-1">임원</div>
               <div className="py-1">주소</div>
             </div>
-            <div className="col-12 col-md-9">
+            <div className="col-12 col-md-10">
               <div className="py-1">
                 <a href="mailto:Jikimi@isitopen.co.kr" className="link-light text-decoration-underline">
                   Jikimi@isitopen.co.kr
@@ -43,7 +43,7 @@ const Myfooter = () => {
           </div>
 
           {/* 로고 모음(PC만) */}
-          <div className="d-flex justify-content-center align-items-center flex-wrap mb-3">
+          <div className="d-flex justify-content-center align-items-center flex-wrap mb-4">
             <img src="/image/mj.png" alt="민준복지부" height="35" className="mx-3" />
             <img src="/image/dy.png" alt="도윤관리청" height="35" className="mx-3" />
             <img src="/image/yj.png" alt="유진국립의료원" height="35" className="mx-3" />
@@ -51,7 +51,7 @@ const Myfooter = () => {
           </div>
 
           <p className="text-center text-secondary small mb-0">
-            Copyright 2025 © ALL RIGHTS RESERVED BY <span className="text-light fw-bold">열려있나요?</span>
+            Copyright 2025 © ALL RIGHTS RESERVED BY <a href="/" className="text-light fw-bold text-decoration-none">열려있나요?</a>
           </p>
         </div>
 
@@ -66,13 +66,13 @@ const Myfooter = () => {
           </div>
           <div className="col">
             <div className="col-md-4 text-end">
-                  <img src="/image/mj.png" alt="민준복지부" height="35" className="mx-4" />
+              <img src="/image/mj.png" alt="민준복지부" height="35" className="mx-4" />
             </div>
           </div>
           <hr className="border-secondary border-opacity-75" />
 
           {/* 라벨/값 2칸 행 */}
-          <div className="row g-2">
+          <div className="row g-2 mb-5">
             <div className="col-4 text-secondary fw-semibold">대표 이메일</div>
             <div className="col-8">
               <a href="mailto:Jikimi@isitopen.co.kr" className="link-light text-decoration-underline">
@@ -96,8 +96,8 @@ const Myfooter = () => {
           {/* 모바일에선 로고 숨김 */}
           {/* (필요하면 여기에 d-none d-md-flex 로고 영역을 둬도 됩니다) */}
 
-          <p className="text-center text-secondary small mt-4 mb-0">
-            Copyright 2025 © ALL RIGHTS RESERVED BY <span className="text-light fw-bold">열려있나요?</span>
+          <p className="text-center text-secondary small mb-0">
+            Copyright 2025 © ALL RIGHTS RESERVED BY <a href="/" className="text-light fw-bold text-decoration-none">열려있나요?</a>
           </p>
         </div>
       </div>

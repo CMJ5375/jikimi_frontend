@@ -1,24 +1,44 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { GeoAltFill } from "react-bootstrap-icons";
-import { Nav } from 'react-bootstrap'
-import { useLocation,Link } from "react-router-dom";
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap/dist/js/bootstrap.bundle.min.js';
-import NavDropdown from 'react-bootstrap/NavDropdown';
+import "../css/layout.css";
+import { GeoAltFill, Person, List } from "react-bootstrap-icons";
+import { Nav } from "react-bootstrap";
+import { useLocation, Link } from "react-router-dom";
+import "bootstrap/dist/js/bootstrap.bundle.min.js";
+import NavDropdown from "react-bootstrap/NavDropdown";
 import { useSelector } from "react-redux";
 import useCustomLogin from "../hook/useCustomLogin";
+import { getDefaultPosition, getAddressFromBackend } from "../api/kakaoMapApi";
+import { getCurrentPosition } from "../api/geolocationApi";
 
 const Navigation = () => {
   const loginState = useSelector(state => state.loginSlice)
   const {doLogout, moveToPath} = useCustomLogin()
+  const [currentAddress, setCurrentAddress] = useState("현재 위치 확인 중...")
+  const location = useLocation()
+
   const handleClickLogout = () => {
     doLogout()
     alert("로그아웃 되었습니다.")
     moveToPath("/")
   }
-  
-  const location = useLocation();
+
+  // 현재 위치 불러오기
+  // 만약 기본 위치 불러오고 싶으면 위 import한 getCurrentPosition 삭제 그리고 이 아래에 문구 삽입
+  // const pos = await getDefaultPosition();
+  useEffect(() => {
+    const fetchAddress = async () => {
+      try {
+        const pos = await getCurrentPosition();
+        const address = await getAddressFromBackend(pos.lat, pos.lng);
+        setCurrentAddress(address);
+      } catch (e) {
+        console.error("주소 불러오기 실패:", e);
+        setCurrentAddress("(기본)경기도 성남시 중원구 광명로 4");
+      }
+    };
+    fetchAddress();
+  }, []);
   
   // 안내바를 숨기고 싶은 경로들
   const hideBannerPaths = [""]; //경로 넣기
@@ -35,7 +55,7 @@ const Navigation = () => {
             <div className="d-flex justify-content-between align-items-center py-2 container" >
               <div className="d-flex align-items-center gap-2 text-secondary " >
                 <GeoAltFill size={18} />
-                <span>경기도 성남시 중원구 성남동</span>
+                <span>{currentAddress}</span>
               </div>
               {!loginState.username ? 
                 <div className="d-flex align-items-center gap-3">
@@ -53,8 +73,8 @@ const Navigation = () => {
           {/* 메인 네비게이션 */}
           <nav className="navbar navbar-expand-md bg-white py-3 container" >
             {/* 로고 */}
-            <a className="navbar-brand d-flex align-items-center" href="/">
-              <img src='/image/logo.png' alt='로고' width={140}></img>
+            <a className="navbar-brand d-flex align-items-center ms-2" href="/">
+              <img src="/image/logo.png" alt="로고" width={150} />
             </a>
 
             {/* 세로 구분선 */}
@@ -64,8 +84,7 @@ const Navigation = () => {
             <Nav className="me-auto">
               <Nav.Link href="/noticeboards">게시판</Nav.Link>
               <Nav.Link href="/mypage">마이페이지</Nav.Link>
-               
-              <NavDropdown title="고객지원" id="basic-nav-dropdown">
+              <NavDropdown title={<span>고객지원</span>} id="basic-nav-dropdown">
                 <NavDropdown.Item href="/notice">공지사항</NavDropdown.Item>
                 <NavDropdown.Item href="/faq">FAQ</NavDropdown.Item>
                 <NavDropdown.Item href="/dataroom">자료실</NavDropdown.Item>
@@ -78,30 +97,35 @@ const Navigation = () => {
         <div className="d-md-none">
           {/* 상단: 로고 / 로그인 / 전체메뉴 */}
           <div className="py-2 d-flex align-items-center justify-content-between bg-light">
-            <a href="/" className="d-inline-flex align-items-center text-decoration-none">
-              <img src='/image/logo.png' alt='로고' width={140}></img>
+            <a href="/" className="d-inline-flex align-items-center text-decoration-none ms-3">
+              <img src='/image/logo.png' alt='로고' width={150}></img>
             </a>
 
-            <div className="d-flex align-items-start">
-              {!loginState.username ?
-                <a href="login" className="text-dark text-decoration-none d-flex flex-column align-items-center me-4">
-                <i className="bi bi-person fs-1"></i>
-                <small className="mt-1">로그인</small>
-              </a>
-              :
-              <a href="/" className="text-dark text-decoration-none d-flex flex-column align-items-center me-4" onClick={handleClickLogout}>
-                <i className="bi bi-person fs-1"></i>
-                <small className="mt-1">로그아웃</small>
-              </a>}
+            <div className="nav-mobile-group">
+              {!loginState.username ? (
+                <a href="login" className="nav-mobile-icon me-3">
+                  <Person />
+                  <small>로그인</small>
+                </a>
+              ) : (
+                <a
+                  href="/"
+                  className="nav-mobile-icon me-3"
+                  onClick={handleClickLogout}
+                >
+                  <Person />
+                  <small>로그아웃</small>
+                </a>
+              )}
 
               <button
-                className="btn btn-link text-dark text-decoration-none d-flex flex-column align-items-center p-0"
+                className="btn btn-link nav-mobile-icon p-0"
                 type="button"
                 data-bs-toggle="offcanvas"
                 data-bs-target="#mobileOffcanvas"
               >
-                <i className="bi bi-list fs-1"></i>
-                <small className="mt-1">전체메뉴</small>
+                <List />
+                <small>전체메뉴</small>
               </button>
             </div>
           </div>
@@ -143,12 +167,11 @@ const Navigation = () => {
           {/* 위치정보 */}
           <div className="d-flex align-items-center gap-2 text-secondary mb-3">
             <GeoAltFill size={18} />
-            <span>경기도 성남시 중원구 성남동</span>
+            <span>{currentAddress}</span>
           </div>
 
           {/* 메뉴 리스트 */}
           <div className="list-group list-group-flush">
-
             {/* 게시판 */}
             <div className="mt-2 mb-2">
               <Link

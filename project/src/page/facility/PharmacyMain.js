@@ -11,6 +11,8 @@ import PageComponent from "../../component/common/PageComponent";
 import KakaoMapComponent from "../../component/common/KakaoMapComponent";
 import useCustomLogin from "../../hook/useCustomLogin";
 import jwtAxios from "../../util/jwtUtil";
+import { getDefaultPosition, getAddressFromBackend } from "../../api/kakaoMapApi";
+// import { getCurrentPosition } from "../../api/geolocationApi";
 
 const PharmacyMain = () => {
   const [distance, setDistance] = useState("");
@@ -19,6 +21,7 @@ const PharmacyMain = () => {
   const [favoriteResults, setFavoriteResults] = useState([]);
   const [pageData, setPageData] = useState({ current: 0, size: 10 });
   const [searched, setSearched] = useState(false);
+  const [currentAddress, setCurrentAddress] = useState("위치 확인 중...");
 
   const {
     results,
@@ -35,6 +38,23 @@ const PharmacyMain = () => {
 
   // 드롭다운 거리
   const distanceList = ["500m", "1km", "5km", "10km"];
+
+  // 현재 위치 불러오기(일단 기본위치 받아옴)
+  // 만약 현재 위치 불러오고 싶으면 위 import의 주석 풀고 getDefaultPosition삭제 그리고 이 아래에 문구 삽입
+  // const pos = await getCurrentPosition();
+  useEffect(() => {
+    const fetchAddress = async () => {
+      try {
+        const pos = await getDefaultPosition();
+        const address = await getAddressFromBackend(pos.lat, pos.lng);
+        setCurrentAddress(address);
+      } catch (e) {
+        console.error("주소 불러오기 실패:", e);
+        setCurrentAddress("(기본)경기도 성남시 중원구 광명로 4");
+      }
+    };
+    fetchAddress();
+  }, []);
 
   // 전체 즐겨찾기 약국 정보 로드
   useEffect(() => {
@@ -140,8 +160,8 @@ const PharmacyMain = () => {
           <Row className="g-3 mb-3 align-items-center">
             <Col xs={6}>
               <div className="d-flex align-items-center gap-2 text-secondary mb-2">
-                <GeoAltFill size={18} />
-                <small>경기도 성남시 중원구</small>
+                <GeoAltFill size={15} />
+                <small>{currentAddress}</small>
               </div>
               <h3 className="fw-bold lh-base mb-3 pharmacy-title">
                 지금 나에게

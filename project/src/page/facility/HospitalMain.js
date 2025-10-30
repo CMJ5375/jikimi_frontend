@@ -9,6 +9,8 @@ import useFacilitySearch from "../../hook/useFacilitySearch";
 import PageComponent from "../../component/common/PageComponent";
 import useCustomLogin from "../../hook/useCustomLogin";
 import jwtAxios from "../../util/jwtUtil";
+import { getDefaultPosition, getAddressFromBackend } from "../../api/kakaoMapApi";
+// import { getCurrentPosition } from "../../api/geolocationApi";
 
 const HospitalMain = () => {
   const [dept, setDept] = useState("");
@@ -18,6 +20,7 @@ const HospitalMain = () => {
   const [favoriteResults, setFavoriteResults] = useState([]);
   const [pageData, setPageData] = useState({ current: 0, size: 10 });
   const [searched, setSearched] = useState(false);
+  const [currentAddress, setCurrentAddress] = useState("위치 확인 중...");
 
   const { results, pageData: searchPageData, currentPos, search, setFilters, calculateDistance } = useFacilitySearch("hospital");
   const navigate = useNavigate();
@@ -31,6 +34,23 @@ const HospitalMain = () => {
   const orgList = useMemo(
     () => ["상급종합병원", "정신병원", "종합병원", "치과의원", "한방병원", "보건소", "한의원", "병원", "의원"], []
   )
+
+  // 현재 위치 불러오기(일단 기본위치 받아옴)
+  // 만약 현재 위치 불러오고 싶으면 위 import의 주석 풀고 getDefaultPosition삭제 그리고 이 아래에 문구 삽입
+  // const pos = await getCurrentPosition();
+  useEffect(() => {
+    const fetchAddress = async () => {
+      try {
+        const pos = await getDefaultPosition();
+        const address = await getAddressFromBackend(pos.lat, pos.lng);
+        setCurrentAddress(address);
+      } catch (e) {
+        console.error("주소 불러오기 실패:", e);
+        setCurrentAddress("(기본)경기도 성남시 중원구 광명로 4");
+      }
+    };
+    fetchAddress();
+  }, []);
 
   //즐겨찾기 목록 전체 가져오기
   useEffect(() => {
@@ -103,8 +123,8 @@ const HospitalMain = () => {
         <Row className="g-3 mb-3 align-items-center">
           <Col xs={6}>
             <div className="d-flex align-items-center gap-2 text-secondary mb-2">
-              <GeoAltFill size={18} />
-              <small>경기도 성남시 중원구</small>
+              <GeoAltFill size={15} />
+              <small>{currentAddress}</small>
             </div>
             <h3 className="fw-bold lh-base mb-3 hospital-title">
               지금 나에게<br />딱 맞는 <span>병원</span>을 찾아보세요
