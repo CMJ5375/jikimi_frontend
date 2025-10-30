@@ -1,8 +1,8 @@
-// src/component/Noticeboard.js
 import { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
-import { ChatDots, HandThumbsUp, Pencil, Plus, Search } from "react-bootstrap-icons";
+import { ChatDots, HandThumbsUp, Pencil, Plus, Search, Megaphone } from "react-bootstrap-icons";
+import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getList } from "../../api/postApi";
 import useCustomLogin from "../../hook/useCustomLogin";
@@ -31,6 +31,24 @@ const Noticeboard = () => {
   const navigate = useNavigate();
   const { isLogin, moveToLoginReturn } = useCustomLogin();
 
+  //상단광고
+  const ROTATE_MS = 5000; // 전환 주기
+  const banners = useRef([
+    {
+      kind: "notice",
+      text: "이용자들의 불쾌감을 주는 게시글은 동의없이 삭제 조치하겠습니다.",
+      brand: "관리자",
+      },
+      {
+      kind: "ad",
+      text: "브랜드 맞춤형 기획으로 현 단계에 필요한 전략을 제안합니다",
+      brand: "엠서치마케팅",
+      },
+  ]).current;
+  
+  //상단광고2
+  const [bannerIdx, setBannerIdx] = useState(0);
+
   // 서버 페이징 상태
   const [pageData, setPageData] = useState(null); // PageResponseDTO
   const [page, setPage] = useState(1);            // 1-based
@@ -39,6 +57,28 @@ const Noticeboard = () => {
   // UI 상태
   const [active, setActive] = useState("전체");
   const [q, setQ] = useState("");
+
+  // 검색 실행 (모바일 버튼/엔터 공통)
+  const handleSearch = () => {
+    // 입력값(q)은 onChange로 이미 반영되므로, 1페이지로 돌려서 useEffect 재호출
+    setPage(1);
+  };
+
+  // 모바일 인풋에서 엔터로 검색
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSearch();
+    }
+  };
+
+  // 상단 광고
+  useEffect(() => {
+      const t = setInterval(() => {
+        setBannerIdx((i) => (i + 1) % banners.length);
+      }, ROTATE_MS);
+      return () => clearInterval(t);
+      }, [banners]);
 
   // 목록 로드 (항상 서버 페이징; 인기글도 서버는 기본 목록만 받아오고, 프론트에서만 필터/슬라이스)
   useEffect(() => {
@@ -76,7 +116,7 @@ const Noticeboard = () => {
     return pageData.dtoList.map((p) => ({
       id: p.postId,
       cat: ENUM_TO_KOR[p.boardCategory] ?? "자유글",
-      hot: (p.likeCount ?? 0) >= 10,
+      hot: (p.likeCount ?? 0) >= 3,
       title: p.title ?? "",
       date: p.createdAt ? p.createdAt.slice(0, 10) : "",
       time: p.createdAt ? p.createdAt.slice(11, 16) : "",
@@ -87,6 +127,7 @@ const Noticeboard = () => {
         return c.length > 70 ? c.slice(0, 70) + "..." : c;
       })(),
       likes: p.likeCount ?? 0,
+      view: p.viewCount ?? 0,
       comments: 0,
     }));
   }, [pageData]);
@@ -143,15 +184,36 @@ const Noticeboard = () => {
 
   return (
     <div className="bg-white">
-      {/* 상단 공지 바 (PC) */}
-      <div className="bg-primary text-white mb-4 px-3 py-2 text-center d-none d-md-block">
-        <span className="me-2">게시판 ·</span> 자유롭게 의견을 남겨주세요.
+      {/* 공지/광고 배너 (PC) */}
+      <div className="container d-none d-md-block">
+        <div className="notice-banner my-3">
+          {/* key 로 페이드 애니메이션 트리거 */}
+          <div key={bannerIdx} className="notice-anim d-flex w-100 align-items-center justify-content-between">
+            <div className="notice-left">
+              <span className={`notice-icon ${banners[bannerIdx].kind === "ad" ? "is-ad" : "is-notice"}`}>
+                <Megaphone size={16} />
+              </span>
+              <span className="notice-text">{banners[bannerIdx].text}</span>
+            </div>
+
+            <div className="notice-right">
+              {banners[bannerIdx].kind === "ad" ? (
+                <>
+                  <span className="notice-brand">{banners[bannerIdx].brand}</span>
+                  <span className="notice-ad">광고</span>
+                </>
+              ) : (
+                <span className="notice-badge">공지</span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ====== PC / 태블릿 ====== */}
       <div className="container py-4 d-none d-md-block">
         {/* 타이틀 & 검색/작성 */}
-        <div className="d-flex align-items-center justify-content-between mb-3">
+        <div className="d-flex align-items-center justify-content-between mb-4 gap-3">
           <h4 className="fw-bold mb-0">게시판</h4>
           <div className="d-flex align-items-center gap-2">
             <div className="position-relative">
@@ -207,7 +269,9 @@ const Noticeboard = () => {
                 </span>
                 <span className="board-title">{m.title}</span>
               </div>
-              <span className="text-secondary small">{m.date}</span>
+              <div className="text-end text-secondary small d-flex flex-column align-items-end">
+                <span>{m.view} &nbsp; {m.date}</span>
+              </div>
             </button>
           ))}
         </div>
@@ -221,12 +285,65 @@ const Noticeboard = () => {
       {/* ====== 모바일 ====== */}
       <div className="d-block d-md-none">
         <div className="mbp-wrap">
+
+          {/* 공지/광고 배너 (모바일) */}
+          <div className="px-3 pt-2 d-block d-md-none">
+            <div className="notice-banner">
+              <div key={bannerIdx} className="notice-anim d-flex w-100 align-items-center justify-content-between">
+                <div className="notice-left">
+                  <span className={`notice-icon ${banners[bannerIdx].kind === "ad" ? "is-ad" : "is-notice"}`}>
+                    <Megaphone size={16} />
+                  </span>
+                  <span className="notice-text">{banners[bannerIdx].text}</span>
+                </div>
+                <div className="notice-right">
+                  {banners[bannerIdx].kind === "ad" ? (
+                    <>
+                      <span className="notice-brand">{banners[bannerIdx].brand}</span>
+                      <span className="notice-ad">광고</span>
+                    </>
+                  ) : (
+                    <span className="notice-badge">공지</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* 헤더 */}
-          <div className="d-flex align-items-center justify-content-between px-3 pt-3 pb-2">
-            <div className="mbp-title">게시판</div>
-            <div className="d-flex align-items-center gap-3">
-              <Search />
-              <Pencil onClick={() => navigate("/boardCreats")} role="button" />
+          <div className="px-3 pt-3 pb-2">
+            <div className="d-flex align-items-center justify-content-between mb-4 gap-3">
+              <div className="mbp-title">게시판</div>
+              <button
+                className="btn btn-primary btn rounded-pill px-3"
+                onClick={() => navigate("/boardCreats")}
+                type="button"
+              >
+                글작성 <Pencil className="ms-1" />
+              </button>
+            </div>
+
+            {/* PC와 동일 동작: onChange로 q 업데이트 → useEffect 트리거 */}
+            <div className="d-flex align-items-center gap-2">
+              <div className="position-relative flex-grow-1">
+                <input
+                  type="text"
+                  className="form-control rounded-pill ps-4 pe-5 board-search"
+                  placeholder="검색어를 입력해주세요.."
+                  value={q}
+                  onChange={handleChangeQuery}
+                  onKeyDown={handleKeyDown}   // ← 엔터로 검색
+                />
+                <button
+                  type="button"
+                  className="btn position-absolute top-0 end-0 h-100 me-1 px-3"
+                  onClick={handleSearch}      // ← 돋보기 버튼으로 검색
+                  aria-label="검색"
+                  style={{ background: "transparent", border: "none" }}
+                >
+                  <Search />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -252,7 +369,9 @@ const Noticeboard = () => {
               role="button"
             >
               <div className="d-flex justify-content-between align-items-start">
-                <span className="mbp-badge">{p.hot ? "인기글" : p.cat}</span>
+                <span className={`mbp-badge ${ p.hot ? "bg-primary-soft text-primary" : "bg-secondary-soft text-secondary"}`}>
+                {p.hot ? "인기글" : p.cat}
+                </span>
                 <div className="mbp-ghostmark">
                   <Plus className="fs-5" />
                 </div>
@@ -261,7 +380,7 @@ const Noticeboard = () => {
               <h6 className="mbp-title-line">{p.title}</h6>
 
               <div className="d-flex justify-content-between">
-                <div className="mbp-meta">{p.time}</div>
+                <div className="mbp-meta">{p.date} {p.time}</div>
                 <div className="text-end">
                   <div className="fw-bold">{p.author}</div>
                   <span className="mbp-region">{p.region}</span>
@@ -287,24 +406,8 @@ const Noticeboard = () => {
 
           {/* 모바일 페이지네이션(간단) */}
           {paginationData && (
-            <div className="d-flex justify-content-center gap-2 my-3">
-              <button
-                className="btn btn-outline-secondary btn-sm"
-                disabled={!paginationData.prev}
-                onClick={() => handlePageChange(Math.max(0, page - 2))}
-              >
-                이전
-              </button>
-              <span className="small align-self-center">
-                {paginationData.current} / {paginationData.pageNumList.length}
-              </span>
-              <button
-                className="btn btn-outline-secondary btn-sm"
-                disabled={!paginationData.next}
-                onClick={() => handlePageChange(page)} // zero-based next
-              >
-                다음
-              </button>
+            <div className="px-3 py-3">
+              <PageComponent pageData={paginationData} onPageChange={handlePageChange} />
             </div>
           )}
         </div>
