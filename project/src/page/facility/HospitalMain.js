@@ -10,7 +10,6 @@ import PageComponent from "../../component/common/PageComponent";
 import useCustomLogin from "../../hook/useCustomLogin";
 import jwtAxios from "../../util/jwtUtil";
 import { getDefaultPosition, getAddressFromBackend } from "../../api/kakaoMapApi";
-// import { getCurrentPosition } from "../../api/geolocationApi";
 
 const HospitalMain = () => {
   const [dept, setDept] = useState("");
@@ -36,8 +35,6 @@ const HospitalMain = () => {
   )
 
   // 현재 위치 불러오기(일단 기본위치 받아옴)
-  // 만약 현재 위치 불러오고 싶으면 위 import의 주석 풀고 getDefaultPosition삭제 그리고 이 아래에 문구 삽입
-  // const pos = await getCurrentPosition();
   useEffect(() => {
     const fetchAddress = async () => {
       try {
