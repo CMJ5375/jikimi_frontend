@@ -24,12 +24,12 @@ const Navigation = () => {
   }
 
   // 현재 위치 불러오기
-  // 만약 기본 위치 불러오고 싶으면 위 import한 getCurrentPosition 삭제 그리고 이 아래에 문구 삽입
-  // const pos = await getDefaultPosition();
+  // 만약 기본 위치 불러오고 싶으면 위 import한 getDefaultPosition 삭제 그리고 이 아래에 문구 삽입
+  // const pos = await getCurrentPosition();
   useEffect(() => {
     const fetchAddress = async () => {
       try {
-        const pos = await getCurrentPosition();
+        const pos = await getDefaultPosition();
         const address = await getAddressFromBackend(pos.lat, pos.lng);
         setCurrentAddress(address);
       } catch (e) {
