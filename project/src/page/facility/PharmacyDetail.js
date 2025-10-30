@@ -163,7 +163,16 @@ const PharmacyDetail = () => {
               </Card>
             </Col>
           </Row>
-
+           {/* 오늘 요일 강조 */}
+              <style>
+                {`
+                .today {
+                  color: #2563eb;
+                  font-weight: 700;
+                  text-decoration: underline;
+                }
+                `}
+              </style>
           {/* 비고 */}
           <Row>
             <Col>
@@ -171,12 +180,6 @@ const PharmacyDetail = () => {
                 className="p-3 small border border-0 remark-box"
                 style={{ background: "#DBEFFF", fontSize: "0.9rem", borderRadius: "8px" }}
               >
-                <p className="mb-1">
-                  <strong>비고:</strong>{" "}
-                  {bizHours.find((bh) => bh?.note)?.note
-                    ? bizHours.find((bh) => bh?.note).note.replace(/Lunch/gi, "점심시간")
-                    : "점심시간 정보 없음"}
-                </p>
                 <p className="mb-0">
                   <strong>법정공휴일:</strong>{" "}
                   신정, 설, 삼일절, 어린이날, 석가탄신일, 현충일, 광복절, 추석, 개천절, 한글날, 크리스마스
@@ -257,13 +260,17 @@ function PharmacyHoursBlock({ name, facility, fallbackHours }) {
       {DAY_KEYS.map((dayKey, idx) => {
         const row = getHoursByDay(dayKey, hoursSource);
         const isToday = dayKey === todayKey;
+        const note = (row.note || "").trim();
         return (
           <Col key={idx} xs={6} className={`mb-2 ${isToday ? "today" : ""}`}>
             <div className="fw-bold">{getKoreanDayName(dayKey)}</div>
             <div className={row.status === "휴무" ? "text-danger" : "text-dark"}>
               {row.status}
             </div>
-            <div className="text-muted small">{row.note}</div>
+            {/* 기본 문구(점심시간 정보 없음)는 숨김 */}
+            {note && !/점심시간\s*정보\s*없음/i.test(note) && (
+              <div className="text-muted small">{note}</div>
+            )}
           </Col>
         );
       })}

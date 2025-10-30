@@ -362,7 +362,6 @@ const HospitalDetail = () => {
                               <div className={row.status === "휴무" ? "text-danger" : "text-dark"}>
                                 {row.status}
                               </div>
-                              <div className="text-muted small">{row.note || "점심시간 정보 없음"}</div>
                             </Col>
                           );
                         })}
@@ -436,12 +435,7 @@ const HospitalDetail = () => {
                   className="p-3 small border border-0 remark-box"
                   style={{ background: "#DBEFFF", fontSize: "0.9rem", borderRadius: "8px" }}
                 >
-                  <p className="mb-1">
-                    <strong>비고:</strong>{" "}
-                    {hoursSource.find(bh => bh?.note)?.note
-                      ? hoursSource.find(bh => bh?.note).note.replace(/Lunch/gi, "점심시간")
-                      : "점심시간 정보 없음"}
-                  </p>
+                  
                   <p className="mb-0">
                     <strong>법정공휴일:</strong>{" "}
                     신정, 설, 삼일절, 어린이날, 석가탄신일, 현충일, 광복절, 추석, 개천절, 한글날, 크리스마스
