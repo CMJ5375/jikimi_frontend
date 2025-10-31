@@ -4,6 +4,7 @@ import "../../css/MyPage.css";
 import { Container, Row, Col, Card, ListGroup, Button, Nav, Form, Spinner } from "react-bootstrap";
 import { FaBookmark, FaCommentDots, FaStar, FaHeart, FaRegCommentDots, FaRegStar } from "react-icons/fa";
 import { getFavorites, toggleFavorite } from "../../api/favoriteApi";
+import { fetchMyPosts } from "../../api/postApi";
 import { useNavigate } from "react-router-dom";
 import { modifyUser } from "../../api/userApi";
 import { useSelector } from "react-redux";
@@ -17,7 +18,7 @@ const MyPage = () => {
   const [activeMenu, setActiveMenu] = useState("favorite");
   const [favoriteTab, setFavoriteTab] = useState("hospital");
   const [postTab, setPostTab] = useState("post");
-
+  const [postCount, setPostCount] = useState(0);
   const [hospitalList, setHospitalList] = useState([]);
   const [pharmacyList, setPharmacyList] = useState([]);
   const [unfavorited, setUnfavorited] = useState({});
@@ -36,11 +37,12 @@ const MyPage = () => {
     size: 10,
   });
   const [user, setUser] = useState({
-      username: "",
-      email: "",
-      address: "",
-      age: "",
-    });
+    username: "",
+    email: "",
+    address: "",
+    age: "",
+  });
+
   useEffect(() => {
     if (!loginInfo) return;
     setUser((prev) => ({
@@ -51,6 +53,21 @@ const MyPage = () => {
       age: loginInfo.age ?? prev.age,
     }));
   }, [loginInfo]);
+
+  // 내가 쓴 글 개수 가져오기
+  useEffect(() => {
+    const loadMyPosts = async () => {
+      try {
+        const posts = await fetchMyPosts();
+        setPostCount(posts.length || 0);
+      } catch (err) {
+        console.error("내가 쓴 글 개수를 불러오는 중 오류:", err);
+        setPostCount(0);
+      }
+    };
+    if (isLogin) loadMyPosts();
+  }, [isLogin]);
+
   // 즐겨찾기 데이터 불러오기
   useEffect(() => {
     const fetchFavorites = async () => {
@@ -184,7 +201,7 @@ const MyPage = () => {
                 <div className="text-center">
                   <FaCommentDots className="mypage-icon mb-1" />
                   <p className="mb-0">내가 쓴 글</p>
-                  <span className="fw-bold text-primary">8</span>
+                  <span className="fw-bold text-primary">{postCount}</span>
                 </div>
               </div>
             </div>
