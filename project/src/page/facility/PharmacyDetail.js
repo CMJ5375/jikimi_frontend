@@ -1,5 +1,5 @@
 // src/page/pharmacy/PharmacyDetail.jsx
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "../../App.css";
 import "../../css/Pharmacy.css";
 import { Container, Row, Col, Table, Card } from "react-bootstrap";
@@ -11,52 +11,162 @@ import useFavorites from "../../hook/useFavorites";
 import KakaoMapComponent from "../../component/common/KakaoMapComponent";
 import { pharmacyItemToBusinessHours } from "../../util/pharmacyAdapter";
 
+/* =========================
+   유틸
+   ========================= */
+function extractQ0Q1(address) {
+  const s = String(address || "").trim();
+  const m = s.match(/^([^ ]+?(도|시))\s+([^ ]+?(군|구|시))/);
+  if (!m) return { q0: "", q1: "" };
+  const q0 = m[1];
+  const q1 = m[3].replace(/\s+/g, "");
+  return { q0, q1 };
+}
+
+function parsePharmXmlToItems(xmlText) {
+  try {
+    const doc = new DOMParser().parseFromString(xmlText, "text/xml");
+    let nodes = Array.from(doc.getElementsByTagName("item"));
+    if (nodes.length === 0) nodes = Array.from(doc.getElementsByTagName("row"));
+    if (nodes.length === 0) nodes = Array.from(doc.getElementsByTagName("ROW"));
+    return nodes.map((el) => {
+      const obj = {};
+      Array.from(el.children).forEach((c) => {
+        obj[c.tagName.toUpperCase()] = (c.textContent || "").trim();
+      });
+      return obj;
+    });
+  } catch {
+    return [];
+  }
+}
+
+function pickBestItem(list, name, address) {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  const norm = (s) => String(s || "").replace(/\s+/g, "").toLowerCase();
+  const nName = norm(name);
+  const nAddr = norm(address);
+
+  let best = null;
+  let bestScore = -1;
+  for (const it of list) {
+    const sName = it.DUTYNAME ? (norm(it.DUTYNAME).includes(nName) ? 10 : 0) : 0;
+    const sAddr = it.DUTYADDR ? (norm(it.DUTYADDR).includes(nAddr.slice(0, 12)) ? 5 : 0) : 0;
+    const sc = sName + sAddr;
+    if (sc > bestScore) {
+      best = it;
+      bestScore = sc;
+    }
+  }
+  return best || list[0];
+}
+
+function isUsableHours(list) {
+  if (!Array.isArray(list) || list.length === 0) return false;
+  return list.some((r) => {
+    const s = String(r?.openTime ?? "").trim();
+    const c = String(r?.closeTime ?? "").trim();
+    const has = (s && s !== "00:00") && (c && c !== "00:00");
+    return !r?.closed && has;
+  });
+}
+
+/* =========================
+   메인 컴포넌트
+   ========================= */
 const PharmacyDetail = () => {
   const { id } = useParams();
   const [pharmacy, setPharmacy] = useState(null);
-  const [businessHours, setBusinessHours] = useState([]);
+  const [dbHours, setDbHours] = useState([]);      // /pharmacy/{id}/business-hours
+  const [rtHours, setRtHours] = useState([]);      // 실시간 변환
+  const [loadingRt, setLoadingRt] = useState(false);
   const [open, setOpen] = useState(false);
+
   const { favorites, toggle, isLogin } = useFavorites("PHARMACY");
   const isFavorite = pharmacy && favorites.includes(String(id));
 
-  // 약국 기본정보
+  // 1) 약국 기본정보
   useEffect(() => {
-    const fetchPharmacy = async () => {
+    (async () => {
       try {
-        const res = await fetch(`http://localhost:8080/project/pharmacy/${id}`);
+        const res = await fetch(`/project/pharmacy/${id}`);
         const data = await res.json();
         setPharmacy(data);
-        setOpen(openUtil(data?.facilityBusinessHours || []));
-      } catch (error) {
-        console.error("[PharmacyDetail] 약국 정보를 불러오지 못했습니다:", error);
+      } catch {
+        setPharmacy(null);
       }
-    };
-    fetchPharmacy();
+    })();
   }, [id]);
 
-  // DB 영업시간
+  // 2) DB 영업시간
   useEffect(() => {
-    const fetchHours = async () => {
+    (async () => {
       try {
-        const res = await fetch(`http://localhost:8080/project/pharmacy/${id}/business-hours`);
+        const res = await fetch(`/project/pharmacy/${id}/business-hours`);
         const data = await res.json();
-        setBusinessHours(Array.isArray(data) ? data : []);
-        console.log("[PharmacyDetail] DB businessHours:", data);
-      } catch (err) {
-        console.error("[PharmacyDetail] 영업시간 로드 실패:", err);
+        setDbHours(Array.isArray(data) ? data : []);
+      } catch {
+        setDbHours([]);
       }
-    };
-    fetchHours();
+    })();
   }, [id]);
 
-  if (!pharmacy) return <div>로딩 중...</div>;
-
-  const bizHours =
+  // 3) hoursSource: DB → (상세/목록 내) facility.businessHours → rtHours
+  const fallbackHoursFromDetail =
     pharmacy?.facilityBusinessHours ||
     pharmacy?.facilityBusinessHourList ||
     pharmacy?.facility?.businessHours ||
-    businessHours ||
     [];
+
+  const hoursSource = useMemo(() => {
+    if (isUsableHours(dbHours)) return dbHours;
+    if (isUsableHours(fallbackHoursFromDetail)) return fallbackHoursFromDetail;
+    if (isUsableHours(rtHours)) return rtHours;
+    return [];
+  }, [dbHours, fallbackHoursFromDetail, rtHours]);
+
+  // 4) DB 비어있고 상세/목록 보유 시간도 없으면 실시간 RAW 조회
+  useEffect(() => {
+    if (!pharmacy) return;
+    if (isUsableHours(dbHours) || isUsableHours(fallbackHoursFromDetail)) {
+      setRtHours([]);
+      return;
+    }
+
+    const addr = pharmacy?.facility?.address || "";
+    const name = pharmacy?.pharmacyName || "";
+    const { q0, q1 } = extractQ0Q1(addr);
+    if (!q0 || !q1) {
+      setRtHours([]);
+      return;
+    }
+
+    (async () => {
+      try {
+        setLoadingRt(true);
+        const url = `/project/realtime/pharm/pharmacies/raw?q0=${encodeURIComponent(
+          q0
+        )}&q1=${encodeURIComponent(q1)}&page=1&size=50`;
+        const res = await fetch(url);
+        const text = await res.text();
+        const items = parsePharmXmlToItems(text);
+        const picked = pickBestItem(items, name, addr);
+        const hours = picked ? pharmacyItemToBusinessHours(picked) : [];
+        setRtHours(Array.isArray(hours) ? hours : []);
+      } catch {
+        setRtHours([]);
+      } finally {
+        setLoadingRt(false);
+      }
+    })();
+  }, [pharmacy, dbHours, fallbackHoursFromDetail]);
+
+  // 5) 최종 hoursSource로 열림/닫힘 상태 계산
+  useEffect(() => {
+    setOpen(openUtil(hoursSource || []));
+  }, [hoursSource]);
+
+  if (!pharmacy) return <div>로딩 중...</div>;
 
   const todayKey = getTodayKey();
 
@@ -148,31 +258,33 @@ const PharmacyDetail = () => {
             </Col>
           </Row>
 
-          {/* 운영시간 (DB → 없으면 실시간 RAW) */}
+          {/* 운영시간 (DB → 상세보유 → 실시간 RAW) */}
           <Row className="mb-4">
             <Col xs={12}>
               <Card className="shadow-sm border-0 h-100">
                 <Card.Header className="pharmacy-card-header">운영시간</Card.Header>
                 <Card.Body className="small text-secondary">
                   <PharmacyHoursBlock
-                    name={pharmacy.pharmacyName}
-                    facility={pharmacy.facility}
-                    fallbackHours={bizHours}
+                    todayKey={todayKey}
+                    hours={hoursSource}
+                    loadingRt={loadingRt}
                   />
                 </Card.Body>
               </Card>
             </Col>
           </Row>
-           {/* 오늘 요일 강조 */}
-              <style>
-                {`
-                .today {
-                  color: #2563eb;
-                  font-weight: 700;
-                  text-decoration: underline;
-                }
-                `}
-              </style>
+
+          {/* 오늘 요일 강조 */}
+          <style>
+            {`
+              .today {
+                color: #2563eb;
+                font-weight: 700;
+                text-decoration: underline;
+              }
+            `}
+          </style>
+
           {/* 비고 */}
           <Row>
             <Col>
@@ -196,138 +308,29 @@ const PharmacyDetail = () => {
 export default PharmacyDetail;
 
 /* =========================
-   아래는 운영시간 전용 블록
+   운영시간 표시 블록 (점심시간 표시 제거)
    ========================= */
-
-function PharmacyHoursBlock({ name, facility, fallbackHours }) {
-  const [rtHours, setRtHours] = useState([]);  // 실시간 변환 결과
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-
-  const hasDb = Array.isArray(fallbackHours) && fallbackHours.length > 0;
-  const todayKey = getTodayKey();
-
-  // DB가 비어있을 때만 실시간 조회
-  useEffect(() => {
-    if (hasDb) {
-      setRtHours([]);
-      setErr("");
-      return;
-    }
-    const addr = facility?.address || "";
-    const { q0, q1 } = extractQ0Q1(addr);
-    if (!q0 || !q1) {
-      console.log("[PharmacyHoursBlock] Q0/Q1 추출 실패. addr=", addr);
-      return;
-    }
-
-    (async () => {
-      setLoading(true);
-      setErr("");
-      try {
-        const url = `/project/realtime/pharm/pharmacies/raw?q0=${encodeURIComponent(q0)}&q1=${encodeURIComponent(q1)}&page=1&size=50`;
-        const res = await fetch(url);
-        const text = await res.text(); // RAW(XML or JSON-string)
-        const items = parsePharmXmlToItems(text);
-        console.log("[PharmacyHoursBlock] parsed items:", items?.length);
-        const picked = pickBestItem(items, name, addr);
-        console.log("[PharmacyHoursBlock] picked:", picked);
-        const hours = picked ? pharmacyItemToBusinessHours(picked) : [];
-        setRtHours(hours);
-      } catch (e) {
-        console.error("[PharmacyHoursBlock] RAW 조회/파싱 실패:", e);
-        setErr("실시간 운영시간을 불러오지 못했습니다.");
-        setRtHours([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [hasDb, facility, name]);
-
-  const hoursSource = useMemo(
-    () => (hasDb ? fallbackHours : rtHours),
-    [hasDb, fallbackHours, rtHours]
-  );
-
-  if (loading) return <div>불러오는 중…</div>;
-  if (err) return <div className="text-danger">{err}</div>;
-  if (!Array.isArray(hoursSource) || hoursSource.length === 0) {
+function PharmacyHoursBlock({ todayKey, hours, loadingRt }) {
+  if (loadingRt) return <div>불러오는 중…</div>;
+  if (!Array.isArray(hours) || hours.length === 0) {
     return <div className="text-muted">운영시간 정보 없음</div>;
   }
 
   return (
     <Row>
       {DAY_KEYS.map((dayKey, idx) => {
-        const row = getHoursByDay(dayKey, hoursSource);
+        const row = getHoursByDay(dayKey, hours);
         const isToday = dayKey === todayKey;
-        const note = (row.note || "").trim();
         return (
           <Col key={idx} xs={6} className={`mb-2 ${isToday ? "today" : ""}`}>
             <div className="fw-bold">{getKoreanDayName(dayKey)}</div>
             <div className={row.status === "휴무" ? "text-danger" : "text-dark"}>
               {row.status}
             </div>
-            {/* 기본 문구(점심시간 정보 없음)는 숨김 */}
-            {note && !/점심시간\s*정보\s*없음/i.test(note) && (
-              <div className="text-muted small">{note}</div>
-            )}
+            {/* 점심시간/비고 등 추가 문구는 표시하지 않음 */}
           </Col>
         );
       })}
     </Row>
   );
-}
-
-/* ===== 유틸: 주소→Q0/Q1, RAW 파서, 매칭 ===== */
-
-/** 주소에서 Q0=시/도, Q1=시군구(공백 제거) 추출 */
-function extractQ0Q1(address) {
-  const s = String(address || "").trim();
-  // 예: "경기도 성남시 분당구 ..." 또는 "대전광역시 동구 ..."
-  const m = s.match(/^([^ ]+?(도|시))\s+([^ ]+?(군|구|시))/);
-  if (!m) return { q0: "", q1: "" };
-  const q0 = m[1];                         // "경기도", "대전광역시"
-  const q1 = m[3].replace(/\s+/g, "");     // "성남시분당구" / "동구" …
-  return { q0, q1 };
-}
-
-/** 약국 RAW(XML or XML-String) → item 배열 (대문자 태그명) */
-function parsePharmXmlToItems(xmlText) {
-  try {
-    const doc = new DOMParser().parseFromString(xmlText, "text/xml");
-    let nodes = Array.from(doc.getElementsByTagName("item"));
-    if (nodes.length === 0) nodes = Array.from(doc.getElementsByTagName("row"));
-    if (nodes.length === 0) nodes = Array.from(doc.getElementsByTagName("ROW"));
-    return nodes.map((el) => {
-      const obj = {};
-      Array.from(el.children).forEach((c) => {
-        obj[c.tagName.toUpperCase()] = (c.textContent || "").trim();
-      });
-      return obj;
-    });
-  } catch (e) {
-    console.error("[parsePharmXmlToItems] XML 파싱 실패:", e);
-    return [];
-  }
-}
-
-/** 가장 그럴듯한 아이템 고르기 (이름/주소 간단 매칭) */
-function pickBestItem(list, name, address) {
-  if (!Array.isArray(list) || list.length === 0) return null;
-  const norm = (s) => String(s || "").replace(/\s+/g, "").toLowerCase();
-  const nName = norm(name);
-  const nAddr = norm(address);
-
-  let best = null;
-  let bestScore = -1;
-  for (const it of list) {
-    const sName = it.DUTYNAME ? (norm(it.DUTYNAME).includes(nName) ? 10 : 0) : 0;
-    const sAddr = it.DUTYADDR ? (norm(it.DUTYADDR).includes(nAddr.slice(0, 12)) ? 5 : 0) : 0;
-    const sc = sName + sAddr;
-    if (sc > bestScore) {
-      best = it;
-      bestScore = sc;
-    }
-  }
-  return best || list[0];
 }
