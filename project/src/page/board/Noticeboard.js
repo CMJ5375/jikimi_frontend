@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
-import { ChatDots, HandThumbsUp, Pencil, Plus, Search, Megaphone, Paperclip } from "react-bootstrap-icons";
+import { ChatDots, HandThumbsUp, Pencil, Plus, Search, Megaphone, Paperclip, Eye } from "react-bootstrap-icons";
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getList, getHotPins } from "../../api/postApi";
@@ -321,7 +321,7 @@ const Noticeboard = () => {
               title="인기글 고정"
             >
               <div className="d-flex align-items-center gap-3">
-                <span className={`badge rounded-pill px-3 bg-primary-soft text-primary`}>인기글</span>
+                <span className={`badge rounded-pill px-3 board-badge popular`}>인기글</span>
                 <span className="board-title d-flex align-items-center">
                   {m.title}
                   {m.hasFile && <Paperclip className="ms-2 text-secondary" size={16} />}
@@ -344,9 +344,7 @@ const Noticeboard = () => {
             >
               <div className="d-flex align-items-center gap-3">
                 <span
-                  className={`badge rounded-pill px-3 ${
-                    m.hot ? "bg-primary-soft text-primary" : "bg-secondary-soft text-secondary"
-                  }`}
+                  className={`badge rounded-pill px-3 board-badge ${m.hot ? "popular" : "normal"}`}
                 >
                   {m.hot ? "인기글" : m.cat}
                 </span>
@@ -356,8 +354,11 @@ const Noticeboard = () => {
                  {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
                 </span>
               </div>
-              <div className="text-end text-secondary small d-flex flex-column align-items-end">
-                <span>{m.view} &nbsp; {m.date}</span>
+              <div className="text-secondary small d-flex justify-content-end align-items-center">
+                <div className="d-flex align-items-center me-2" style={{ minWidth: "50px" }}>
+                  <Eye size={16} className="me-1" /> {m.view}
+                </div>
+                <div>{m.date}</div>
               </div>
             </button>
           ))}
@@ -457,7 +458,7 @@ const Noticeboard = () => {
               title="인기글 고정"
             >
               <div className="d-flex justify-content-between align-items-start">
-                <span className={`mbp-badge bg-primary-soft text-primary`}>인기글</span>
+                <span className={`mbp-badge popular`}>인기글</span>
                 <div className="mbp-ghostmark">
                   <Plus className="fs-5" />
                 </div>
@@ -499,8 +500,8 @@ const Noticeboard = () => {
               role="button"
             >
               <div className="d-flex justify-content-between align-items-start">
-                <span className={`mbp-badge ${ p.hot ? "bg-primary-soft text-primary" : "bg-secondary-soft text-secondary"}`}>
-                {p.hot ? "인기글" : p.cat}
+                <span className={`mbp-badge ${p.hot ? "popular" : ""}`}>
+                  {p.hot ? "인기글" : p.cat}
                 </span>
                 <div className="mbp-ghostmark">
                   <Plus className="fs-5" />
@@ -521,15 +522,22 @@ const Noticeboard = () => {
 
               <div className="mbp-divider"></div>
 
-              <div className="d-flex align-items-center gap-4 text-secondary">
-                <span>
-                  <HandThumbsUp className="me-1" />
-                  {p.likes}
+              <div className="d-flex justify-content-between align-items-center text-secondary">
+                <span className="d-flex align-items-center ms-1">
+                  <Eye size={16} className="me-1" />
+                  {p.view}
                 </span>
-                <span>
-                  <ChatDots className="me-1" />
-                  0
-                </span>
+
+                <div className="d-flex align-items-center gap-4 me-1">
+                  <span className="d-flex align-items-center">
+                    <HandThumbsUp size={16} className="me-1" />
+                    {p.likes}
+                  </span>
+                  <span className="d-flex align-items-center">
+                    <ChatDots size={16} className="me-1" />
+                    0
+                  </span>
+                </div>
               </div>
             </article>
           ))}
