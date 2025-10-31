@@ -5,17 +5,51 @@ import "../../css/Hospital.css";
 import { Container, Row, Col, Table, Card } from "react-bootstrap";
 import { useParams, Link } from 'react-router-dom';
 import { StarFill, Star, CheckCircleFill, XCircleFill, HospitalFill } from "react-bootstrap-icons";
-import { openUtil } from "../../util/openUtil";
-import { DAY_KEYS, getTodayKey, getKoreanDayName, getHoursByDay } from "../../util/dayUtil";
+import { DAY_KEYS, getTodayKey, getKoreanDayName, getHoursByDay, normalizeTokens } from "../../util/dayUtil";
 import useFavorites from "../../hook/useFavorites";
 import KakaoMapComponent from "../../component/common/KakaoMapComponent";
 import publicAxios from "../../util/publicAxios";
 
-// HIRA 실시간 보충 (Main과 동일 유틸)
+// HIRA 실시간
 import { getHospitals } from "../../api/hiraApi";
 import { hiraItemToBusinessHours } from "../../util/hiraAdapter";
 
-/* =============== Helpers (Main과 동일) =============== */
+/* ── 오픈 계산(점심/노트 무시, 자정 넘김 고려) ── */
+function toMinutesHHMM(v) {
+  if (!v) return null;
+  const m = String(v).match(/^(\d{1,2}):(\d{1,2})(?::\d{1,2})?$/);
+  if (!m) return null;
+  const hh = Number(m[1]), mm = Number(m[2]);
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+  return hh * 60 + mm;
+}
+function computeOpenSimple(hoursList) {
+  if (!Array.isArray(hoursList) || hoursList.length === 0) return false;
+  const todayKey = getTodayKey();
+
+  const candidates = hoursList.map((h) => {
+    const raw = h?.days;
+    if (!raw) return null;
+    const daysArr = Array.isArray(raw)
+      ? [...new Set(raw.flatMap((t) => normalizeTokens(t)))]
+      : normalizeTokens(raw);
+    if (!daysArr.includes(todayKey)) return null;
+    if (h.closed) return null;
+
+    const s = toMinutesHHMM(h.openTime);
+    const e = toMinutesHHMM(h.closeTime);
+    if (s == null || e == null) return null;
+    return { s, e };
+  }).filter(Boolean);
+
+  if (candidates.length === 0) return false;
+
+  const now = new Date();
+  const cur = now.getHours() * 60 + now.getMinutes();
+  return candidates.some(({ s, e }) => (e <= s ? (cur >= s || cur < e) : (cur >= s && cur < e)));
+}
+
+/* ── 공통 헬퍼 ── */
 function pickHours(obj) {
   return (
     obj?.facility?.businessHours ??
@@ -33,7 +67,13 @@ function isUsableHours(list) {
     return !r?.closed && has;
   });
 }
-// 주소 → HIRA q0/q1 후보
+function cleanHours(arr) {
+  return (arr || []).filter(r =>
+    !r?.closed &&
+    r?.openTime && r?.closeTime &&
+    r.openTime !== "00:00" && r.closeTime !== "00:00"
+  );
+}
 function buildQParamsFromAddress(addr = "") {
   const parts = String(addr).trim().split(/\s+/);
   const q0 = parts[0] || "";
@@ -48,7 +88,6 @@ function buildQParamsFromAddress(addr = "") {
   if (first3 && !candidates.includes(first3)) candidates.push(first3);
   return { q0, q1Candidates: [...new Set(candidates.filter(Boolean))] };
 }
-// 거리
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const toRad = (d) => (d * Math.PI) / 180;
@@ -57,7 +96,6 @@ function haversine(lat1, lon1, lat2, lon2) {
   const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
   return 2 * R * Math.asin(Math.sqrt(a));
 }
-// HIRA 매칭
 function pickBest(items = [], hospitalLike) {
   if (!items.length || !hospitalLike) return null;
   const targetName = String(hospitalLike.hospitalName || hospitalLike.name || "").replace(/\s+/g, "");
@@ -77,22 +115,20 @@ function pickBest(items = [], hospitalLike) {
   }
   return items[0];
 }
-/* ====================================== */
 
 const HospitalDetail = () => {
   const { id } = useParams(); // hospitalId
 
   const [hospital, setHospital] = useState(null);
   const [open, setOpen] = useState(false);
-  const [businessHours, setBusinessHours] = useState([]);
-  const [resources, setResources] = useState([]);
-  const [hoursResolved, setHoursResolved] = useState([]); // 최종 hours 캐시(오픈 계산용)
-  const resolvingRef = useRef(false); // 중복 방지
+  const [resources, setResources] = useState([]);     // ✅ 하나만 유지
+  const [hoursResolved, setHoursResolved] = useState([]);
+  const resolvingRef = useRef(false);
 
   const { favorites, toggle, isLogin } = useFavorites("HOSPITAL");
   const isFavorite = hospital && favorites.includes(String(id));
 
-  // 병원 본문 (공개 호출)
+  /* 병원 상세 로드 */
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -106,45 +142,14 @@ const HospitalDetail = () => {
     return () => { alive = false; };
   }, [id]);
 
-  // 진료시간: facility → hospital → HIRA (Main과 동일한 우선순위)
+  /* 시간 해석: HIRA → facility → hospital → 내장 */
   useEffect(() => {
     let alive = true;
     (async () => {
-      if (!hospital || resolvingRef.current) { if (alive) setBusinessHours([]); return; }
+      if (!hospital || resolvingRef.current) return;
       resolvingRef.current = true;
-
       try {
-        const fromDetail = pickHours(hospital);
-        if (isUsableHours(fromDetail)) {
-          if (alive) { setBusinessHours(fromDetail); setHoursResolved(fromDetail); }
-          return;
-        }
-
-        const facilityId = hospital?.facility?.facilityId ?? hospital?.facilityId ?? null;
-
-        // a) facility 기준 공개 호출
-        if (facilityId) {
-          try {
-            const r1 = await publicAxios.get(`/project/facility/${facilityId}/business-hours`);
-            const h1 = Array.isArray(r1.data) ? r1.data : (r1.data?.businessHours ?? []);
-            if (isUsableHours(h1)) {
-              if (alive) { setBusinessHours(h1); setHoursResolved(h1); }
-              return;
-            }
-          } catch {}
-        }
-
-        // b) hospital 기준 공개 호출
-        try {
-          const r2 = await publicAxios.get(`/project/hospital/${id}/business-hours`);
-          const h2 = Array.isArray(r2.data) ? r2.data : (r2.data?.businessHours ?? []);
-          if (isUsableHours(h2)) {
-            if (alive) { setBusinessHours(h2); setHoursResolved(h2); }
-            return;
-          }
-        } catch {}
-
-        // c) HIRA 보충
+        // 1) HIRA (최우선)
         const addr = hospital?.facility?.address || hospital?.address || "";
         const { q0, q1Candidates } = buildQParamsFromAddress(addr);
         if (q0 && q1Candidates.length > 0) {
@@ -161,17 +166,36 @@ const HospitalDetail = () => {
                 });
                 if (picked) break;
               }
-            } catch {}
+            } catch { /* try next */ }
           }
-          const h3 = picked ? hiraItemToBusinessHours(picked) : [];
-          if (isUsableHours(h3)) {
-            if (alive) { setBusinessHours(h3); setHoursResolved(h3); }
-            return;
+          if (picked) {
+            const h3 = cleanHours(hiraItemToBusinessHours(picked));
+            if (h3.length) { if (alive) setHoursResolved(h3); return; }
           }
         }
 
-        // 다 실패하면 빈배열
-        if (alive) { setBusinessHours([]); setHoursResolved([]); }
+        // 2) (백엔드) facility
+        const facilityId = hospital?.facility?.facilityId ?? hospital?.facilityId ?? null;
+        if (facilityId) {
+          try {
+            const r1 = await publicAxios.get(`/project/facility/${facilityId}/business-hours`);
+            const h1 = cleanHours(Array.isArray(r1.data) ? r1.data : (r1.data?.businessHours ?? []));
+            if (h1.length) { if (alive) setHoursResolved(h1); return; }
+          } catch {}
+        }
+
+        // 3) (백엔드) hospital
+        try {
+          const r2 = await publicAxios.get(`/project/hospital/${id}/business-hours`);
+          const h2 = cleanHours(Array.isArray(r2.data) ? r2.data : (r2.data?.businessHours ?? []));
+          if (h2.length) { if (alive) setHoursResolved(h2); return; }
+        } catch {}
+
+        // 4) 내장(보험)
+        const fromDetail = cleanHours(pickHours(hospital));
+        if (fromDetail.length) { if (alive) setHoursResolved(fromDetail); return; }
+
+        if (alive) setHoursResolved([]);
       } finally {
         resolvingRef.current = false;
       }
@@ -179,7 +203,46 @@ const HospitalDetail = () => {
     return () => { alive = false; };
   }, [hospital, id]);
 
-  // 의료자원 (공개 호출)
+  /* 최종 시간 소스 */
+  const hoursSource = useMemo(
+    () => (Array.isArray(hoursResolved) ? hoursResolved : []),
+    [hoursResolved]
+  );
+
+  /* 오픈 상태 계산 + 서버(true) 상향 */
+  useEffect(() => {
+    let alive = true;
+    if (!hospital) return;
+
+    const clientOpen = computeOpenSimple(hoursSource);
+    if (alive) setOpen(clientOpen);
+
+    const facilityId = hospital?.facility?.facilityId ?? hospital?.facilityId ?? null;
+    (async () => {
+      if (!facilityId) return;
+      try {
+        const r = await publicAxios.get(`/project/facility/${facilityId}/open`);
+        if (alive && r?.data?.open === true && !clientOpen) setOpen(true);
+      } catch {}
+    })();
+
+    return () => { alive = false; };
+  }, [hospital, hoursSource]);
+
+
+  const todayKey = getTodayKey();
+
+  /* 진료과목 */
+  const departmentsSrc = hospital?.departments ?? hospital?.departmentList ?? [];
+  const departmentsList = useMemo(() => {
+    return Array.isArray(departmentsSrc)
+      ? departmentsSrc.map((d) => d?.deptName ?? d?.name ?? String(d))
+      : (typeof departmentsSrc === 'string'
+          ? departmentsSrc.split(',').map((s) => s.trim()).filter(Boolean)
+          : []);
+  }, [departmentsSrc]);
+
+  /* 의료자원 */
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -194,66 +257,12 @@ const HospitalDetail = () => {
     return () => { alive = false; };
   }, [id]);
 
-  // 최종 시간 소스: 위에서 해결된 hoursResolved → 없으면 hospital 내장값
-  const hoursSource = useMemo(() => {
-    if (isUsableHours(hoursResolved)) return hoursResolved;
-    const fromHospital = pickHours(hospital || {});
-    if (isUsableHours(fromHospital)) return fromHospital;
-    return [];
-  }, [hoursResolved, hospital]);
-
-  // 오픈 상태: 서버(/facility/{fid}/open) 우선 → 실패 시 openUtil(hoursSource)
-  useEffect(() => {
-    let alive = true;
-    if (!hospital) return;
-
-    const facilityId = hospital?.facility?.facilityId ?? hospital?.facilityId ?? null;
-
-    const tryServer = async () => {
-      if (!facilityId) return false;
-      try {
-        const r = await publicAxios.get(`/project/facility/${facilityId}/open`);
-        const data = r?.data || {};
-        if (typeof data.open === "boolean") {
-          if (alive) setOpen(data.open);
-          return true;
-        }
-      } catch {}
-      return false;
-    };
-
-    const fallbackClient = () => {
-      if (alive) setOpen(openUtil(hoursSource));
-    };
-
-    (async () => {
-      const ok = await tryServer();
-      if (!ok) fallbackClient();
-    })();
-
-    return () => { alive = false; };
-  }, [hospital, hoursSource]);
-
-  const todayKey = getTodayKey();
-
-  // 파생 데이터
-  const departmentsSrc = hospital?.departments ?? hospital?.departmentList ?? [];
-  const departmentsList = useMemo(() => {
-    return Array.isArray(departmentsSrc)
-      ? departmentsSrc.map((d) => d?.deptName ?? d?.name ?? String(d))
-      : (typeof departmentsSrc === 'string'
-          ? departmentsSrc.split(',').map(s => s.trim()).filter(Boolean)
-          : []);
-  }, [departmentsSrc]);
-
-  const resourcesSrc = (resources && resources.length ? resources : (hospital?.institutions ?? hospital?.resources ?? []));
   const resourcesList = useMemo(() => {
-    return Array.isArray(resourcesSrc)
-      ? resourcesSrc.map((r) => r?.institutionName ?? r?.name ?? String(r))
-      : (typeof resourcesSrc === 'string'
-          ? resourcesSrc.split(',').map(s => s.trim()).filter(Boolean)
-          : []);
-  }, [resourcesSrc]);
+    const src = resources.length ? resources : (hospital?.institutions ?? hospital?.resources ?? []);
+    return Array.isArray(src)
+      ? src.map((r) => r?.institutionName ?? r?.name ?? String(r))
+      : (typeof src === 'string' ? src.split(',').map((s) => s.trim()).filter(Boolean) : []);
+  }, [resources, hospital]);
 
   return (
     <div className="bg-white">
@@ -262,7 +271,6 @@ const HospitalDetail = () => {
           <div>로딩 중...</div>
         ) : (
           <>
-            {/* 경로 */}
             <Row>
               <Col>
                 <div className="d-flex align-items-center gap-2 mb-3">
@@ -275,7 +283,6 @@ const HospitalDetail = () => {
               </Col>
             </Row>
 
-            {/* 안내 문구 */}
             <Row>
               <Col>
                 <div className="hospital-notice mb-4">
@@ -285,7 +292,6 @@ const HospitalDetail = () => {
               </Col>
             </Row>
 
-            {/* 병원명 + 상태 */}
             <Row className="align-items-center mb-3">
               <Col>
                 <h4 className="fw-bold mb-2 d-flex align-items-center justify-content-between">
@@ -311,10 +317,9 @@ const HospitalDetail = () => {
               </Col>
             </Row>
 
-            {/* 지도 + 정보 테이블 */}
             <Row className="mb-4">
               <Col md={6}>
-                {hospital.facility?.latitude && hospital.facility?.longitude && (
+                {hospital?.facility?.latitude && hospital?.facility?.longitude && (
                   <KakaoMapComponent
                     id={`hospital-map-${id}`}
                     lat={hospital.facility.latitude}
@@ -349,9 +354,7 @@ const HospitalDetail = () => {
               </Col>
             </Row>
 
-            {/* 카드 그룹 */}
             <Row className="g-4 mb-4">
-              {/* 진료시간 */}
               <Col xs={12} md={6}>
                 <Card className="shadow-sm border-0 h-100">
                   <Card.Header className="hospital-card-header">진료시간</Card.Header>
@@ -359,7 +362,7 @@ const HospitalDetail = () => {
                     <Row>
                       {DAY_KEYS.map((dayKey, idx) => {
                         const row = getHoursByDay(dayKey, hoursSource);
-                        const isToday = dayKey === getTodayKey();
+                        const isToday = dayKey === todayKey;
                         return (
                           <Col key={idx} xs={6} className={`mb-2 ${isToday ? "today" : ""}`}>
                             <div className="fw-bold">{getKoreanDayName(dayKey)}</div>
@@ -377,7 +380,6 @@ const HospitalDetail = () => {
                 </Card>
               </Col>
 
-              {/* 진료과목 */}
               <Col xs={12} md={6}>
                 <Card className="shadow-sm border-0 h-100">
                   <Card.Header className="hospital-card-header">진료과목</Card.Header>
@@ -395,7 +397,6 @@ const HospitalDetail = () => {
                 </Card>
               </Col>
 
-              {/* 의료자원 */}
               <Col xs={12} md={6}>
                 <Card className="shadow-sm border-0 h-100">
                   <Card.Header className="hospital-card-header">의료자원</Card.Header>
@@ -413,7 +414,6 @@ const HospitalDetail = () => {
                 </Card>
               </Col>
 
-              {/* 병상정보 */}
               <Col xs={12} md={6}>
                 <Card className="shadow-sm border-0 h-100">
                   <Card.Header className="hospital-card-header">실시간 병상정보</Card.Header>
@@ -424,7 +424,6 @@ const HospitalDetail = () => {
               </Col>
             </Row>
 
-            {/* 비고 */}
             <Row>
               <Col>
                 <div

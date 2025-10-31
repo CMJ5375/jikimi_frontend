@@ -1,133 +1,167 @@
-// src/component/common/KakaoMapComponent.js
-import { useEffect, useMemo } from "react";
-import { loadKakaoMap, renderKakaoMap } from "../../api/kakaoMapApi"; // 파일명이 대소문자 구분되면 경로를 맞춰주세요.
+// src/component/common/KakaoMapComponent.jsx
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
-/**
- * KakaoMapComponent
- * - 빈 locations일 때 (상세 페이지 등) 중심 좌표를 자동으로 1개 마커로 사용
- * - 즐겨찾기/페이지 전환 등 레이아웃 변화에 대비해 relayout 보강
- * - locations 변경 감지를 위해 좌표 시그니처(JSON) 의존
- */
-const KakaoMapComponent = ({
-  id = "map",
+function ensureKakaoReady() {
+  return new Promise((resolve) => {
+    const w = window;
+    if (w.kakao && w.kakao.maps && typeof w.kakao.maps.Map === "function") {
+      resolve();
+      return;
+    }
+    // kakao sdk가 window.kakao.load 형태일 때 대비
+    const tryLoad = () => {
+      if (w.kakao && w.kakao.maps) {
+        w.kakao.maps.load(() => resolve());
+      } else {
+        // 100ms 단위 폴링 (이미 스크립트가 index.html에 포함돼 있다고 가정)
+        const t = setInterval(() => {
+          if (w.kakao && w.kakao.maps) {
+            clearInterval(t);
+            w.kakao.maps.load(() => resolve());
+          }
+        }, 100);
+      }
+    };
+    tryLoad();
+  });
+}
+
+export default function KakaoMapComponent({
+  id,
+  containerId,
+  center,               // {lat, lng} 가능
   lat,
   lng,
-  name,
-  height = 400,
+  name = "",
+  height = 300,
   showCenterMarker = true,
-  locations = [],
-}) => {
-  const vLat = Number(lat);
-  const vLng = Number(lng);
+  locationsCount,       // 리스트/데이터 변경 트리거용(옵션)
+}) {
+  const cid = useMemo(() => containerId || id || `kmap-${Math.random().toString(36).slice(2)}`, [containerId, id]);
+  const initialCenter = useMemo(() => {
+    const c = center || { lat, lng };
+    return { lat: Number(c?.lat) || 37.5665, lng: Number(c?.lng) || 126.9780 };
+  }, [center, lat, lng]);
 
-  // 좌표 정규화 + 빈 배열이면 중심 좌표로 대체
-  const normalizedLocations = useMemo(() => {
-    const list = Array.isArray(locations) ? locations : [];
-    const valid = list.filter(
-      (p) => isFinite(Number(p?.latitude)) && isFinite(Number(p?.longitude))
-    );
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+  const containerRef = useRef(null);
+  const resizeObsRef = useRef(null);
 
-    if (valid.length > 0) {
-      return valid.map((p) => ({
-        name: p?.name ?? name ?? "시설 위치",
-        latitude: Number(p.latitude),
-        longitude: Number(p.longitude),
-      }));
-    }
-
-    // fallback: 유효한 중심 좌표가 있으면 그것으로 1개 마커
-    return isFinite(vLat) && isFinite(vLng)
-      ? [{ name: name || "시설 위치", latitude: vLat, longitude: vLng }]
-      : [];
-  }, [locations, vLat, vLng, name]);
-
-  // locations 변경을 안정적으로 감지하기 위한 시그니처
-  const locSig = useMemo(
-    () =>
-      JSON.stringify(
-        normalizedLocations.map((p) => [Number(p.latitude), Number(p.longitude)])
-      ),
-    [normalizedLocations]
-  );
-
-  useEffect(() => {
-    let canceled = false;
-    let ro; // ResizeObserver
+  // 최초 생성
+  useLayoutEffect(() => {
+    let cancelled = false;
 
     const init = async () => {
-      if (!isFinite(vLat) || !isFinite(vLng)) {
-        console.warn("[KakaoMapComponent] 유효하지 않은 좌표", { lat, lng });
-        return;
+      await ensureKakaoReady();
+      if (cancelled) return;
+
+      const container = document.getElementById(cid);
+      if (!container) return;
+      containerRef.current = container;
+
+      const { kakao } = window;
+      const mapCenter = new kakao.maps.LatLng(initialCenter.lat, initialCenter.lng);
+      const map = new kakao.maps.Map(container, {
+        center: mapCenter,
+        level: 4,
+      });
+      mapRef.current = map;
+
+      // 최초 마커
+      if (showCenterMarker) {
+        const marker = new kakao.maps.Marker({ position: mapCenter });
+        marker.setMap(map);
+        markerRef.current = marker;
       }
 
-      try {
-        await loadKakaoMap();
-        if (canceled) return;
+      // 최초 레이아웃 보정 (숨김 → 표시 전환 등)
+      setTimeout(() => {
+        try {
+          map.relayout();
+          map.setCenter(mapCenter);
+        } catch {}
+      }, 0);
 
-        const container = document.getElementById(id);
-        if (!container) {
-          console.error("[KakaoMapComponent] 컨테이너를 찾을 수 없음:", id);
-          return;
-        }
-
-        // 기존 DOM 초기화 (중복 렌더 방지)
-        container.innerHTML = "";
-
-        console.debug("[KakaoMapComponent] render", {
-          id,
-          lat: vLat,
-          lng: vLng,
-          showCenterMarker,
-          locations: normalizedLocations.length,
-        });
-
-        const map = await renderKakaoMap(
-          id,
-          { lat: vLat, lng: vLng },
-          normalizedLocations,
-          showCenterMarker
-        );
-
-        // 컨테이너 크기 변화에 따른 relayout 보강
-        if (typeof ResizeObserver !== "undefined") {
-          ro = new ResizeObserver(() => {
-            try {
-              (container._kakaoMapInstance || map)?.relayout();
-            } catch {}
-          });
-          ro.observe(container);
-        }
-
-        // 첫 페인트 직후 한 번 더 보정
-        requestAnimationFrame(() => {
+      // 컨테이너 사이즈 변화를 관찰해서 relayout
+      if ("ResizeObserver" in window) {
+        const ro = new ResizeObserver(() => {
           try {
-            (container._kakaoMapInstance || map)?.relayout();
+            map.relayout();
+            map.setCenter(new kakao.maps.LatLng(initialCenter.lat, initialCenter.lng));
           } catch {}
         });
-      } catch (e) {
-        console.error("[KakaoMapComponent] 지도 로드/렌더 실패", e);
+        ro.observe(container);
+        resizeObsRef.current = ro;
       }
     };
 
     init();
-
     return () => {
-      canceled = true;
-      if (ro) ro.disconnect();
+      cancelled = true;
+      // 정리
+      if (resizeObsRef.current && containerRef.current) {
+        try { resizeObsRef.current.unobserve(containerRef.current); } catch {}
+      }
+      resizeObsRef.current = null;
+      containerRef.current = null;
+
+      if (markerRef.current) {
+        try { markerRef.current.setMap(null); } catch {}
+      }
+      markerRef.current = null;
+      mapRef.current = null;
     };
-    // height가 변해도 컨테이너 높이가 바뀌므로 의존성에 포함
-  }, [id, vLat, vLng, height, showCenterMarker, locSig]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cid]); // 컨테이너 id가 바뀔 때만 완전 재생성
+
+  // 센터/마커 업데이트 (props 변경 시)
+  useEffect(() => {
+    const { kakao } = window;
+    if (!mapRef.current || !kakao) return;
+    const map = mapRef.current;
+    const pos = new kakao.maps.LatLng(initialCenter.lat, initialCenter.lng);
+
+    try {
+      map.setCenter(pos);
+      setTimeout(() => {
+        map.relayout();
+        map.setCenter(pos);
+      }, 0);
+    } catch {}
+
+    // 마커 on/off
+    if (showCenterMarker) {
+      if (!markerRef.current) {
+        const m = new kakao.maps.Marker({ position: pos });
+        m.setMap(map);
+        markerRef.current = m;
+      } else {
+        markerRef.current.setPosition(pos);
+        markerRef.current.setMap(map);
+      }
+    } else if (markerRef.current) {
+      try { markerRef.current.setMap(null); } catch {}
+      markerRef.current = null;
+    }
+  }, [initialCenter, showCenterMarker]);
+
+  // 리스트/데이터 수 변화(예: favorites 토글) → 레이아웃 재보정
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    const { kakao } = window;
+    try {
+      map.relayout();
+      map.setCenter(new kakao.maps.LatLng(initialCenter.lat, initialCenter.lng));
+    } catch {}
+  }, [locationsCount, initialCenter]);
 
   return (
     <div
-      id={id}
-      style={{
-        width: "100%",
-        // number면 px로 적용됨. 문자열('300px')도 허용
-        height,
-      }}
+      id={cid}
+      style={{ width: "100%", height: typeof height === "number" ? `${height}px` : height }}
+      aria-label={name || "map"}
     />
   );
-};
-
-export default KakaoMapComponent;
+}
