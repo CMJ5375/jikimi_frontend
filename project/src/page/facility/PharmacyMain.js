@@ -424,9 +424,10 @@ const PharmacyMain = () => {
           </Form>
 
           {/* 즐겨찾기만 보기 */}
-          {isLogin && searched && (
-            <>
-              <hr className="hr-line my-3" />
+          {searched && (
+          <>
+            <hr className="hr-line my-3" />
+            {isLogin && (
               <div className="d-flex justify-content-start align-items-center mt-4 mb-2">
                 <Button
                   variant="light"
@@ -443,21 +444,24 @@ const PharmacyMain = () => {
                   </span>
                 </Button>
               </div>
-            </>
-          )}
+            )}
+          </>
+        )}
 
           {/* 지도 */}
           {showMap && (
-            <KakaoMapComponent
-              key={mapKey}
-              id="pharmacy-map-main"
-              lat={currentPos.lat}
-              lng={currentPos.lng}
-              name="내 위치"
-              height={400}
-              showCenterMarker
-              locations={mapLocations}
-            />
+            <div className="mt-3">
+              <KakaoMapComponent
+                key={mapKey}
+                id="pharmacy-map-main"
+                lat={currentPos.lat}
+                lng={currentPos.lng}
+                name="내 위치"
+                height={400}
+                showCenterMarker
+                locations={mapLocations}
+              />
+            </div>
           )}
 
           {/* 검색 결과 */}
