@@ -121,3 +121,9 @@ export async function fetchMyPosts() {
     throw err;
   }
 }
+
+// 전체 상단 카테고리에 인기글 최대 5개 고정
+export const getHotPins = async () => {
+  const res = await jwtAxios.get(`${prefix}/hot/pins`);
+  return res.data; // 최신 고정 순서로 반환
+};
