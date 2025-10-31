@@ -1,10 +1,11 @@
+// src/page/board/Noticeboard.js
 import { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
 import { ChatDots, HandThumbsUp, Pencil, Plus, Search, Megaphone, Paperclip } from "react-bootstrap-icons";
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { getList } from "../../api/postApi";
+import { getList, getHotPins } from "../../api/postApi";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
 
@@ -58,6 +59,9 @@ const Noticeboard = () => {
   const [active, setActive] = useState("전체");
   const [q, setQ] = useState("");
 
+  // 상단 고정 인기글
+  const [hotPins, setHotPins] = useState([]);
+
   // 검색 실행 (모바일 버튼/엔터 공통)
   const handleSearch = () => {
     // 입력값(q)은 onChange로 이미 반영되므로, 1페이지로 돌려서 useEffect 재호출
@@ -110,6 +114,51 @@ const Noticeboard = () => {
     fetch();
   }, [isLogin, page, size, q, active]);
 
+  // 핀 인기글 로드 (전체 탭에서 상단 고정)
+  useEffect(() => {
+    if (!isLogin) return;
+    // ‘전체’ 탭일 때 항상 최신 핀 목록을 받아 고정 노출
+    const needPins = active === "전체";
+    if (!needPins) {
+      setHotPins([]);
+      return;
+    }
+    (async () => {
+      try {
+        const pins = await getHotPins();
+        setHotPins(Array.isArray(pins) ? pins : []);
+      } catch (e) {
+        console.error("핫핀 로드 실패:", e);
+        setHotPins([]);
+      }
+    })();
+  }, [isLogin, active]);
+
+  // 핀을 화면 아이템 형태로 매핑(‘전체’ 전용, 최신 고정 순서)
+  const pinnedItems = useMemo(() => {
+    if (!Array.isArray(hotPins) || hotPins.length === 0) return [];
+    return hotPins.map((p) => ({
+      id: p.postId,
+      cat: ENUM_TO_KOR[p.boardCategory] ?? "자유글",
+      hot: (p.likeCount ?? 0) >= 3,
+      title: p.title ?? "",
+      date: p.createdAt ? p.createdAt.slice(0, 10) : "",
+      time: p.createdAt ? p.createdAt.slice(11, 16) : "",
+      author: p.authorName ?? (p.userId ? `user#${p.userId}` : "익명"),
+      region: "",
+      excerpt: (() => {
+        const c = p.content || "";
+        return c.length > 70 ? c.slice(0, 70) + "..." : c;
+      })(),
+      likes: p.likeCount ?? 0,
+      view: p.viewCount ?? 0,
+      hasFile: !!(p.fileUrl && String(p.fileUrl).trim()),
+      isNew: false,
+      comments: 0,
+      __PIN__: true, // 표시용 플래그(스타일은 기존과 동일하게 유지)
+    }));
+  }, [hotPins]);
+
   // 서버 데이터 → 화면 표시용 변환
   const items = useMemo(() => {
   if (!pageData?.dtoList) return [];
@@ -123,7 +172,7 @@ const Noticeboard = () => {
     return {
       id: p.postId,
       cat: ENUM_TO_KOR[p.boardCategory] ?? "자유글",
-      hot: (p.likeCount ?? 0) >= 3,
+      hot: false,
       title: p.title ?? "",
       date: p.createdAt ? p.createdAt.slice(0, 10) : "",
       time: p.createdAt ? p.createdAt.slice(11, 16) : "",
@@ -166,13 +215,13 @@ const Noticeboard = () => {
         (_, i) => i + 1
       );
 
-  return {
-    current: current1,
-    pageNumList,
-    prev: !!pageData.prev,
-    next: !!pageData.next,
-  };
-}, [page, pageData, size]);
+    return {
+      current: current1,
+      pageNumList,
+      prev: !!pageData.prev,
+      next: !!pageData.next,
+    };
+  }, [page, pageData, size]);
 
   // PageComponent 콜백(0-based index)
   const handlePageChange = (zeroBased) => {
@@ -262,6 +311,28 @@ const Noticeboard = () => {
 
         {/* 리스트 (PC) */}
         <div className="list-group board-list">
+          {/* ‘전체’에서만 핀 복사본을 항상 최상단에 렌더 */}
+          {active === "전체" && pinnedItems.map((m) => (
+            <button
+              key={`pin-${m.id}`}
+              type="button"
+              className={`list-group-item list-group-item-action d-flex align-items-center justify-content-between ${ m.hot ? "board-item-hot" : "" }`}
+              onClick={() => navigate(`/boarddetails/${m.id}`)}
+              title="인기글 고정"
+            >
+              <div className="d-flex align-items-center gap-3">
+                <span className={`badge rounded-pill px-3 bg-primary-soft text-primary`}>인기글</span>
+                <span className="board-title d-flex align-items-center">
+                  {m.title}
+                  {m.hasFile && <Paperclip className="ms-2 text-secondary" size={16} />}
+                </span>
+              </div>
+              <div className="text-end text-secondary small d-flex flex-column align-items-end">
+                <span>{m.view} &nbsp; {m.date}</span>
+              </div>
+            </button>
+          ))}
+
           {visibleItems.map((m) => (
             <button
               key={m.id}
@@ -375,6 +446,49 @@ const Noticeboard = () => {
               </button>
             ))}
           </div>
+
+          {/* 모바일도 ‘전체’에서 핀 복사본을 카드 위에 고정 렌더 */}
+          {active === "전체" && pinnedItems.map((p) => (
+            <article
+              className="mbp-card"
+              key={`pinm-${p.id}`}
+              onClick={() => navigate(`/boarddetails/${p.id}`)}
+              role="button"
+              title="인기글 고정"
+            >
+              <div className="d-flex justify-content-between align-items-start">
+                <span className={`mbp-badge bg-primary-soft text-primary`}>인기글</span>
+                <div className="mbp-ghostmark">
+                  <Plus className="fs-5" />
+                </div>
+              </div>
+
+              <h6 className="mbp-title-line">{p.title}</h6>
+
+              <div className="d-flex justify-content-between">
+                <div className="mbp-meta">{p.date} {p.time}</div>
+                <div className="text-end">
+                  <div className="fw-bold">{p.author}</div>
+                  <span className="mbp-region">{p.region}</span>
+                </div>
+              </div>
+
+              <p className="mbp-excerpt">{p.excerpt}</p>
+
+              <div className="mbp-divider"></div>
+
+              <div className="d-flex align-items-center gap-4 text-secondary">
+                <span>
+                  <HandThumbsUp className="me-1" />
+                  {p.likes}
+                </span>
+                <span>
+                  <ChatDots className="me-1" />
+                  0
+                </span>
+              </div>
+            </article>
+          ))}
 
           {/* 카드 리스트 (모바일) */}
           {visibleItems.map((p) => (
