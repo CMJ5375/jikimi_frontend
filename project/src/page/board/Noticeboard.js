@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
-import { ChatDots, HandThumbsUp, Pencil, Plus, Search, Megaphone } from "react-bootstrap-icons";
+import { ChatDots, HandThumbsUp, Pencil, Plus, Search, Megaphone, Paperclip } from "react-bootstrap-icons";
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getList } from "../../api/postApi";
@@ -112,8 +112,15 @@ const Noticeboard = () => {
 
   // 서버 데이터 → 화면 표시용 변환
   const items = useMemo(() => {
-    if (!pageData?.dtoList) return [];
-    return pageData.dtoList.map((p) => ({
+  if (!pageData?.dtoList) return [];
+
+  return pageData.dtoList.map((p) => {
+    // ← map 내부에서 p 기반 파생값 계산
+
+    const created = p.createdAt ? new Date(p.createdAt) : null;
+    const isNew = created ? Date.now() - created.getTime() <= 24 * 60 * 60 * 1000 : false;
+
+    return {
       id: p.postId,
       cat: ENUM_TO_KOR[p.boardCategory] ?? "자유글",
       hot: (p.likeCount ?? 0) >= 3,
@@ -125,12 +132,17 @@ const Noticeboard = () => {
       excerpt: (() => {
         const c = p.content || "";
         return c.length > 70 ? c.slice(0, 70) + "..." : c;
+      
       })(),
       likes: p.likeCount ?? 0,
       view: p.viewCount ?? 0,
+      
+      hasFile: !!(p.fileUrl && String(p.fileUrl).trim()),
+      isNew,                 // 첨부파일 클립표시, 새글 N 표기
       comments: 0,
-    }));
-  }, [pageData]);
+    };
+  });
+}, [pageData]);
 
   // 탭/검색 변경 시 1페이지로
   const handleChangeTab = (category) => {
@@ -267,7 +279,11 @@ const Noticeboard = () => {
                 >
                   {m.hot ? "인기글" : m.cat}
                 </span>
-                <span className="board-title">{m.title}</span>
+                <span className="board-title d-flex align-items-center">
+                 {m.title}
+                 {m.hasFile && <Paperclip className="ms-2 text-secondary" size={16} />}
+                 {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                </span>
               </div>
               <div className="text-end text-secondary small d-flex flex-column align-items-end">
                 <span>{m.view} &nbsp; {m.date}</span>
