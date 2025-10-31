@@ -92,3 +92,12 @@ export const modifyUser = async (user) => {
   );
   return data;
 };
+
+//프로필
+export const updateProfileApi = async (username, formData) => {
+  const { data } = await jwtAxios.patch(
+    `/project/user/profile/${encodeURIComponent(username)}`,
+    formData
+  );
+  return data;
+};

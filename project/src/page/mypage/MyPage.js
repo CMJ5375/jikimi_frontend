@@ -6,7 +6,7 @@ import { FaBookmark, FaCommentDots, FaStar, FaHeart, FaRegCommentDots, FaRegStar
 import { getFavorites, toggleFavorite } from "../../api/favoriteApi";
 import { fetchMyPosts } from "../../api/postApi";
 import { useNavigate } from "react-router-dom";
-import { modifyUser } from "../../api/userApi";
+import { modifyUser, updateProfileApi } from "../../api/userApi";
 import { useSelector } from "react-redux";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
@@ -23,6 +23,64 @@ const MyPage = () => {
   const [pharmacyList, setPharmacyList] = useState([]);
   const [unfavorited, setUnfavorited] = useState({});
   const [loading, setLoading] = useState(true);
+
+  //프로필 추가 2줄
+  const [preview, setPreview] = useState(null);
+  const [file, setFile] = useState(null);
+  const [profileUrl, setProfileUrl] = useState(null);
+
+  //프로필 이미지 선택 핸들러
+  const onPickImage = (e) => {
+  const f = e.target.files?.[0];
+    if (!f) {
+      setFile(null);
+      setPreview(null);
+      return;
+    }
+    // 간단한 유효성 검사(옵션)
+    if (!f.type.startsWith("image/")) {
+      alert("이미지 파일만 업로드할 수 있습니다.");
+      return;
+    }
+    if (f.size > 5 * 1024 * 1024) {
+      alert("이미지는 최대 5MB까지 업로드할 수 있어요.");
+      return;
+    }
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+  };
+
+  //프로필 저장 버튼 핸들러
+  const onSaveProfile = async () => {
+    if (!loginInfo?.username) return alert("로그인 정보가 없습니다.");
+
+    const form = new FormData();
+    // 텍스트 필드
+    if (user.name) form.append("name", user.name);
+    if (user.address) form.append("address", user.address);
+    if (user.age) form.append("age", user.age);
+    // 파일
+    if (file) form.append("image", file);
+
+    try {
+      const res = await updateProfileApi(loginInfo.username, form);
+      alert("프로필이 저장되었습니다.");
+
+      // 서버가 최신 프로필 URL을 돌려준다고 가정 (예: res.profileImage)
+      if (res?.profileImage) {
+        setProfileUrl(res.profileImage); // 실제 표시용
+        setPreview(null);                // 임시 미리보기 제거
+        setFile(null);
+      }
+
+      // 리덕스의 로그인 정보도 갱신하고 싶다면(선택):
+      // dispatch(updateLoginProfile({ profileImage: res.profileImage, name: res.name, address: res.address, age: res.age }))
+    } catch (e) {
+      console.error(e);
+      alert("프로필 저장 중 오류가 발생했습니다.");
+    }
+  };
+
   const handleChange = (e) => {
       const { name, value } = e.target;
       setUser((prev) => ({ ...prev, [name]: value }));
@@ -51,7 +109,10 @@ const MyPage = () => {
       email: loginInfo.email ?? prev.email,
       address: loginInfo.address ?? prev.address,
       age: loginInfo.age ?? prev.age,
+      name: loginInfo.name ?? prev.name, // name 도 쓰면 폼에서 활용 가능
     }));
+    // 로그인 정보에 profileImage가 있으면 표시
+    if (loginInfo.profileImage) setProfileUrl(loginInfo.profileImage);
   }, [loginInfo]);
 
   // 내가 쓴 글 개수 가져오기
@@ -176,19 +237,43 @@ const MyPage = () => {
             <div className="profile-box d-flex flex-wrap justify-content-center justify-content-md-start align-items-center gap-4">
 
               {/* 프로필 이미지 */}
-              <div className="mypage-avatar">
-                <div className="avatar-logo">+</div>
+              <div className="mypage-avatar overflow-hidden d-flex align-items-center justify-content-center">
+                {preview ? (
+                  <img src={preview} alt="미리보기" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : profileUrl ? (
+                  <img src={profileUrl} alt="프로필" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <div className="avatar-logo">+</div>
+                )}
               </div>
 
               {/* 이름/등급/버튼 묶음 */}
               <div className="text-start">
                 <div className="d-flex align-items-center flex-wrap gap-2 mb-2">
-                  <h4 className="fw-bold mb-0">limdo</h4>
+                  <h4 className="fw-bold mb-0">{user.username || '사용자'}</h4>
                   <span className="text-muted">일반 회원</span>
                 </div>
-                <Button variant="light" className="mypage-btn">
-                  프로필 수정
-                </Button>
+
+                <div className="d-flex gap-2">
+                  <Form.Label className="btn btn-light mypage-btn mb-0">
+                    프로필 이미지 선택
+                    <Form.Control
+                      type="file"
+                      accept="image/*"
+                      onChange={onPickImage}
+                      style={{ display: "none" }}
+                    />
+                  </Form.Label>
+
+                  <Button
+                    variant="primary"
+                    className="mypage-btn"
+                    onClick={onSaveProfile}
+                    disabled={!file && !user.address && !user.age && !user.name} // 아무것도 변경이 없으면 비활성(선택)
+                  >
+                    저장
+                  </Button>
+                </div>
               </div>
 
               {/* 즐겨찾기 / 내가 쓴 글 */}
