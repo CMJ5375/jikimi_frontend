@@ -84,7 +84,7 @@ const Myfooter = () => {
             <div className="col-8">최민준</div>
 
             <div className="col-4 text-secondary fw-semibold">임원</div>
-            <div className="col-8">류종혁&nbsp;&nbsp;이유진&nbsp;&nbsp;임도윤</div>
+            <div className="col-8">이유진&nbsp;&nbsp;임도윤&nbsp;&nbsp;류종혁</div>
 
             <div className="col-4 text-secondary fw-semibold">주소</div>
             <div className="col-8">
