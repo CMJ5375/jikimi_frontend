@@ -1,4 +1,4 @@
-// src/pages/PharmacyMain.js  (경로 그대로 사용)
+// src/pages/PharmacyMain.js
 import { useState, useEffect, useMemo } from "react";
 import "../../App.css";
 import "../../css/Pharmacy.css";
@@ -19,17 +19,11 @@ import { openUtil } from "../../util/openUtil";
 import { pharmacyItemToBusinessHours } from "../../util/pharmacyAdapter";
 
 /* ===================== Switches ===================== */
-// 서버의 /project/facility/{fid}/business-hours 가 500이면 임시로 건너뛰기
 const SKIP_DB_HOURS = true;
 
 /* ===================== Helpers ===================== */
 function pickHours(obj) {
-  return (
-    obj?.facility?.businessHours ??
-    obj?.businessHours ??
-    obj?.hours ??
-    []
-  );
+  return obj?.facility?.businessHours ?? obj?.businessHours ?? obj?.hours ?? [];
 }
 function getFacilityIdFromItem(it) {
   if (it?.facility?.facilityId != null) return String(it.facility.facilityId);
@@ -42,8 +36,7 @@ function isUsableHours(list) {
   return list.some((r) => {
     const s = String(r?.openTime ?? "").trim();
     const c = String(r?.closeTime ?? "").trim();
-    const has = (s && s !== "00:00") && (c && c !== "00:00");
-    return !r?.closed && has;
+    return !r?.closed && s && c && s !== "00:00" && c !== "00:00";
   });
 }
 function toOpenMap(respData) {
@@ -65,9 +58,7 @@ function extractQ0Q1(address) {
   const s = String(address || "").trim();
   const m = s.match(/^([^ ]+?(도|시))\s+([^ ]+?(군|구|시))/);
   if (!m) return { q0: "", q1: "" };
-  const q0 = m[1];
-  const q1 = m[3].replace(/\s+/g, "");
-  return { q0, q1 };
+  return { q0: m[1], q1: m[3].replace(/\s+/g, "") };
 }
 function parsePharmXmlToItems(xmlText) {
   try {
@@ -91,21 +82,29 @@ function pickBestItem(list, name, address) {
   const norm = (s) => String(s || "").replace(/\s+/g, "").toLowerCase();
   const nName = norm(name);
   const nAddr = norm(address);
-
-  let best = null;
-  let bestScore = -1;
+  let best = null, bestScore = -1;
   for (const it of list) {
     const sName = it.DUTYNAME ? (norm(it.DUTYNAME).includes(nName) ? 10 : 0) : 0;
     const sAddr = it.DUTYADDR ? (norm(it.DUTYADDR).includes(nAddr.slice(0, 12)) ? 5 : 0) : 0;
     const sc = sName + sAddr;
-    if (sc > bestScore) {
-      best = it;
-      bestScore = sc;
-    }
+    if (sc > bestScore) { best = it; bestScore = sc; }
   }
   return best || list[0];
 }
-/* ============================================================ */
+
+/* ===== 동시성 제한 유틸 ===== */
+async function mapWithConcurrency(items, limit, mapper) {
+  const ret = new Array(items.length);
+  let idx = 0;
+  const workers = new Array(Math.min(limit, items.length)).fill(0).map(async () => {
+    while (idx < items.length) {
+      const i = idx++;
+      ret[i] = await mapper(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return ret;
+}
 
 const PharmacyMain = () => {
   const [distance, setDistance] = useState("");
@@ -125,15 +124,16 @@ const PharmacyMain = () => {
     currentPos,
     search,
     setFilters,
-    calculateDistance,
+    calculateDistance, // 함수 레퍼런스가 변동 가능하므로 deps 최소화 주의
   } = useFacilitySearch("pharmacy");
 
   const navigate = useNavigate();
   const { favorites, toggle, isLogin } = useFavorites("PHARMACY");
-  const { /* isLogin: 훅 내부에서 사용 중 */ } = useCustomLogin();
+  const { /* isLogin 내부 사용 */ } = useCustomLogin();
 
   const distanceList = ["500m", "1km", "5km", "10km"];
 
+  /* 현재 위치 → 주소 */
   useEffect(() => {
     const fetchAddress = async () => {
       try {
@@ -147,15 +147,27 @@ const PharmacyMain = () => {
     fetchAddress();
   }, []);
 
+  /* 즐겨찾기 모드 데이터 로드 (동시성 제한 + deps 최소화) */
   useEffect(() => {
+    let alive = true;
     const fetchFavorites = async () => {
       if (!isLogin || !showFavoritesOnly) return;
       try {
-        const allData = await Promise.all(
-          favorites.map(async (id) => {
-            const res = await jwtAxios.get(`/project/pharmacy/${id}`);
+        const ids = [...new Set((favorites || []).map(String))];
+        if (ids.length === 0) {
+          if (alive) {
+            setFavoriteResults([]);
+            setPageData((prev) => ({ ...prev, current: 0 }));
+          }
+          return;
+        }
+        const CONCURRENCY = 4;
+        const results = await mapWithConcurrency(ids, CONCURRENCY, async (pid) => {
+          try {
+            const res = await jwtAxios.get(`/project/pharmacy/${pid}`);
             const item = res.data;
             if (currentPos?.lat && item?.facility?.latitude) {
+              // calculateDistance는 참조가 자주 바뀔 수 있으니 호출은 하되 deps엔 넣지 않음
               item.distance = calculateDistance(
                 currentPos.lat,
                 currentPos.lng,
@@ -164,16 +176,21 @@ const PharmacyMain = () => {
               );
             }
             return item;
-          })
-        );
-        setFavoriteResults(allData.filter(Boolean));
+          } catch {
+            return null;
+          }
+        });
+        if (!alive) return;
+        setFavoriteResults(results.filter(Boolean));
         setPageData((prev) => ({ ...prev, current: 0 }));
       } catch {
-        setFavoriteResults([]);
+        if (alive) setFavoriteResults([]);
       }
     };
     fetchFavorites();
-  }, [showFavoritesOnly, favorites, isLogin, currentPos, calculateDistance]);
+    return () => { alive = false; };
+    // 의존성: 즐겨찾기 보기 토글/목록/로그인/좌표만 (calculateDistance는 제외)
+  }, [showFavoritesOnly, favorites, isLogin, currentPos]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -187,12 +204,22 @@ const PharmacyMain = () => {
     setFilters((prev) => ({ ...prev, onlyFavorites: next }));
   };
 
-  const displayedResults = showFavoritesOnly
-    ? favoriteResults.slice(
-        pageData.current * pageData.size,
-        (pageData.current + 1) * pageData.size
-      )
-    : results;
+  /* ✅ displayedResults를 useMemo로 고정해서 ref 변화를 막음 */
+  const displayedResults = useMemo(() => {
+    if (showFavoritesOnly) {
+      const start = pageData.current * pageData.size;
+      const end = (pageData.current + 1) * pageData.size;
+      return favoriteResults.slice(start, end);
+    }
+    return results || [];
+  }, [showFavoritesOnly, favoriteResults, pageData.current, pageData.size, results]);
+
+  /* open-batch 의존성을 IDs 키로 축약 (배열 참조 변화 방지) */
+  const ids = useMemo(
+    () => displayedResults.map(getFacilityIdFromItem).filter(Boolean),
+    [displayedResults]
+  );
+  const idsKey = useMemo(() => ids.join(","), [ids]);
 
   const totalPages = showFavoritesOnly
     ? Math.ceil(favoriteResults.length / pageData.size)
@@ -222,18 +249,14 @@ const PharmacyMain = () => {
   );
 
   const showMap = mapLocations.length > 0 && !!currentPos?.lat;
-  const mapKey = `map-${showFavoritesOnly ? "fav" : "all"}-${
-    showFavoritesOnly ? pageData.current : (searchPageData?.current || 0)
-  }-${mapLocations.length}-${currentPos?.lat}-${currentPos?.lng}`;
+  const mapKey = useMemo(() => {
+    const cur = showFavoritesOnly ? pageData.current : (searchPageData?.current || 0);
+    return `map-${showFavoritesOnly ? "fav" : "all"}-${cur}-${mapLocations.length}-${currentPos?.lat}-${currentPos?.lng}`;
+  }, [showFavoritesOnly, pageData.current, searchPageData?.current, mapLocations.length, currentPos?.lat, currentPos?.lng]);
 
-  /* 배치 오픈 상태 요청 */
+  /* 배치 오픈 상태 요청: idsKey에만 의존 */
   useEffect(() => {
-    if (!Array.isArray(displayedResults) || displayedResults.length === 0) {
-      setOpenBatchMap({});
-      return;
-    }
-    const ids = displayedResults.map(getFacilityIdFromItem).filter(Boolean);
-    if (ids.length === 0) {
+    if (!ids.length) {
       setOpenBatchMap({});
       return;
     }
@@ -246,88 +269,83 @@ const PharmacyMain = () => {
         setOpenBatchMap({});
       }
     })();
-  }, [displayedResults]);
+  }, [idsKey]); // ✅ 배열 대신 문자열 키
 
-  /* 배치가 true가 아닌 항목들에 대해 프론트 폴백 (DB→목록→RAW) */
+  /* 프론트 폴백 계산: idsKey + openBatchMap 에만 의존 */
   useEffect(() => {
     (async () => {
-      if (!Array.isArray(displayedResults) || displayedResults.length === 0) {
+      if (!ids.length) {
         setFrontOpenMap({});
         return;
       }
-      const fallbackTargets = displayedResults
-        .map(it => ({ it, fid: getFacilityIdFromItem(it) }))
-        .filter(({ fid }) => !!fid)
-        .filter(({ fid }) => !openBatchMap || openBatchMap[fid] !== true);
-
-      if (fallbackTargets.length === 0) {
+      const needFallback = ids.filter((fid) => openBatchMap[fid] !== true);
+      if (needFallback.length === 0) {
         setFrontOpenMap({});
         return;
       }
 
       const results = await Promise.all(
-        fallbackTargets.map(async ({ it, fid }) => {
-          try {
-            let hours = [];
+        displayedResults
+          .map((it) => ({ it, fid: getFacilityIdFromItem(it) }))
+          .filter(({ fid }) => fid && openBatchMap[fid] !== true)
+          .map(async ({ it, fid }) => {
+            try {
+              let hours = [];
 
-            if (!SKIP_DB_HOURS) {
-              try {
-                const r = await publicAxios.get(`/project/facility/${fid}/business-hours`);
-                const raw = r?.data;
-                const list = raw?.businessHours ?? raw ?? [];
-                if (Array.isArray(list) && list.length > 0) hours = list;
-              } catch {}
-            }
-
-            if (!isUsableHours(hours)) {
-              const list2 = pickHours(it);
-              if (Array.isArray(list2) && list2.length > 0) {
-                hours = list2;
-              }
-            }
-
-            let addr = it?.facility?.address || it?.address || "";
-            let pharmName = it?.pharmacyName || it?.name || "";
-            if ((!addr || !pharmName) && (it?.pharmacyId || it?.id)) {
-              try {
-                const detailRes = await publicAxios.get(`/project/pharmacy/${it.pharmacyId || it.id}`);
-                const d = detailRes?.data;
-                addr = addr || d?.facility?.address || "";
-                pharmName = pharmName || d?.pharmacyName || "";
-              } catch {}
-            }
-
-            if (!isUsableHours(hours)) {
-              const { q0, q1 } = extractQ0Q1(addr);
-              if (q0 && q1) {
+              if (!SKIP_DB_HOURS) {
                 try {
-                  const res = await publicAxios.get("/project/realtime/pharm/pharmacies/raw", {
-                    params: { q0, q1, page: 1, size: 50 },
-                    responseType: "text",
-                  });
-                  const text = typeof res?.data === "string" ? res.data : JSON.stringify(res?.data);
-                  const items = parsePharmXmlToItems(text);
-                  const picked = pickBestItem(items, pharmName, addr);
-                  const rtHours = picked ? pharmacyItemToBusinessHours(picked) : [];
-                  if (Array.isArray(rtHours) && rtHours.length > 0) {
-                    hours = rtHours;
-                  }
+                  const r = await publicAxios.get(`/project/facility/${fid}/business-hours`);
+                  const raw = r?.data;
+                  const list = raw?.businessHours ?? raw ?? [];
+                  if (Array.isArray(list) && list.length > 0) hours = list;
                 } catch {}
               }
-            }
 
-            const open = isUsableHours(hours) ? openUtil(hours) : false;
-            return [String(fid), open];
-          } catch {
-            return [String(fid), false];
-          }
-        })
+              if (!isUsableHours(hours)) {
+                const list2 = pickHours(it);
+                if (Array.isArray(list2) && list2.length > 0) hours = list2;
+              }
+
+              let addr = it?.facility?.address || it?.address || "";
+              let pharmName = it?.pharmacyName || it?.name || "";
+              if ((!addr || !pharmName) && (it?.pharmacyId || it?.id)) {
+                try {
+                  const detailRes = await publicAxios.get(`/project/pharmacy/${it.pharmacyId || it.id}`);
+                  const d = detailRes?.data;
+                  addr = addr || d?.facility?.address || "";
+                  pharmName = pharmName || d?.pharmacyName || "";
+                } catch {}
+              }
+
+              if (!isUsableHours(hours)) {
+                const { q0, q1 } = extractQ0Q1(addr);
+                if (q0 && q1) {
+                  try {
+                    const res = await publicAxios.get("/project/realtime/pharm/pharmacies/raw", {
+                      params: { q0, q1, page: 1, size: 50 },
+                      responseType: "text",
+                    });
+                    const text = typeof res?.data === "string" ? res.data : JSON.stringify(res?.data);
+                    const items = parsePharmXmlToItems(text);
+                    const picked = pickBestItem(items, pharmName, addr);
+                    const rtHours = picked ? pharmacyItemToBusinessHours(picked) : [];
+                    if (Array.isArray(rtHours) && rtHours.length > 0) hours = rtHours;
+                  } catch {}
+                }
+              }
+
+              const open = isUsableHours(hours) ? openUtil(hours) : false;
+              return [String(fid), open];
+            } catch {
+              return [String(fid), false];
+            }
+          })
       );
 
       const nextMap = Object.fromEntries(results);
       setFrontOpenMap(nextMap);
     })();
-  }, [displayedResults, openBatchMap]);
+  }, [idsKey, openBatchMap]); // ✅ displayedResults 대신 idsKey 사용
 
   const handlePageChange = (n) => {
     if (showFavoritesOnly) {
@@ -338,230 +356,193 @@ const PharmacyMain = () => {
   };
 
   return (
-    <>
-      <div className="bg-white">
-        <Container className="py-4">
-          {/* 상단 소개 */}
-          <Row className="g-3 mb-3 align-items-center">
-            <Col xs={6}>
-              <div className="d-flex align-items-center gap-2 text-secondary mb-2">
-                <GeoAltFill size={15} />
-                <small>{currentAddress}</small>
-              </div>
-              <h3 className="fw-bold lh-base mb-3 pharmacy-title">
-                지금 나에게
-                <br />
-                딱 맞는 <span>약국</span>을 찾아보세요
-              </h3>
-            </Col>
-            <Col xs={6} className="text-end">
-              <img src="/image/map.png" alt="지도" height="150" />
-            </Col>
-          </Row>
+    <div className="bg-white">
+      <Container className="py-4">
+        {/* 상단 소개 */}
+        <Row className="g-3 mb-3 align-items-center">
+          <Col xs={6}>
+            <div className="d-flex align-items-center gap-2 text-secondary mb-2">
+              <GeoAltFill size={15} />
+              <small>{currentAddress}</small>
+            </div>
+            <h3 className="fw-bold lh-base mb-3 pharmacy-title">
+              지금 나에게
+              <br />
+              딱 맞는 <span>약국</span>을 찾아보세요
+            </h3>
+          </Col>
+          <Col xs={6} className="text-end">
+            <img src="/image/map.png" alt="지도" height="150" />
+          </Col>
+        </Row>
 
-          {/* 병원 / 약국 선택 카드 */}
-          <Row className="g-3 mb-4">
-            <Col xs={6}>
-              <Card
-                className="card-pharmacy-gray text-dark"
-                onClick={() => navigate("/")}
-              >
-                <Card.Body>
-                  <img src="/image/hospitalBed.png" alt="병원" />
-                  <div className="fw-semibold">병원</div>
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col xs={6}>
-              <Card
-                className="card-pharmacy-blue text-white"
-                onClick={() => navigate("/pharmacy")}
-              >
-                <Card.Body>
-                  <img src="/image/pharmacy.png" alt="약국" />
-                  <div className="fw-semibold">약국</div>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
+        {/* 병원 / 약국 선택 카드 */}
+        <Row className="g-3 mb-4">
+          <Col xs={6}>
+            <Card className="card-pharmacy-gray text-dark" onClick={() => navigate("/")}>
+              <Card.Body>
+                <img src="/image/hospitalBed.png" alt="병원" />
+                <div className="fw-semibold">병원</div>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col xs={6}>
+            <Card className="card-pharmacy-blue text-white" onClick={() => navigate("/pharmacy")}>
+              <Card.Body>
+                <img src="/image/pharmacy.png" alt="약국" />
+                <div className="fw-semibold">약국</div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
 
-          {/* 검색 폼 */}
-          <Form onSubmit={handleSubmit}>
-            <Dropdown className="mb-3 dropdown-custom">
-              <Dropdown.Toggle
-                variant="light"
-                className="text-dark d-flex justify-content-between align-items-center"
-              >
-                <span className={distance ? "" : "text-secondary"}>
-                  {distance || "거리 선택"}
-                </span>
-                <i className="bi bi-chevron-down"></i>
-              </Dropdown.Toggle>
-              <Dropdown.Menu>
-                {distanceList.map((d) => (
-                  <Dropdown.Item key={d} onClick={() => setDistance(d)}>
-                    {d}
-                  </Dropdown.Item>
-                ))}
-                <Dropdown.Divider />
-                <Dropdown.Item onClick={() => setDistance("")}>
-                  선택 해제
+        {/* 검색 폼 */}
+        <Form onSubmit={handleSubmit}>
+          <Dropdown className="mb-3 dropdown-custom">
+            <Dropdown.Toggle variant="light" className="text-dark d-flex justify-content-between align-items-center">
+              <span className={distance ? "" : "text-secondary"}>{distance || "거리 선택"}</span>
+              <i className="bi bi-chevron-down"></i>
+            </Dropdown.Toggle>
+            <Dropdown.Menu>
+              {["500m", "1km", "5km", "10km"].map((d) => (
+                <Dropdown.Item key={d} onClick={() => setDistance(d)}>
+                  {d}
                 </Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown>
+              ))}
+              <Dropdown.Divider />
+              <Dropdown.Item onClick={() => setDistance("")}>선택 해제</Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
 
-            {/* 검색창 */}
-            <Form.Control
-              type="text"
-              placeholder="약국 이름을 입력하세요."
-              className="search-input mb-3"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-            />
-            <Button type="submit" className="btn-search w-100">
-              내 주변 약국 검색
-            </Button>
-          </Form>
+          <Form.Control
+            type="text"
+            placeholder="약국 이름을 입력하세요."
+            className="search-input mb-3"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+          />
+          <Button type="submit" className="btn-search w-100">
+            내 주변 약국 검색
+          </Button>
+        </Form>
 
-          {/* 즐겨찾기만 보기 */}
-          {searched && (
+        {/* 즐겨찾기만 보기 */}
+        {isLogin && searched && (
           <>
             <hr className="hr-line my-3" />
-            {isLogin && (
-              <div className="d-flex justify-content-start align-items-center mt-4 mb-2">
-                <Button
-                  variant="light"
-                  onClick={handleToggleFavoritesOnly}
-                  className="border-0 d-flex align-items-center gap-2"
-                >
-                  {showFavoritesOnly ? (
-                    <StarFill color="#FFD43B" size={20} />
-                  ) : (
-                    <Star color="#aaa" size={20} />
-                  )}
-                  <span className="small">
-                    {showFavoritesOnly ? "즐겨찾기만 보기" : "전체 보기"}
-                  </span>
-                </Button>
-              </div>
-            )}
+            <div className="d-flex justify-content-start align-items-center mt-4 mb-2">
+              <Button
+                variant="light"
+                onClick={handleToggleFavoritesOnly}
+                className="border-0 d-flex align-items-center gap-2"
+              >
+                {showFavoritesOnly ? <StarFill color="#FFD43B" size={20} /> : <Star color="#aaa" size={20} />}
+                <span className="small">{showFavoritesOnly ? "즐겨찾기만 보기" : "전체 보기"}</span>
+              </Button>
+            </div>
           </>
         )}
 
-          {/* 지도 */}
-          {showMap && (
-            <div className="mt-3">
-              <KakaoMapComponent
-                key={mapKey}
-                id="pharmacy-map-main"
-                lat={currentPos.lat}
-                lng={currentPos.lng}
-                name="내 위치"
-                height={400}
-                showCenterMarker
-                locations={mapLocations}
-              />
-            </div>
-          )}
+        {/* 지도 */}
+        {showMap && (
+          <KakaoMapComponent
+            key={mapKey}
+            id="pharmacy-map-main"
+            lat={currentPos.lat}
+            lng={currentPos.lng}
+            name="내 위치"
+            height={400}
+            showCenterMarker
+            locations={mapLocations}
+          />
+        )}
 
-          {/* 검색 결과 */}
-          {displayedResults.length > 0 ? (
-            <>
-              <div className="mt-4">
-                {displayedResults.map((item) => {
-                  const id = item.pharmacyId || item.id;
-                  const facilityId = getFacilityIdFromItem(item);
+        {/* 검색 결과 */}
+        {displayedResults.length > 0 ? (
+          <>
+            <div className="mt-4">
+              {displayedResults.map((item) => {
+                const id = item.pharmacyId || item.id;
+                const facilityId = getFacilityIdFromItem(item);
 
-                  let isOpen;
-                  if (facilityId && openBatchMap && openBatchMap[facilityId] === true) {
-                    isOpen = true; // 서버 배치가 true면 우선
-                  } else if (facilityId && (facilityId in frontOpenMap)) {
-                    isOpen = !!frontOpenMap[facilityId]; // 프론트 폴백 계산
-                  } else {
-                    isOpen = openUtil(pickHours(item)); // 최후 폴백
-                  }
+                let isOpen;
+                if (facilityId && openBatchMap && openBatchMap[facilityId] === true) {
+                  isOpen = true;
+                } else if (facilityId && (facilityId in frontOpenMap)) {
+                  isOpen = !!frontOpenMap[facilityId];
+                } else {
+                  isOpen = openUtil(pickHours(item));
+                }
 
-                  return (
-                    <Card
-                      key={id}
-                      className="result-card mb-3"
-                      onClick={() => navigate(`/pharmacydetail/${id}`)}
-                    >
-                      <Card.Body>
-                        <h5 className="fw-bold my-2 d-flex justify-content-between align-items-center">
-                          <span>
-                            {item.pharmacyName || item.name}
-                            <span className="result-distance">
-                              ({item.distance || "거리정보 없음"})
-                            </span>
-                          </span>
-                          {isLogin && (
-                            <span
-                              className="favorite-icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggle(id);
-                              }}
-                            >
-                              {favorites.includes(String(id)) ? (
-                                <StarFill size={30} color="#FFD43B" />
-                              ) : (
-                                <Star size={30} />
-                              )}
-                            </span>
-                          )}
-                        </h5>
-
-                        <div className="my-3 d-flex align-items-center">
-                          <span className="badge-road">도로명</span>
-                          <span className="text-gray">
-                            {item?.facility?.address || item?.address || "주소 정보 없음"}
-                          </span>
-                        </div>
-
-                        <div className="d-flex align-items-center justify-content-between">
-                          <div className="text-gray d-flex align-items-center gap-2">
-                            <TelephoneFill className="me-1" />
-                            {item?.facility?.phone || item?.phone || "전화 정보 없음"}
-                          </div>
-                          <div className={`small fw-semibold ${isOpen ? "text-success" : "text-secondary"}`}>
-                            {isOpen ? (
-                              <>
-                                <CheckCircleFill size={18} /> 영업 중
-                              </>
+                return (
+                  <Card
+                    key={id}
+                    className="result-card mb-3"
+                    onClick={() => navigate(`/pharmacydetail/${id}`)}
+                  >
+                    <Card.Body>
+                      <h5 className="fw-bold my-2 d-flex justify-content-between align-items-center">
+                        <span>
+                          {item.pharmacyName || item.name}
+                          <span className="result-distance">({item.distance || "거리정보 없음"})</span>
+                        </span>
+                        {isLogin && (
+                          <span
+                            className="favorite-icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggle(id);
+                            }}
+                          >
+                            {favorites.includes(String(id)) ? (
+                              <StarFill size={30} color="#FFD43B" />
                             ) : (
-                              <>
-                                <XCircleFill size={18} /> 영업 종료
-                              </>
+                              <Star size={30} />
                             )}
-                          </div>
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  );
-                })}
-              </div>
-              <PageComponent
-                pageData={pagination}
-                onPageChange={handlePageChange}
-              />
-            </>
-          ) : (
-            showFavoritesOnly && (
-              <div className="text-center text-secondary mt-4">
-                즐겨찾기한 약국이 없습니다.
-              </div>
-            )
-          )}
+                          </span>
+                        )}
+                      </h5>
 
-          {results.length === 0 && keyword && (
-            <div className="text-center text-secondary mt-4">
-              검색 결과가 없습니다.
+                      <div className="my-3 d-flex align-items-center">
+                        <span className="badge-road">도로명</span>
+                        <span className="text-gray">
+                          {item?.facility?.address || item?.address || "주소 정보 없음"}
+                        </span>
+                      </div>
+
+                      <div className="d-flex align-items-center justify-content-between">
+                        <div className="text-gray d-flex align-items-center gap-2">
+                          <TelephoneFill className="me-1" />
+                          {item?.facility?.phone || item?.phone || "전화 정보 없음"}
+                        </div>
+                        <div className={`small fw-semibold ${isOpen ? "text-success" : "text-secondary"}`}>
+                          {isOpen ? (
+                            <>
+                              <CheckCircleFill size={18} /> 영업 중
+                            </>
+                          ) : (
+                            <>
+                              <XCircleFill size={18} /> 영업 종료
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                );
+              })}
             </div>
-          )}
-        </Container>
-      </div>
-    </>
+            <PageComponent pageData={pagination} onPageChange={handlePageChange} />
+          </>
+        ) : (
+          showFavoritesOnly && <div className="text-center text-secondary mt-4">즐겨찾기한 약국이 없습니다.</div>
+        )}
+
+        {results.length === 0 && keyword && (
+          <div className="text-center text-secondary mt-4">검색 결과가 없습니다.</div>
+        )}
+      </Container>
+    </div>
   );
 };
 

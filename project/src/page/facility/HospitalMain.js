@@ -6,7 +6,6 @@ import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstr
 import { GeoAltFill, StarFill, Star, TelephoneFill, HospitalFill, CheckCircleFill, XCircleFill } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
 
-import { openUtil } from "../../util/openUtil";
 import useFavorites from "../../hook/useFavorites";
 import useFacilitySearch from "../../hook/useFacilitySearch";
 import PageComponent from "../../component/common/PageComponent";
@@ -14,20 +13,87 @@ import useCustomLogin from "../../hook/useCustomLogin";
 import jwtAxios from "../../util/jwtUtil";
 import publicAxios from "../../util/publicAxios";
 import { getDefaultPosition, getAddressFromBackend } from "../../api/kakaoMapApi";
+import { getTodayKey, normalizeTokens } from "../../util/dayUtil";
 
-// HIRA 실시간 보충
+// HIRA 실시간
 import { getHospitals } from "../../api/hiraApi";
 import { hiraItemToBusinessHours } from "../../util/hiraAdapter";
 
-/* ===================== Helper (컴포넌트 바깥) ===================== */
+const DEBUG_ID = null;
 
-// 주소 → HIRA q0/q1 후보 만들기
+/* ======== 시간/영업 계산 유틸 ======== */
+function toMinutesHHMM(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  const m = s.match(/^(\d{1,2}):(\d{1,2})(?::\d{1,2})?$/);
+  if (!m) return null;
+  const hh = Number(m[1]), mm = Number(m[2]);
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+  return hh * 60 + mm;
+}
+function dayIncludes(rec, dayKey) {
+  const raw = rec?.days;
+  if (!raw) return false;
+  const arr = Array.isArray(raw) ? [...new Set(raw.flatMap((t)=>normalizeTokens(t)))] : normalizeTokens(raw);
+  return Array.isArray(arr) && arr.includes(dayKey);
+}
+function isUsableRec(rec) {
+  if (rec?.closed) return false;
+  const s = toMinutesHHMM(rec?.openTime);
+  const e = toMinutesHHMM(rec?.closeTime);
+  if (s == null || e == null) return false;
+  if (rec.openTime === "00:00" && rec.closeTime === "00:00") return false;
+  return true;
+}
+function computeOpenSimple(hoursList) {
+  if (!Array.isArray(hoursList) || hoursList.length === 0) return false;
+  const today = getTodayKey();
+  const candidates = hoursList.filter((r) => dayIncludes(r, today)).filter(isUsableRec);
+  if (candidates.length === 0) return false;
+
+  const now = new Date();
+  const cur = now.getHours() * 60 + now.getMinutes();
+  return candidates.some((rec) => {
+    const s = toMinutesHHMM(rec.openTime);
+    const e = toMinutesHHMM(rec.closeTime);
+    if (s == null || e == null) return false;
+    // 자정 넘김
+    if (e <= s) return cur >= s || cur < e;
+    return cur >= s && cur < e;
+  });
+}
+function isUsableHours(list) {
+  if (!Array.isArray(list) || list.length === 0) return false;
+  return list.some((r) => {
+    const s = String(r?.openTime ?? "").trim();
+    const c = String(r?.closeTime ?? "").trim();
+    const has = (s && s !== "00:00") && (c && c !== "00:00");
+    return !r?.closed && has;
+  });
+}
+function cleanHours(arr) {
+  return (arr || []).filter(r =>
+    !r?.closed &&
+    r?.openTime && r?.closeTime &&
+    r.openTime !== "00:00" && r.closeTime !== "00:00"
+  );
+}
+function pickHours(obj) {
+  return (
+    obj?.facility?.businessHours ??
+    obj?.businessHours ??
+    obj?.hours ??
+    []
+  );
+}
+
+/* ======== HIRA 검색 보조 ======== */
 function buildQParamsFromAddress(addr = "") {
   const parts = String(addr).trim().split(/\s+/);
-  const q0 = parts[0] || ""; // 시/도
-  const t1 = parts[1] || ""; // 시
-  const t2 = parts[2] || ""; // 구/군/읍/면
-  const t12NoSpace = (t1 + t2).trim(); // "성남시분당구"
+  const q0 = parts[0] || "";     // 시/도
+  const t1 = parts[1] || "";     // 시
+  const t2 = parts[2] || "";     // 구/군/읍/면
+  const t12NoSpace = (t1 + t2).trim();
 
   const candidatesQ1 = [];
   if (t12NoSpace) candidatesQ1.push(t12NoSpace);
@@ -39,8 +105,6 @@ function buildQParamsFromAddress(addr = "") {
   const uniq = [...new Set(candidatesQ1.filter(Boolean))];
   return { q0, q1Candidates: uniq };
 }
-
-// 간단 거리(m)
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const toRad = (d) => (d * Math.PI) / 180;
@@ -51,21 +115,17 @@ function haversine(lat1, lon1, lat2, lon2) {
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
 }
-
-// HIRA 응답에서 우리 병원과 가장 잘 맞는 한 건 고르기
 function pickBest(items = [], hospitalLike) {
   if (!items.length || !hospitalLike) return null;
   const targetName = String(hospitalLike.hospitalName || hospitalLike.name || "").replace(/\s+/g, "");
   const facLat = hospitalLike.facility?.latitude ?? hospitalLike.latitude;
   const facLng = hospitalLike.facility?.longitude ?? hospitalLike.longitude;
 
-  // 1) 이름 유사
   const byName = items.find((it) =>
     String(it.dutyName || "").replace(/\s+/g, "").includes(targetName)
   );
   if (byName) return byName;
 
-  // 2) 좌표 근접 (<= 500m)
   if (facLat && facLng) {
     let best = null;
     let bestDist = Infinity;
@@ -81,33 +141,62 @@ function pickBest(items = [], hospitalLike) {
     }
     if (best && bestDist <= 500) return best;
   }
-
-  // 3) fallback
   return items[0];
 }
 
-// DB 시간이 "쓸 수 있는지" 판정
-function isUsableHours(list) {
-  if (!Array.isArray(list) || list.length === 0) return false;
-  return list.some((r) => {
-    const s = String(r?.openTime ?? "").trim();
-    const c = String(r?.closeTime ?? "").trim();
-    const has = (s && s !== "00:00") && (c && c !== "00:00");
-    return !r?.closed && has;
-  });
-}
+/* ======== 공통 해상 로직: HIRA → facility → hospital → 내장 ======== */
+async function resolveHoursForItem(it) {
+  // 1) HIRA (최우선)
+  try {
+    const addr = it?.facility?.address || it?.address || "";
+    const { q0, q1Candidates } = buildQParamsFromAddress(addr);
+    if (q0 && q1Candidates.length > 0) {
+      let picked = null;
+      for (const q1 of q1Candidates) {
+        try {
+          const json = await getHospitals({ q0, q1, page: 1, size: 50 });
+          const raw = json?.response?.body?.items?.item;
+          const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+          if (list.length > 0) {
+            picked = pickBest(list, {
+              hospitalName: it.hospitalName || it.name || "",
+              facility: it.facility || { latitude: it.latitude, longitude: it.longitude },
+            });
+            if (picked) break;
+          }
+        } catch { /* try next */ }
+      }
+      const h3 = picked ? cleanHours(hiraItemToBusinessHours(picked)) : [];
+      if (isUsableHours(h3)) return h3;
+    }
+  } catch { /* ignore */ }
 
-// 아이템에서 영업시간 배열 추출 (우선순위: facility.businessHours → businessHours → hours)
-function pickHours(obj) {
-  return (
-    obj?.facility?.businessHours ??
-    obj?.businessHours ??
-    obj?.hours ??
-    []
-  );
-}
+  // 2) (백엔드) facility
+  try {
+    const facilityId = it?.facility?.facilityId || it?.facilityId;
+    if (facilityId) {
+      const r1 = await publicAxios.get(`/project/facility/${facilityId}/business-hours`);
+      const h1 = cleanHours(Array.isArray(r1.data) ? r1.data : (r1?.data?.businessHours || []));
+      if (isUsableHours(h1)) return h1;
+    }
+  } catch { /* ignore */ }
 
-/* ================================================================= */
+  // 3) (백엔드) hospital
+  try {
+    const id = it?.hospitalId || it?.id;
+    if (id) {
+      const r2 = await publicAxios.get(`/project/hospital/${id}/business-hours`);
+      const h2 = cleanHours(Array.isArray(r2.data) ? r2.data : (r2?.data?.businessHours || []));
+      if (isUsableHours(h2)) return h2;
+    }
+  } catch { /* ignore */ }
+
+  // 4) 내장(보험)
+  const h0 = cleanHours(pickHours(it));
+  if (isUsableHours(h0)) return h0;
+
+  return [];
+}
 
 const HospitalMain = () => {
   const [dept, setDept] = useState("");
@@ -123,14 +212,12 @@ const HospitalMain = () => {
     useFacilitySearch("hospital");
   const navigate = useNavigate();
   const { favorites, toggle, isLogin } = useFavorites("HOSPITAL");
-  const { /* isLogin: 훅 내부에서 사용 중 */ } = useCustomLogin();
+  const { /* isLogin 내부 */ } = useCustomLogin();
 
-  // 오픈 상태/시간 캐시
-  const [hoursMap, setHoursMap] = useState({}); // { [id]: hours[] }
-  const [openMap, setOpenMap] = useState({});   // { [id]: boolean }
-  const requestingRef = useRef(new Set());      // 동시 중복 호출 방지
+  const [hoursMap, setHoursMap] = useState({});
+  const [openMap, setOpenMap] = useState({});
+  const requestingRef = useRef(new Set());
 
-  // 드롭다운 진료과목/기관종류
   const deptList = useMemo(
     () => ["소아청소년과", "응급의학과", "이비인후과", "산부인과", "정형외과", "내과", "안과", "외과"],
     []
@@ -140,7 +227,7 @@ const HospitalMain = () => {
     []
   );
 
-  // 현재 주소(기본 위치 → 역지오)
+  /* 현재 위치 → 주소 */
   useEffect(() => {
     const fetchAddress = async () => {
       try {
@@ -154,7 +241,7 @@ const HospitalMain = () => {
     fetchAddress();
   }, []);
 
-  // 즐겨찾기 목록(표시 전용 데이터 로드)
+  /* 즐겨찾기 모드: 카드 데이터 + 시간/오픈을 '동일 해상 로직'으로 즉시 계산 */
   useEffect(() => {
     const fetchFavorites = async () => {
       if (!isLogin || !showFavoritesOnly) return;
@@ -164,7 +251,6 @@ const HospitalMain = () => {
             const res = await jwtAxios.get(`/project/hospital/${id}`);
             const item = res.data;
 
-            // 거리 계산
             if (currentPos?.lat && item?.facility?.latitude) {
               item.distance = calculateDistance(
                 currentPos.lat,
@@ -174,14 +260,13 @@ const HospitalMain = () => {
               );
             }
 
-            // 목록에 시간이 있으면 미리 캐시
-            const hours = pickHours(item);
-            if (Array.isArray(hours) && hours.length > 0) {
-              const open = openUtil(hours);
-              const itemId = item.hospitalId || item.id;
-              setHoursMap((prev) => ({ ...prev, [itemId]: hours }));
-              setOpenMap((prev) => ({ ...prev, [itemId]: open }));
-            }
+            // ★ 여기서 즉시 동일 해상 로직 적용 (플래시 방지)
+            const hours = await resolveHoursForItem(item);
+            const open = computeOpenSimple(hours);
+            const itemId = item.hospitalId || item.id;
+
+            setHoursMap((prev) => ({ ...prev, [itemId]: hours }));
+            setOpenMap((prev) => ({ ...prev, [itemId]: open }));
 
             return item;
           })
@@ -189,33 +274,29 @@ const HospitalMain = () => {
         setFavoriteResults(allData.filter(Boolean));
         setPageData((prev) => ({ ...prev, current: 0 }));
       } catch {
-        // ignore
+        setFavoriteResults([]);
       }
     };
     fetchFavorites();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showFavoritesOnly, favorites, isLogin, currentPos, calculateDistance]);
 
-  // 검색 submit
   const handleSubmit = (e) => {
     e.preventDefault();
     search(e, 0, { keyword, org, dept });
     setSearched(true);
   };
 
-  // 즐겨찾기 필터 토글
   const handleToggleFavoritesOnly = () => {
     const next = !showFavoritesOnly;
     setShowFavoritesOnly(next);
     setFilters((prev) => ({ ...prev, onlyFavorites: next }));
   };
 
-  // 표시 대상
   const displayedResults = showFavoritesOnly
     ? favoriteResults.slice(pageData.current * pageData.size, (pageData.current + 1) * pageData.size)
     : results;
 
-  // 페이지네이션 데이터(기존 유지)
   const totalPages = showFavoritesOnly
     ? Math.ceil(favoriteResults.length / pageData.size)
     : (searchPageData?.pageNumList?.length || 1);
@@ -227,7 +308,6 @@ const HospitalMain = () => {
     next: (showFavoritesOnly ? pageData.current : searchPageData?.current || 0) < totalPages - 1,
   };
 
-  // 페이지 변경(기존 유지)
   const handlePageChange = (n) => {
     if (showFavoritesOnly) {
       setPageData((prev) => ({ ...prev, current: n }));
@@ -236,100 +316,57 @@ const HospitalMain = () => {
     }
   };
 
-  /* =================== 핵심: 오픈 계산 로직 ===================
-     1) 아이템에 영업시간이 있으면 그걸로 바로 openUtil
-     2) 없거나 쓸모없으면(00:00 등) 백엔드에서 DB hours 조회 (publicAxios 사용)
-     3) 그래도 없으면 HIRA 보충
-     4) 최종 hours → hoursMap[id], openUtil → openMap[id]
-  ============================================================= */
+ // DEBUG_ID 관련 상수/로그 전부 삭제해도 됩니다.
 
-  useEffect(() => {
-    if (!Array.isArray(displayedResults) || displayedResults.length === 0) return;
+// 목록 카드별 시간/오픈 계산 (HIRA → facility → hospital → 내장)
+useEffect(() => {
+  if (!Array.isArray(displayedResults) || displayedResults.length === 0) return;
 
-    (async () => {
-      for (const it of displayedResults) {
-        const id = it.hospitalId || it.id;
-        if (!id) continue;
+  let cancelled = false;
 
-        if (openMap[id] !== undefined || requestingRef.current.has(id)) continue;
+  (async () => {
+    // 표시 중 카드들만 대상으로, 이미 계산된 항목/요청중 항목은 스킵
+    const tasks = displayedResults.map(async (it) => {
+      const id = it.hospitalId || it.id;
+      if (!id) return null;
+      if (requestingRef.current.has(id)) return null;         // 진행중
+      if (openMap[id] !== undefined) return null;             // 이미 계산됨
 
-        requestingRef.current.add(id);
-        try {
-          // A) 목록 내 시간
-          let hours = pickHours(it);
-          let usable = isUsableHours(hours);
-
-          // B) DB business-hours (Facility 우선 → Hospital 대체) — 공개 호출(publicAxios)
-          if (!usable) {
-            try {
-              const facilityId = it?.facility?.facilityId || it?.facilityId;
-              if (facilityId) {
-                const r1 = await publicAxios.get(`/project/facility/${facilityId}/business-hours`);
-                const h1 = r1?.data?.businessHours || r1?.data || [];
-                if (isUsableHours(h1)) {
-                  hours = h1;
-                  usable = true;
-                }
-              }
-              if (!usable) {
-                const r2 = await publicAxios.get(`/project/hospital/${id}/business-hours`);
-                const h2 = r2?.data?.businessHours || r2?.data || [];
-                if (isUsableHours(h2)) {
-                  hours = h2;
-                  usable = true;
-                }
-              }
-            } catch {
-              // 조용히 폴백
-            }
-          }
-
-          // C) HIRA 보충
-          if (!usable) {
-            const addr = it?.facility?.address || it?.address || "";
-            const { q0, q1Candidates } = buildQParamsFromAddress(addr);
-            if (q0 && q1Candidates.length > 0) {
-              let picked = null;
-              for (const q1 of q1Candidates) {
-                try {
-                  const json = await getHospitals({ q0, q1, page: 1, size: 50 });
-                  const raw = json?.response?.body?.items?.item;
-                  const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
-                  if (list.length > 0) {
-                    picked = pickBest(list, {
-                      hospitalName: it.hospitalName || it.name || "",
-                      facility: it.facility || { latitude: it.latitude, longitude: it.longitude },
-                    });
-                    if (picked) break;
-                  }
-                } catch {
-                  // 다음 후보 시도
-                }
-              }
-
-              const h3 = picked ? hiraItemToBusinessHours(picked) : [];
-              if (isUsableHours(h3)) {
-                hours = h3;
-                usable = true;
-              }
-            }
-          }
-
-          // 최종 open 계산/캐시
-          const open = openUtil(hours);
-          setHoursMap((prev) => ({ ...prev, [id]: hours }));
-          setOpenMap((prev) => ({ ...prev, [id]: open }));
-        } finally {
-          requestingRef.current.delete(id);
-        }
+      requestingRef.current.add(id);
+      try {
+        const hours = await resolveHoursForItem(it);
+        const open = computeOpenSimple(hours);
+        return [id, hours, open];
+      } catch {
+        return null;
+      } finally {
+        requestingRef.current.delete(id);
       }
-    })();
-  }, [displayedResults, openMap]);
+    });
+
+    const rows = (await Promise.all(tasks)).filter(Boolean);
+    if (cancelled || rows.length === 0) return;
+
+    // 배치로 한 번에 setState → 렌더 최소화
+    setHoursMap((prev) => {
+      const next = { ...prev };
+      rows.forEach(([id, hours]) => { next[id] = hours; });
+      return next;
+    });
+    setOpenMap((prev) => {
+      const next = { ...prev };
+      rows.forEach(([id, , open]) => { next[id] = open; });
+      return next;
+    });
+  })();
+  return () => { cancelled = true; };
+}, [displayedResults]); 
+
 
   return (
     <div className="bg-white">
       <Container className="py-4">
-        {/* 상단 안내 */}
+         {/* 상단 안내 */}
         <Row className="g-3 mb-3 align-items-center">
           <Col xs={6}>
             <div className="d-flex align-items-center gap-2 text-secondary mb-2">
@@ -365,9 +402,7 @@ const HospitalMain = () => {
           </Col>
         </Row>
 
-        {/* 검색 폼 */}
         <Form onSubmit={handleSubmit}>
-          {/* 진료과목 선택 */}
           <Dropdown className="mb-3 dropdown-custom">
             <Dropdown.Toggle variant="light" className="text-dark d-flex justify-content-between align-items-center">
               <span className={dept ? "" : "text-secondary"}>{dept || "진료과목"}</span>
@@ -382,7 +417,6 @@ const HospitalMain = () => {
             </Dropdown.Menu>
           </Dropdown>
 
-          {/* 의료기관 */}
           <Dropdown className="mb-3 dropdown-custom">
             <Dropdown.Toggle variant="light" className="text-dark d-flex justify-content-between align-items-center">
               <span className={org ? "" : "text-secondary"}>{org || "의료기관"}</span>
@@ -397,7 +431,6 @@ const HospitalMain = () => {
             </Dropdown.Menu>
           </Dropdown>
 
-          {/* 검색창 */}
           <Form.Control
             type="text"
             placeholder="병원 이름을 입력하세요."
@@ -408,8 +441,7 @@ const HospitalMain = () => {
           <Button type="submit" className="btn-search w-100">내 주변 병원 검색</Button>
         </Form>
 
-        {/* 즐겨찾기만 보기 */}
-        {searched && (
+        {isLogin && searched && (
           <>
             <hr className="hr-line my-3" />
             {isLogin && (
@@ -433,7 +465,6 @@ const HospitalMain = () => {
           </>
         )}
 
-        {/* 검색 결과 */}
         {displayedResults.length > 0 ? (
           <>
             <div className="mt-4">
@@ -442,7 +473,7 @@ const HospitalMain = () => {
                 const isOpen =
                   openMap[id] !== undefined
                     ? openMap[id]
-                    : openUtil(pickHours(item)); // 초깃값(목록에 시간이 있는 경우)
+                    : computeOpenSimple(pickHours(item));
 
                 return (
                   <Card
@@ -517,7 +548,6 @@ const HospitalMain = () => {
           )
         )}
 
-        {/* 검색 결과 없음 */}
         {results.length === 0 && keyword && (
           <div className="text-center text-secondary mt-4">
             검색 결과가 없습니다.
