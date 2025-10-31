@@ -93,11 +93,12 @@ export const modifyUser = async (user) => {
   return data;
 };
 
-//프로필
+// 프로필
 export const updateProfileApi = async (username, formData) => {
   const { data } = await jwtAxios.patch(
-    `/project/user/profile/${encodeURIComponent(username)}`,
-    formData
+    `${API_SERVER_HOST}/project/user/profile/${encodeURIComponent(username)}`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } } // @PatchMapping(consumes=...) 맞춤
   );
   return data;
 };
