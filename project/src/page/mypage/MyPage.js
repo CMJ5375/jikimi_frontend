@@ -95,8 +95,9 @@ const MyPage = () => {
     size: 10,
   });
   const [user, setUser] = useState({
-    username: "",
+    username: "", //이거 아이디임 헷갈리면 안됨
     email: "",
+    name: "",
     address: "",
     age: "",
   });
@@ -518,6 +519,17 @@ const MyPage = () => {
                 {activeMenu === "profile" && (
                   <div className="px-3 px-md-5 py-3">
                     <Form>
+                      {/* 이름: 수정 가능 */}
+                      <Form.Group className="mb-3" controlId="formName">
+                        <Form.Label>이름</Form.Label>
+                        <Form.Control
+                          type="text"
+                          name="name"
+                          value={user.name ?? ""}
+                          onChange={handleChange}
+                          placeholder="이름을 입력하세요"
+                        />
+                      </Form.Group>
                       {/* 주소: 수정 가능 */}
                       <Form.Group className="mb-3" controlId="formAddress">
                         <Form.Label>주소</Form.Label>
