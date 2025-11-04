@@ -6,15 +6,19 @@ import { FaBookmark, FaCommentDots, FaStar, FaHeart, FaRegCommentDots, FaRegStar
 import { getFavorites, toggleFavorite } from "../../api/favoriteApi";
 import { fetchMyPosts } from "../../api/postApi";
 import { useNavigate } from "react-router-dom";
-import { modifyUser, updateProfileApi } from "../../api/userApi";
-import { useSelector } from "react-redux";
+import { API_SERVER_HOST, modifyUser, updateProfileApi } from "../../api/userApi";
+import { useSelector, useDispatch } from "react-redux";
+import { getCookie, setCookie } from "../../util/cookieUtil";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
 import MyCommentsPanel from "./MyCommentsPanel";
 import MyPostsPanel from "./MyPostsPanel";
 
+//프로필 업로드하면 유지가 안되어서 수정차..
+const toAbsUrl = (u) => (!u ? u : u.startsWith("http") ? u : `${API_SERVER_HOST}${u}`);
 
 const MyPage = () => {
+  const dispatch = useDispatch();
   const [activeMenu, setActiveMenu] = useState("favorite");
   const [favoriteTab, setFavoriteTab] = useState("hospital");
   const [postTab, setPostTab] = useState("post");
@@ -68,13 +72,27 @@ const MyPage = () => {
 
       // 서버가 최신 프로필 URL을 돌려준다고 가정 (예: res.profileImage)
       if (res?.profileImage) {
-        setProfileUrl(res.profileImage); // 실제 표시용
-        setPreview(null);                // 임시 미리보기 제거
+        setProfileUrl(`${toAbsUrl(res.profileImage)}?t=${Date.now()}`);
+        setPreview(null);
         setFile(null);
       }
 
-      // 리덕스의 로그인 정보도 갱신하고 싶다면(선택):
-      // dispatch(updateLoginProfile({ profileImage: res.profileImage, name: res.name, address: res.address, age: res.age }))
+      // ✅ 쿠키(member) 갱신: 새로고침 후에도 유지되도록
+      const member = getCookie("member");
+      if (member) {
+        const next = {
+          ...member,
+          accessToken: res?.accessToken ?? member.accessToken,
+          refreshToken: res?.refreshToken ?? member.refreshToken,
+          profileImage: res?.profileImage ?? member.profileImage,
+          name: res?.name ?? member.name,
+          address: res?.address ?? member.address,
+          age: res?.age ?? member.age,
+        };
+        // 만료일은 프로젝트 기준으로 조정(여기선 1일 예시)
+        setCookie("member", next, 1);
+      }
+      
     } catch (e) {
       console.error(e);
       alert("프로필 저장 중 오류가 발생했습니다.");
@@ -112,8 +130,12 @@ const MyPage = () => {
       age: loginInfo.age ?? prev.age,
       name: loginInfo.name ?? prev.name, // name 도 쓰면 폼에서 활용 가능
     }));
-    // 로그인 정보에 profileImage가 있으면 표시
-    if (loginInfo.profileImage) setProfileUrl(loginInfo.profileImage);
+    // 로그인 정보 또는 쿠키의 profileImage로 초기화 (새로고침 대비)
+    const cookieMember = getCookie("member");
+    const imgPath = loginInfo.profileImage || cookieMember?.profileImage;
+    if (imgPath) {
+      setProfileUrl((prev) => prev ?? toAbsUrl(imgPath));
+    }
   }, [loginInfo]);
 
   // 내가 쓴 글 개수 가져오기

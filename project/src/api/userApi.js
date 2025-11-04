@@ -1,6 +1,7 @@
 // HTTP 통신을 위한 axios 라이브러리를 임포트합니다.
 import axios from 'axios'
 import jwtAxios from '../util/jwtUtil'
+import { getCookie, setCookie } from '../util/cookieUtil'
 
 // 백엔드 API 서버의 기본 호스트 주소를 정의합니다.
 // 이 값은 다른 API 파일(예: kakaoApi.js)에서 임포트하여 사용됩니다.
@@ -72,21 +73,15 @@ export const resetPasswordApi = (username, email, code, newPassword) =>
 
 
 export const modifyUser = async (user) => {
-  // age를 숫자 또는 null로 정리
-  const ageNum =
-    user.age === "" || user.age === null || user.age === undefined
-      ? null
-      : Number(user.age);
-
+  const ageNum = user.age === "" || user.age == null ? null : Number(user.age);
   const payload = {
     email: user.email ?? null,
     address: user.address ?? null,
     age: Number.isNaN(ageNum) ? null : ageNum,
   };
-
-  const usernamePath = encodeURIComponent(user.username);
+  
   const { data } = await jwtAxios.put(
-    `/project/user/modify/${usernamePath}`,
+    `/project/user/modify/${encodeURIComponent(user.username)}`,
     payload,
     { headers: { "Content-Type": "application/json" } }
   );
@@ -94,11 +89,33 @@ export const modifyUser = async (user) => {
 };
 
 // 프로필
-export const updateProfileApi = async (username, formData) => {
-  const { data } = await jwtAxios.patch(
-    `${API_SERVER_HOST}/project/user/profile/${encodeURIComponent(username)}`,
-    formData,
-    { headers: { "Content-Type": "multipart/form-data" } } // @PatchMapping(consumes=...) 맞춤
-  );
-  return data;
-};
+export async function updateProfileApi(username, formData) {
+  const res = await fetch(`${API_SERVER_HOST}/project/user/profile/${username}`, {
+    method: "PATCH",
+    headers: {
+      // ⚠️ multipart 전송이므로 'Content-Type' 직접 지정 X (브라우저가 경계값 붙임)
+      Authorization: `Bearer ${getCookie("member")?.accessToken ?? ""}`,
+    },
+    body: formData,
+  });
+
+  if (!res.ok) throw new Error("프로필 업데이트 실패");
+  const data = await res.json();
+
+  // ✅ 쿠키 갱신: 새 access/refresh + 최신 profileImage 반영
+  const prev = getCookie("member") || {};
+  const next = {
+    ...prev,
+    username: data.username ?? prev.username,
+    name: data.name ?? prev.name,
+    address: data.address ?? prev.address,
+    age: data.age ?? prev.age,
+    email: data.email ?? prev.email,
+    profileImage: data.profileImage ?? prev.profileImage,
+    accessToken: data.accessToken ?? prev.accessToken,
+    refreshToken: data.refreshToken ?? prev.refreshToken,
+  };
+  setCookie("member", next, 1); // 만료는 프로젝트 정책에 맞게
+
+  return data; // { profileImage, accessToken ... }
+}

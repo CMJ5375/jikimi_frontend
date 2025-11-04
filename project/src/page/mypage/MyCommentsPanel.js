@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Spinner } from "react-bootstrap";
 import { fetchMyComments } from "../../api/commentApi";
 import { useNavigate } from "react-router-dom";
@@ -10,18 +10,8 @@ export default function MyCommentsPanel() {
   const navigate = useNavigate();
   const { isLogin, moveToLoginReturn } = useCustomLogin();
 
-  // 액세스 토큰 준비 여부
-  const tokenReady = useMemo(() => {
-    try {
-      const raw = getCookie("member");
-      const obj = typeof raw === "string" ? JSON.parse(raw) : raw;
-      return !!obj?.accessToken;
-    } catch {
-      return false;
-    }
-  }, []);
-
-  // 상태
+  // ✅ 항상 같은 순서로 호출되는 Hook들
+  const [tokenReady, setTokenReady] = useState(false);
   const [list, setList] = useState([]);
   const [page, setPage] = useState(1); // 1-based
   const size = 10;
@@ -29,7 +19,18 @@ export default function MyCommentsPanel() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // 로더
+  // ✅ 토큰 준비 여부를 마운트 시 1회 결정
+  useEffect(() => {
+    try {
+      const raw = getCookie("member");
+      const obj = typeof raw === "string" ? JSON.parse(raw) : raw;
+      setTokenReady(!!obj?.accessToken);
+    } catch {
+      setTokenReady(false);
+    }
+  }, []);
+
+  // ✅ 데이터 로더 (함수는 컴포넌트 안이지만 Hook 아님)
   const load = async (p = 1) => {
     try {
       setLoading(true);
@@ -44,20 +45,17 @@ export default function MyCommentsPanel() {
     }
   };
 
-  // 토큰 준비 후 호출
+  // ✅ 토큰 준비 후, 그리고 페이지 바뀔 때마다 로드
   useEffect(() => {
     if (!tokenReady) return;
     load(page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // page, tokenReady만 의존
   }, [tokenReady, page]);
 
-  // 로그인 가드
+  // ✅ 로그인 가드 (Hook들 이후에만 early return)
   if (!isLogin) return moveToLoginReturn();
 
   const totalPages = Math.ceil(total / size);
-  if (!isLogin) return moveToLoginReturn();
-
-  // PageComponent에 맞춘 데이터
   const pageData = {
     current: page, // 1-based
     pageNumList: Array.from({ length: totalPages }, (_, i) => i + 1),
