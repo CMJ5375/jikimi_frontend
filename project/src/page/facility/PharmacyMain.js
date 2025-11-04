@@ -427,19 +427,21 @@ const PharmacyMain = () => {
         </Form>
 
         {/* 즐겨찾기만 보기 */}
-        {isLogin && searched && (
+        {searched && (
           <>
             <hr className="hr-line my-3" />
-            <div className="d-flex justify-content-start align-items-center mt-4 mb-2">
-              <Button
-                variant="light"
-                onClick={handleToggleFavoritesOnly}
-                className="border-0 d-flex align-items-center gap-2"
-              >
-                {showFavoritesOnly ? <StarFill color="#FFD43B" size={20} /> : <Star color="#aaa" size={20} />}
-                <span className="small">{showFavoritesOnly ? "즐겨찾기만 보기" : "전체 보기"}</span>
-              </Button>
-            </div>
+            {isLogin && (
+              <div className="d-flex justify-content-start align-items-center mt-4 mb-2">
+                <Button
+                  variant="light"
+                  onClick={handleToggleFavoritesOnly}
+                  className="border-0 d-flex align-items-center gap-2"
+                >
+                  {showFavoritesOnly ? <StarFill color="#FFD43B" size={20} /> : <Star color="#aaa" size={20} />}
+                  <span className="small">{showFavoritesOnly ? "즐겨찾기만 보기" : "전체 보기"}</span>
+                </Button>
+              </div>
+            )}
           </>
         )}
 
