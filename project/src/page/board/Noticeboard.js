@@ -78,11 +78,11 @@ const Noticeboard = () => {
 
   // 상단 광고
   useEffect(() => {
-      const t = setInterval(() => {
-        setBannerIdx((i) => (i + 1) % banners.length);
-      }, ROTATE_MS);
-      return () => clearInterval(t);
-      }, [banners]);
+    const t = setInterval(() => {
+      setBannerIdx((i) => (i + 1) % banners.length);
+    }, ROTATE_MS);
+    return () => clearInterval(t);
+    }, [banners]);
 
   // 목록 로드 (항상 서버 페이징; 인기글도 서버는 기본 목록만 받아오고, 프론트에서만 필터/슬라이스)
   useEffect(() => {
@@ -285,6 +285,15 @@ const Noticeboard = () => {
                 value={q}
                 onChange={handleChangeQuery}
               />
+              <button
+                  type="button"
+                  className="btn position-absolute top-0 end-0 h-100 me-1 px-3"
+                  onClick={handleSearch}      // ← 돋보기 버튼으로 검색
+                  aria-label="검색"
+                  style={{ background: "transparent", border: "none" }}
+                >
+                  <Search />
+                </button>
             </div>
             <button
               className="btn btn-primary rounded-pill px-3"

@@ -1,11 +1,13 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
-import { Eye, HandThumbsUp, Plus, Pencil, Search, Paperclip } from "react-bootstrap-icons";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Button } from 'react-bootstrap';
-
-const isAdmin = true; // 관리자 여부 (false로 바꾸면 버튼 숨김)
+import "../../css/Support.css";
+import { Eye, Pencil, PinAngleFill, Search, Megaphone, Paperclip } from "react-bootstrap-icons";
+import { useNavigate } from "react-router-dom";
+import { Button } from "react-bootstrap";
+import { listSupport, removeSupport, pinSupport, unpinSupport } from "../../api/supportApi";
+import useCustomLogin from "../../hook/useCustomLogin";
+import PageComponent from "../../component/common/PageComponent";
 
 const CATEGORIES = [
   { name: "공지사항", path: "/notice" },
@@ -13,267 +15,459 @@ const CATEGORIES = [
   { name: "자료실", path: "/dataroom" },
 ];
 
+const mapCategoryToType = (cat) => {
+  switch (cat) {
+    case "공지사항":
+      return "NOTICE";
+    case "FAQ":
+      return "FAQ";
+    case "자료실":
+      return "DATAROOM";
+    default:
+      return "DATAROOM";
+  }
+};
+
+const ROTATE_MS = 3500;
+const banners = [
+  { kind: "notice", text: "지금 확인하세요! 새로운 공지사항이 등록되었습니다." },
+  { kind: "ad", text: "광고 예시: 지역 병원 홍보 배너", brand: "Jikimi" },
+  { kind: "notice", text: "사이트 점검 예정 안내 (11/10 02:00 ~ 04:00)" },
+];
+
 const DataRoom = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // 현재 경로에 따라 초기 탭 자동 설정
-  const initialTab =
-    location.pathname.includes("notice")
-      ? "공지사항"
-      : location.pathname.includes("faq")
-      ? "FAQ"
-      : location.pathname.includes("dataroom")
-      ? "자료실"
-      : "자료실";
-
-  const [active, setActive] = useState(initialTab);
-  const [q, setQ] = useState("");
-
-  // 데모 데이터
-  const POSTS = useMemo(
-    () => [
-      {
-        id: 1,
-        cat: "자료실",
-        hot: true,
-        title: "병원 및 약국 찾기 서비스 사용 방법",
-        date: "2025-09-22",
-        time: "5일 전",
-        author: "관리자",
-        region: "경기/성남시",
-        excerpt:
-          "대전 국가정보자원관리원 화재 영향으로 일부 서비스가 일시 중단되었습니다. 복구 및 대응 현황을 안내드립니다.",
-        likes: 25,
-        comments: 1105,
-        attachments: ["service_guide.pdf"], // ✅ 첨부파일 존재
-        isNew: true,
-      },
-      {
-        id: 2,
-        cat: "자료실",
-        title: "일반 및 소셜 회원가입 이용 안내",
-        date: "2025-09-25",
-        time: "3일 전",
-        author: "관리자",
-        region: "서울/송파",
-        excerpt: "2025년 1분기 예방접종 일정과 대상, 유의사항을 안내드립니다.",
-        likes: 18,
-        comments: 555,
-        attachments: [], // 첨부 없음
-      },
-    ],
-    []
+  const { loginState } = useCustomLogin();
+  const user = loginState || {};
+  const roles = user?.roleNames || user?.roles || [];
+  const isAdmin = Array.isArray(roles) && roles.some(r =>
+    r === "ROLE_ADMIN" || r === "ADMIN"
   );
 
-  // 검색어 필터링 (제목, 내용 기준)
-  const filtered = useMemo(() => {
-    return POSTS.filter(
-      (post) =>
-        post.cat === active && // 현재 탭에 해당하는 글만
-        (post.title.toLowerCase().includes(q.toLowerCase()) ||
-          post.excerpt.toLowerCase().includes(q.toLowerCase()))
-    );
-  }, [POSTS, active, q]);
+  const [active, setActive] = useState("자료실");
+  const [q, setQ] = useState("");
+  const [items, setItems] = useState([]);
+  const [pageData, setPageData] = useState(null);
+  const [bannerIdx, setBannerIdx] = useState(0);
 
-  // 게시글 상세 이동 (예시용) ***
-  // const goDetail = (post) => {
-  //   navigate(`/dataroom/${post.id}`, { state: post });
-  // };
+  // 광고 자동 전환
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setBannerIdx((i) => (i + 1) % banners.length);
+    }, ROTATE_MS);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 목록 조회
+  const fetchList = async (page = 1) => {
+    try {
+      const t = mapCategoryToType(active);
+      const data = await listSupport({
+        type: t,
+        page,
+        size: 10,
+        q,
+      });
+      setItems(data?.dtoList || []);
+      setPageData(data || null);
+    } catch (e) {
+      console.error("자료 목록 조회 실패:", e);
+      setItems([]);
+      setPageData(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchList(1);
+  }, [active]);
+
+  // 검색
+  const onSearch = (e) => {
+    e?.preventDefault?.();
+    fetchList(1);
+  };
+
+  // 삭제(관리자 전용)
+  const onDelete = async (id) => {
+    if (!isAdmin) return;
+    if (!window.confirm("정말 삭제하시겠습니까?")) return;
+    try {
+      await removeSupport({
+        type: "DATAROOM",
+        id,
+        adminId: user.id,
+        token: user.accessToken,
+      });
+      fetchList(pageData?.current || 1);
+    } catch (e) {
+      console.error("삭제 실패:", e);
+    }
+  };
+
+  // 상단 고정/해제(관리자 전용)
+  const onTogglePin = async (id, pinned) => {
+    if (!isAdmin) return;
+    try {
+      if (pinned) {
+        await unpinSupport({
+          type: "DATAROOM",
+          id,
+          adminId: user.id,
+          token: user.accessToken,
+        });
+      } else {
+        await pinSupport({
+          type: "DATAROOM",
+          id,
+          adminId: user.id,
+          token: user.accessToken,
+        });
+      }
+      fetchList(pageData?.current || 1);
+    } catch (e) {
+      console.error("상단 고정/해제 실패:", e);
+    }
+  };
+
+  const filtered = useMemo(() => {
+    const ql = q.toLowerCase();
+    return (items || []).filter(
+      (m) =>
+        (m?.title || "").toLowerCase().includes(ql) ||
+        (m?.content || "").toLowerCase().includes(ql)
+    );
+  }, [items, q]);
 
   return (
     <div className="bg-white">
-      {/* ===== PC / 태블릿 이상 ===== */}
-      <div className="bg-primary text-white mb-4 px-3 py-2 text-center d-none d-md-block">
-        <span className="me-2">공지사항 ·</span> 공지사항 입니다.
+      {/* 상단 공지/광고 배너 */}
+      <div className="container d-none d-md-block">
+        <div className="notice-banner my-3">
+          <div
+            key={bannerIdx}
+            className="notice-anim d-flex w-100 align-items-center justify-content-between"
+          >
+            <div className="notice-left d-flex align-items-center gap-2">
+              <span
+                className={`notice-icon ${
+                  banners[bannerIdx].kind === "ad" ? "is-ad" : "is-notice"
+                }`}
+              >
+                <Megaphone size={16} />
+              </span>
+              <span className="notice-text">
+                {banners[bannerIdx].text}
+              </span>
+            </div>
+
+            <div className="notice-right">
+              {banners[bannerIdx].kind === "ad" ? (
+                <>
+                  <span className="notice-brand me-1">
+                    {banners[bannerIdx].brand}
+                  </span>
+                  <span className="notice-ad">광고</span>
+                </>
+              ) : (
+                <span className="notice-badge">공지</span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* ====== PC / 태블릿 ====== */}
       <div className="container py-4 d-none d-md-block">
         {/* 타이틀 & 검색/작성 */}
-        <div className="d-flex align-items-center justify-content-between mb-3">
+        <div className="d-flex align-items-center justify-content-between mb-4 gap-3">
           <h4 className="fw-bold mb-0">자료실</h4>
-          <div className="d-flex align-items-center gap-2">
-            <div className="position-relative">
-            <input
-              type="text"
-              className="form-control rounded-pill ps-4 pe-5 board-search"
-              placeholder="검색어를 입력해주세요.."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-            {/* <Search className="osition-absolute top-50 end-0 translate-middle-y me-3 text-secondary"/> */}
-            </div>
+          <div className="d-flex align-items-center gap-2 position-relative">
+            <form onSubmit={onSearch} className="position-relative">
+              <input
+                type="text"
+                className="form-control rounded-pill ps-4 pe-5 board-search"
+                placeholder="검색어를 입력해주세요.."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+              <button
+                type="submit"
+                className="btn position-absolute top-0 end-0 h-100 me-1 px-3"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                }}
+              >
+                <Search />
+              </button>
+            </form>
+
             {isAdmin && (
-              <Button variant="primary rounded-pill px-3">
-                게시글 작성 <Pencil className="ms-1" />
-              </Button>
+              <button
+                className="btn btn-primary rounded-pill px-3"
+                onClick={() => navigate("/supportCreate?type=DATAROOM")}
+              >
+                글작성 <Pencil className="ms-1" />
+              </button>
             )}
           </div>
         </div>
 
         {/* 탭 */}
         <div className="mbp-tabs border-bottom mb-3">
-          {CATEGORIES.map((c) => (
-            <div
-              key={c.name}
-              className={`mbp-tabbtn ${active === c.name ? "active" : ""}`}
-              onClick={() => {setActive(c.name); navigate(c.path);}}
+          {CATEGORIES.map((t) => (
+            <button
+              key={t.name}
+              className={`mbp-tabbtn ${active === t.name ? "active" : ""}`}
+              onClick={() => {
+                setActive(t.name);
+                navigate(t.path);
+              }}
             >
-              {c.name}
-            </div>
+              {t.name}
+            </button>
           ))}
         </div>
 
-        {/* 리스트: 공지사항만 표시 / FAQ·자료실은 안내문 */}
-        {active === "자료실" ? (
-          <div className="list-group board-list">
-            {filtered.map((m) => (
+        {/* 리스트 (PC) */}
+        <div className="list-group board-list">
+          {filtered.length > 0 ? (
+            filtered.map((m) => (
               <button
+                key={m.supportId}
                 type="button"
-                key={m.id}
                 className={`list-group-item list-group-item-action d-flex align-items-center justify-content-between ${
-                  m.hot ? "board-item-hot" : ""
+                  m.pinned ? "board-item-hot" : ""
                 }`}
-                // onClick={() => goDetail(m)} *****
-                onClick={()=> navigate(`/dataroomdetails`)}
+                onClick={() =>
+                  navigate(`/support/dataroom/detail/${m.supportId}`)
+                }
               >
                 <div className="d-flex align-items-center gap-3">
                   <span
-                    className={`badge rounded-pill px-3 ${
-                      m.hot
-                        ? "bg-primary-soft text-primary"
-                        : "bg-secondary-soft text-secondary"
+                    className={`badge rounded-pill px-3 board-badge ${
+                      m.pinned ? "popular" : "normal"
                     }`}
                   >
-                    자료실
+                    {m.pinned ? "상단공지" : "자료실"}
                   </span>
                   <span className="board-title d-flex align-items-center">
                     {m.title}
-                    {/* 첨부파일이 있을 경우 아이콘 표시 */}
-                    {m.attachments?.length > 0 && (
-                      <Paperclip className="ms-2 text-secondary" size={16} />
+                    {m?.fileUrl && (
+                      <Paperclip size={16} className="ms-2 text-secondary" />
                     )}
-                    {/* 새 글인 경우 아이콘 표시 */}
-                    {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                    {isAdmin && (
+                      <PinAngleFill
+                        className={`ms-2 ${
+                          m.pinned ? "text-danger" : "text-muted"
+                        }`}
+                        role="button"
+                        title={m.pinned ? "상단 고정 해제" : "상단 고정"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTogglePin(m.supportId, m.pinned);
+                        }}
+                      />
+                    )}
                   </span>
                 </div>
-                <span className="text-secondary small">{m.date}</span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center text-secondary py-5 rounded-3 bg-light">
-            {active} 페이지는 준비 중입니다.
-          </div>
-        )}
 
-        {/* 페이지네이션 (모양만) */}
-        <nav className="mt-4">
-          <ul className="pagination justify-content-center">
-            <li className="page-item disabled">
-              <span className="page-link">&laquo;</span>
-            </li>
-            <li className="page-item active">
-              <span className="page-link">1</span>
-            </li>
-            <li className="page-item">
-              <a className="page-link" href="#!">
-                2
-              </a>
-            </li>
-            <li className="page-item">
-              <a className="page-link" href="#!">
-                3
-              </a>
-            </li>
-            <li className="page-item">
-              <a className="page-link" href="#!">
-                &raquo;
-              </a>
-            </li>
-          </ul>
-        </nav>
+                <div className="text-secondary small d-flex justify-content-end align-items-center">
+                  <div className="d-flex align-items-center me-2" style={{ minWidth: "50px" }}>
+                    <Eye size={16} className="me-1" /> {m.viewCount || 0}
+                  </div>
+                  <div>{String(m.regDate || "").split("T")[0] || "-"}</div>
+
+                  {isAdmin && (
+                    <button
+                      className="btn btn-sm btn-outline-danger ms-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(m.supportId);
+                      }}
+                    >
+                      삭제
+                    </button>
+                  )}
+                </div>
+              </button>
+            ))
+          ) : (
+            <div className="text-center text-secondary py-5">
+              등록된 자료가 없습니다.
+            </div>
+          )}
+        </div>
+
+        {/* 페이지네이션 */}
+        {pageData && (
+          <PageComponent pageData={pageData} onPageChange={(p) => fetchList(p + 1)} />
+        )}
       </div>
 
-      {/* ===== 모바일 ===== */}
+      {/* ====== 모바일 ====== */}
       <div className="d-block d-md-none">
         <div className="mbp-wrap">
-          {/* 헤더 */}
-          <div className="d-flex align-items-center justify-content-between px-3 pt-3 pb-2">
-            <div className="mbp-title">자료실</div>
-            <div className="d-flex align-items-center gap-3">
-              <Search />
-              {isAdmin && (<Pencil />)}
+
+          {/* 공지/광고 배너 (모바일) */}
+          <div className="px-3 pt-2 d-block d-md-none">
+            <div className="notice-banner">
+              <div key={bannerIdx} className="notice-anim d-flex w-100 align-items-center justify-content-between">
+                <div className="notice-left">
+                  <span className={`notice-icon ${banners[bannerIdx].kind === "ad" ? "is-ad" : "is-notice"}`}>
+                    <Megaphone size={16} />
+                  </span>
+                  <span className="notice-text">{banners[bannerIdx].text}</span>
+                </div>
+                <div className="notice-right">
+                  {banners[bannerIdx].kind === "ad" ? (
+                    <>
+                      <span className="notice-brand">{banners[bannerIdx].brand}</span>
+                      <span className="notice-ad">광고</span>
+                    </>
+                  ) : (
+                    <span className="notice-badge">공지</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* 탭(가로 스크롤) */}
+          {/* 헤더 */}
+          <div className="px-3 pt-3 pb-2">
+            <div className="d-flex align-items-center justify-content-between mb-4 gap-3">
+              <div className="mbp-title">자료실</div>
+              {isAdmin && (
+                <button
+                  className="btn btn-primary rounded-pill px-3"
+                  onClick={() => navigate("/supportCreate?type=DATAROOM")}
+                  type="button"
+                >
+                  글작성 <Pencil className="ms-1" />
+                </button>
+              )}
+            </div>
+
+            {/* 검색 */}
+            <div className="d-flex align-items-center gap-2">
+              <form onSubmit={onSearch} className="position-relative flex-grow-1">
+                <input
+                  type="text"
+                  className="form-control rounded-pill ps-4 pe-5 board-search"
+                  placeholder="검색어를 입력해주세요.."
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="btn position-absolute top-0 end-0 h-100 me-1 px-3"
+                  style={{ background: "transparent", border: "none" }}
+                >
+                  <Search />
+                </button>
+              </form>
+            </div>
+          </div>
+
+          {/* 탭 */}
           <div className="mbp-tabs border-bottom">
-            {CATEGORIES.map((c) => (
-              <div
-                key={c.name}
-                className={`mbp-tabbtn px-3 ${active === c.name ? "active" : ""}`}
-                onClick={() => {setActive(c.name); navigate(c.path);}}
+            {CATEGORIES.map((t) => (
+              <button
+                key={t.name}
+                className={`mbp-tabbtn ${active === t.name ? "active" : ""}`}
+                onClick={() => {
+                  setActive(t.name);
+                  navigate(t.path);
+                }}
               >
-                {c.name}
-              </div>
+                {t.name}
+              </button>
             ))}
           </div>
 
-          {/* 카드 리스트 */}
-          {active === "자료실" ? (
+          {/* 카드 리스트 (모바일) */}
+          {filtered.length > 0 ? (
             filtered.map((p) => (
               <article
                 className="mbp-card"
-                key={p.id}
-                // onClick={() => goDetail(p)} *****
-                onClick={()=> navigate(`/dataroomdetails`)}
+                key={p.supportId}
+                onClick={() =>
+                  navigate(`/support/dataroom/detail/${p.supportId}`)
+                }
+                role="button"
               >
                 <div className="d-flex justify-content-between align-items-start">
-                  <span className="mbp-badge">{p.hot ? "자료실" : p.cat}</span>
-                  <div className="mbp-ghostmark">
-                    <Plus className="fs-5" />
-                  </div>
+                  <span
+                    className={`mbp-badge ${p.pinned ? "popular" : ""}`}
+                  >
+                    {p.pinned ? "상단공지" : "자료실"}
+                  </span>
+                  {isAdmin && (
+                    <PinAngleFill
+                      className={`fs-5 ${p.pinned ? "text-danger" : "text-muted"}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTogglePin(p.supportId, p.pinned);
+                      }}
+                    />
+                  )}
                 </div>
 
-                <h6 className="mbp-title-line">
+                <h6 className="mbp-title-line d-flex align-items-center">
                   {p.title}
-                  {p.isNew && <span className="ms-2 text-primary">N</span>}
+                  {p?.fileUrl && (
+                    <Paperclip size={16} className="ms-2 text-secondary" />
+                  )}
                 </h6>
 
                 <div className="d-flex justify-content-between">
-                  <div className="mbp-meta">{p.time}</div>
+                  <div className="mbp-meta">
+                    {String(p.regDate || "").split("T")[0] || "-"}
+                  </div>
                   <div className="text-end">
-                    <div className="fw-bold">{p.author}</div>
-                    <span className="mbp-region">{p.region}</span>
+                    <div className="fw-bold">{p.writerName || "관리자"}</div>
                   </div>
                 </div>
 
-                <p className="mbp-excerpt">{p.excerpt}</p>
-
-                <div className="mbp-divider"></div>
-
-                <div className="d-flex align-items-center gap-4 text-secondary">
-                  <span>
-                    <HandThumbsUp className="me-1" />
-                    {p.likes}
+                <div className="d-flex justify-content-between align-items-center text-secondary mt-2">
+                  <span className="d-flex align-items-center ms-1">
+                    <Eye size={16} className="me-1" />
+                    {p.viewCount || 0}
                   </span>
-                  <span>
-                    <Eye className="me-1"/>
-                    {p.comments}
-                  </span>
+
+                  {isAdmin && (
+                    <button
+                      className="btn btn-sm btn-outline-danger ms-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(p.supportId);
+                      }}
+                    >
+                      삭제
+                    </button>
+                  )}
                 </div>
               </article>
             ))
           ) : (
             <div className="text-center text-secondary py-5">
-              {active} 페이지는 준비 중입니다.
+              등록된 자료가 없습니다.
+            </div>
+          )}
+
+          {/* 모바일 페이지네이션 */}
+          {pageData && (
+            <div className="px-3 py-3">
+              <PageComponent
+                pageData={pageData}
+                onPageChange={(p) => fetchList(p + 1)}
+              />
             </div>
           )}
         </div>
       </div>
     </div>
   );
-}
+};
 
-export default DataRoom
+export default DataRoom;
