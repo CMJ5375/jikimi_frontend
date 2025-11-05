@@ -8,12 +8,10 @@ function ensureKakaoReady() {
       resolve();
       return;
     }
-    // kakao sdk가 window.kakao.load 형태일 때 대비
     const tryLoad = () => {
       if (w.kakao && w.kakao.maps) {
         w.kakao.maps.load(() => resolve());
       } else {
-        // 100ms 단위 폴링 (이미 스크립트가 index.html에 포함돼 있다고 가정)
         const t = setInterval(() => {
           if (w.kakao && w.kakao.maps) {
             clearInterval(t);
@@ -29,15 +27,19 @@ function ensureKakaoReady() {
 export default function KakaoMapComponent({
   id,
   containerId,
-  center,               // {lat, lng} 가능
+  center,
   lat,
   lng,
   name = "",
   height = 300,
-  showCenterMarker = true,
-  locationsCount,       // 리스트/데이터 변경 트리거용(옵션)
+  showCenterMarker = true, // 내 위치 마커
+  locations = [],          // 여러 시설 마커
+  locationsCount,          // 리스트 변경 감지용
 }) {
-  const cid = useMemo(() => containerId || id || `kmap-${Math.random().toString(36).slice(2)}`, [containerId, id]);
+  const cid = useMemo(
+    () => containerId || id || `kmap-${Math.random().toString(36).slice(2)}`,
+    [containerId, id]
+  );
   const initialCenter = useMemo(() => {
     const c = center || { lat, lng };
     return { lat: Number(c?.lat) || 37.5665, lng: Number(c?.lng) || 126.9780 };
@@ -47,11 +49,11 @@ export default function KakaoMapComponent({
   const markerRef = useRef(null);
   const containerRef = useRef(null);
   const resizeObsRef = useRef(null);
+  const markerListRef = useRef([]);
 
-  // 최초 생성
+  // 최초 지도 생성
   useLayoutEffect(() => {
     let cancelled = false;
-
     const init = async () => {
       await ensureKakaoReady();
       if (cancelled) return;
@@ -66,16 +68,47 @@ export default function KakaoMapComponent({
         center: mapCenter,
         level: 4,
       });
+
+      // 줌 컨트롤 버튼 표시
+      const zoomControl = new kakao.maps.ZoomControl();
+      map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+
       mapRef.current = map;
 
-      // 최초 마커
+      // 내 위치 마커
       if (showCenterMarker) {
-        const marker = new kakao.maps.Marker({ position: mapCenter });
+        const imageSrc = "/image/my-location-marker.png";
+        const imageSize = new kakao.maps.Size(28, 40);
+        const imageOption = { offset: new kakao.maps.Point(14, 40) };
+        const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+
+        const marker = new kakao.maps.Marker({
+          position: mapCenter,
+          image: markerImage,
+          zIndex: 9999, // 항상 제일 위
+        });
+
         marker.setMap(map);
         markerRef.current = marker;
+
+        const infoWindow = new kakao.maps.InfoWindow({
+          content: `<div style="padding:5px 10px;font-size:13px;">내 위치</div>`,
+        });
+
+        // 자동 표시 + 클릭 시 토글
+        infoWindow.open(map, marker);
+        let isOpen = true;
+        kakao.maps.event.addListener(marker, "click", () => {
+          if (isOpen) {
+            infoWindow.close();
+          } else {
+            infoWindow.open(map, marker);
+          }
+          isOpen = !isOpen;
+        });
       }
 
-      // 최초 레이아웃 보정 (숨김 → 표시 전환 등)
+      // 초기 레이아웃 보정
       setTimeout(() => {
         try {
           map.relayout();
@@ -83,12 +116,12 @@ export default function KakaoMapComponent({
         } catch {}
       }, 0);
 
-      // 컨테이너 사이즈 변화를 관찰해서 relayout
+      // 리사이즈 감지
       if ("ResizeObserver" in window) {
         const ro = new ResizeObserver(() => {
           try {
             map.relayout();
-            map.setCenter(new kakao.maps.LatLng(initialCenter.lat, initialCenter.lng));
+            map.setCenter(mapCenter);
           } catch {}
         });
         ro.observe(container);
@@ -99,23 +132,29 @@ export default function KakaoMapComponent({
     init();
     return () => {
       cancelled = true;
-      // 정리
       if (resizeObsRef.current && containerRef.current) {
-        try { resizeObsRef.current.unobserve(containerRef.current); } catch {}
+        try {
+          resizeObsRef.current.unobserve(containerRef.current);
+        } catch {}
       }
       resizeObsRef.current = null;
       containerRef.current = null;
 
       if (markerRef.current) {
-        try { markerRef.current.setMap(null); } catch {}
+        try {
+          markerRef.current.setMap(null);
+        } catch {}
       }
       markerRef.current = null;
+
+      markerListRef.current.forEach((m) => m.setMap(null));
+      markerListRef.current = [];
+
       mapRef.current = null;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cid]); // 컨테이너 id가 바뀔 때만 완전 재생성
+  }, [cid]);
 
-  // 센터/마커 업데이트 (props 변경 시)
+  // 센터 업데이트
   useEffect(() => {
     const { kakao } = window;
     if (!mapRef.current || !kakao) return;
@@ -129,24 +168,82 @@ export default function KakaoMapComponent({
         map.setCenter(pos);
       }, 0);
     } catch {}
+  }, [initialCenter]);
 
-    // 마커 on/off
-    if (showCenterMarker) {
-      if (!markerRef.current) {
-        const m = new kakao.maps.Marker({ position: pos });
-        m.setMap(map);
-        markerRef.current = m;
-      } else {
-        markerRef.current.setPosition(pos);
-        markerRef.current.setMap(map);
-      }
-    } else if (markerRef.current) {
-      try { markerRef.current.setMap(null); } catch {}
-      markerRef.current = null;
+  // 시설 마커 + 자동 줌 조정 + 클릭 토글
+  useEffect(() => {
+    const { kakao } = window;
+    const map = mapRef.current;
+    if (!map || !kakao) return;
+
+    markerListRef.current.forEach((m) => m.setMap(null));
+    markerListRef.current = [];
+
+    // 여러 시설이 있는 경우
+    if (Array.isArray(locations) && locations.length > 0 && lat && lng) {
+      const myPos = new kakao.maps.LatLng(lat, lng);
+      map.setCenter(myPos);
+
+      let maxDistance = 0;
+      locations.forEach((loc) => {
+        if (!loc.latitude || !loc.longitude) return;
+        const position = new kakao.maps.LatLng(loc.latitude, loc.longitude);
+        const marker = new kakao.maps.Marker({ position, map });
+        markerListRef.current.push(marker);
+
+        // 거리 계산
+        const line = new kakao.maps.Polyline({ path: [myPos, position] });
+        const distance = line.getLength();
+        if (distance > maxDistance) maxDistance = distance;
+
+        // 인포윈도우 토글
+        const iw = new kakao.maps.InfoWindow({
+          content: `<div style="padding:5px 10px;font-size:13px;">${loc.name}</div>`,
+        });
+        let open = false;
+        kakao.maps.event.addListener(marker, "click", () => {
+          if (open) iw.close();
+          else iw.open(map, marker);
+          open = !open;
+        });
+      });
+
+      // 자동 줌 설정
+      let level;
+      if (maxDistance < 300) level = 4;
+      else if (maxDistance < 700) level = 5;
+      else if (maxDistance < 1500) level = 6;
+      else if (maxDistance < 3000) level = 7;
+      else if (maxDistance < 5000) level = 8;
+      else level = 9;
+
+      map.setLevel(level);
     }
-  }, [initialCenter, showCenterMarker]);
 
-  // 리스트/데이터 수 변화(예: favorites 토글) → 레이아웃 재보정
+    // 단일 시설(상세페이지)
+    else if (lat && lng) {
+      const pos = new kakao.maps.LatLng(lat, lng);
+      const marker = new kakao.maps.Marker({ position: pos, map });
+      markerListRef.current.push(marker);
+
+      if (name) {
+        const iw = new kakao.maps.InfoWindow({
+          content: `<div style="padding:5px 10px;font-size:13px;">${name}</div>`,
+        });
+        let open = false;
+        kakao.maps.event.addListener(marker, "click", () => {
+          if (open) iw.close();
+          else iw.open(map, marker);
+          open = !open;
+        });
+      }
+
+      map.setCenter(pos);
+      map.setLevel(4);
+    }
+  }, [locations, lat, lng, name]);
+
+  // 레이아웃 재보정
   useEffect(() => {
     if (!mapRef.current) return;
     const map = mapRef.current;
@@ -160,7 +257,10 @@ export default function KakaoMapComponent({
   return (
     <div
       id={cid}
-      style={{ width: "100%", height: typeof height === "number" ? `${height}px` : height }}
+      style={{
+        width: "100%",
+        height: typeof height === "number" ? `${height}px` : height,
+      }}
       aria-label={name || "map"}
     />
   );

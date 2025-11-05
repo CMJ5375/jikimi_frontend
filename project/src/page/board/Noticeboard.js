@@ -78,11 +78,11 @@ const Noticeboard = () => {
 
   // 상단 광고
   useEffect(() => {
-      const t = setInterval(() => {
-        setBannerIdx((i) => (i + 1) % banners.length);
-      }, ROTATE_MS);
-      return () => clearInterval(t);
-      }, [banners]);
+    const t = setInterval(() => {
+      setBannerIdx((i) => (i + 1) % banners.length);
+    }, ROTATE_MS);
+    return () => clearInterval(t);
+    }, [banners]);
 
   // 목록 로드 (항상 서버 페이징; 인기글도 서버는 기본 목록만 받아오고, 프론트에서만 필터/슬라이스)
   useEffect(() => {
@@ -285,6 +285,15 @@ const Noticeboard = () => {
                 value={q}
                 onChange={handleChangeQuery}
               />
+              <button
+                  type="button"
+                  className="btn position-absolute top-0 end-0 h-100 me-1 px-3"
+                  onClick={handleSearch}      // ← 돋보기 버튼으로 검색
+                  aria-label="검색"
+                  style={{ background: "transparent", border: "none" }}
+                >
+                  <Search />
+                </button>
             </div>
             <button
               className="btn btn-primary rounded-pill px-3"
@@ -325,10 +334,14 @@ const Noticeboard = () => {
                 <span className="board-title d-flex align-items-center">
                   {m.title}
                   {m.hasFile && <Paperclip className="ms-2 text-secondary" size={16} />}
+                  {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
                 </span>
               </div>
-              <div className="text-end text-secondary small d-flex flex-column align-items-end">
-                <span>{m.view} &nbsp; {m.date}</span>
+              <div className="text-secondary small d-flex justify-content-end align-items-center">
+                <div className="d-flex align-items-center me-2" style={{ minWidth: "50px" }}>
+                  <Eye size={16} className="me-1" /> {m.view}
+                </div>
+                <div>{m.date}</div>
               </div>
             </button>
           ))}
@@ -478,15 +491,22 @@ const Noticeboard = () => {
 
               <div className="mbp-divider"></div>
 
-              <div className="d-flex align-items-center gap-4 text-secondary">
-                <span>
-                  <HandThumbsUp className="me-1" />
-                  {p.likes}
+              <div className="d-flex justify-content-between align-items-center text-secondary">
+                <span className="d-flex align-items-center ms-1">
+                  <Eye size={16} className="me-1" />
+                  {p.view}
                 </span>
-                <span>
-                  <ChatDots className="me-1" />
-                  0
-                </span>
+
+                <div className="d-flex align-items-center gap-4 me-1">
+                  <span className="d-flex align-items-center">
+                    <HandThumbsUp size={16} className="me-1" />
+                    {p.likes}
+                  </span>
+                  <span className="d-flex align-items-center">
+                    <ChatDots size={16} className="me-1" />
+                    0
+                  </span>
+                </div>
               </div>
             </article>
           ))}

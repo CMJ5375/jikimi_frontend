@@ -1,0 +1,128 @@
+/* ✅ 공지사항 스타일 (Noticeboard.css 기반 통합 버전) */
+
+/* 전체 컨테이너 */
+.notice-container {
+  margin-top: 80px;
+  margin-bottom: 100px;
+}
+
+/* 검색 영역 */
+.notice-searchbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.notice-searchbar input {
+  width: 260px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 0.95rem;
+}
+
+.notice-searchbar button {
+  margin-left: 8px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  padding: 6px 14px;
+}
+
+/* 공지 카드 공통 */
+.notice-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-bottom: 16px;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.notice-card:hover {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* 상단 고정글 강조 */
+.notice-card.pinned {
+  background-color: #fff8e6;
+  border: 1px solid #f2d98a;
+}
+
+.notice-card.pinned .notice-title {
+  font-weight: 700;
+  color: #d97706;
+}
+
+/* 카드 제목 */
+.notice-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #222;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 압정 아이콘 */
+.notice-pin {
+  font-size: 1.1rem;
+  color: #ff4b4b;
+}
+
+/* 내용 미리보기 */
+.notice-preview {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 메타 정보 */
+.notice-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+/* 관리자 버튼 */
+.notice-admin-btns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.notice-admin-btns button {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+}
+
+/* 상단 고정 영역 구분선 */
+.notice-pinned-divider {
+  border-bottom: 2px dashed #d9d9d9;
+  margin: 25px 0 20px 0;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .notice-container {
+    margin-top: 50px;
+  }
+
+  .notice-card {
+    padding: 14px 16px;
+  }
+
+  .notice-title {
+    font-size: 1rem;
+  }
+
+  .notice-preview {
+    font-size: 0.85rem;
+  }
+}

@@ -6,7 +6,7 @@ import CommentSection from "./CommentSection";
 import NavModel from "./NavModel";
 import ShareModal from "./ShareModal";
 import { Eye, HandThumbsUp, Share, Folder, } from "react-bootstrap-icons";
-import { getOne, deletePost, getList, updatePost, increaseView, increaseLike, getLikeStatus } from "../../api/postApi";
+import { getOne, deletePost, getList, updatePost, increaseView, increaseLike } from "../../api/postApi";
 import { getCookie } from "../../util/cookieUtil";
 import Avatar from "../board/Avatar";
 

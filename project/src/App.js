@@ -21,6 +21,7 @@ import Faq from './page/customSupport/Faq';
 import DataRoom from './page/customSupport/DataRoom';
 import DataRoomDetail from './page/customSupport/DataRoomDetail';
 import KakaoLoginPage from './page/JUser/KakaoLoginPage';
+import SupportCreate from './page/customSupport/SupportCreate';
 
 function Layout() {
   return (
@@ -60,12 +61,11 @@ export default function App() {
 
         {/* 고객지원 */}
         <Route path="notice" element={<Notice />} />
-        <Route path="noticedetails" element={<NoticeDetail />} />
-
+        <Route path="noticedetail/:id" element={<NoticeDetail />} />
         <Route path="faq" element={<Faq />} />
-
         <Route path="dataroom" element={<DataRoom />} />
-        <Route path="dataroomdetails" element={<DataRoomDetail />} />
+        <Route path="dataroomdetail/:id" element={<DataRoomDetail />} />
+        <Route path="supportCreate" element={<SupportCreate />} />
 
         {/*카카오 로그인 */}
         <Route path='user/'>
