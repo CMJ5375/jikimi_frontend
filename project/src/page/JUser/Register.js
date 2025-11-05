@@ -58,13 +58,9 @@ const Register = () => {
           <img
             src="/image/loginLogo.png"
             alt="로고"
-            style={{ width: '360px' }}
+            style={{ width: '480px' }}
             className="mb-4"
           />
-          <div className="fs-5">
-            주변 공휴일에도 걱정없이,<br />
-            지금 열려있는 병원/약국 안내
-          </div>
         </Col>
 
         {/* 로그인 폼 영역 */}
