@@ -3,24 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/BoardDetail.css";
 import { Eye, HandThumbsUp, Share, List } from "react-bootstrap-icons";
-import { getSupport, removeSupport, updateSupport } from "../../api/supportApi";
-import { getCookie } from "../../util/cookieUtil";
+import { getSupport, removeSupport, updateSupport, toggleSupportLike, getSupportLikeStatus } from "../../api/supportApi";
 import useCustomLogin from "../../hook/useCustomLogin";
-
-const LS_LIKED_KEY = "LIKED_NOTICE";
-
-function loadLikedMap() {
-  try {
-    const raw = localStorage.getItem(LS_LIKED_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveLikedMap(map) {
-  localStorage.setItem(LS_LIKED_KEY, JSON.stringify(map));
-}
 
 const NoticeDetail = () => {
   const { id: idParam } = useParams();
@@ -30,6 +14,7 @@ const NoticeDetail = () => {
 
   const { loginState } = useCustomLogin();
   const user = loginState || {};
+  console.log(user)
   const roles = user?.roleNames || user?.roles || [];
   const isAdmin =
     Array.isArray(roles) && roles.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
@@ -85,6 +70,18 @@ const NoticeDetail = () => {
         });
         setEditTitle(data.title ?? "");
         setEditContent(data.content ?? "");
+
+        if (user?.userId) {
+          const status = await getSupportLikeStatus({
+            type,
+            id,
+            userId: user.userId,
+            token: user.accessToken,
+          });
+          setLiked(status?.liked ?? false);
+        } else {
+          setLiked(false);
+        }
       } catch (err) {
         console.error("getSupport failed", err);
       } finally {
@@ -94,7 +91,7 @@ const NoticeDetail = () => {
     return () => {
       ignore = true;
     };
-  }, [id]);
+  }, [id, user?.userId]);
 
   // 수정모드
   const handleEditStart = () => setEditMode(true);
@@ -119,7 +116,7 @@ const NoticeDetail = () => {
         type,
         id,
         dto,
-        adminId: user.id,
+        adminId: user.userId,
         token: user.accessToken,
       });
       alert("수정되었습니다.");
@@ -139,7 +136,7 @@ const NoticeDetail = () => {
       await removeSupport({
         type,
         id,
-        adminId: user.id,
+        adminId: user.userId,
         token: user.accessToken,
       });
       alert("삭제되었습니다.");
@@ -151,16 +148,25 @@ const NoticeDetail = () => {
   };
 
   // 좋아요
-  const handleLike = () => {
-    const likedMap = loadLikedMap();
-    const next = !likedMap[id];
-    likedMap[id] = next;
-    saveLikedMap(likedMap);
-    setLiked(next);
-    setPost((prev) => ({
-      ...prev,
-      likeCount: prev.likeCount + (next ? 1 : -1),
-    }));
+  const handleLike = async () => {
+    console.log("로그인 유저 ID:", user.userId)
+    if (!user?.userId) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+    try {
+      const res = await toggleSupportLike({
+        type,
+        id,
+        userId: user.userId,
+        token: user.accessToken,
+      });
+      setLiked(res?.liked ?? false);
+      setPost((prev) => ({ ...prev, likeCount: res?.likeCount ?? prev.likeCount }));
+    } catch (err) {
+      console.error("좋아요 실패:", err);
+      alert("좋아요 처리 중 오류가 발생했습니다.");
+    }
   };
 
   // 공유

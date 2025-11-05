@@ -16,11 +16,7 @@ export const buildFileDownloadUrl = (supportId, fileName) => {
 export async function listSupport({ type, page = 0, size = 10, q = "" }) {
   const t = normType(type);
   const res = await publicAxios.get(`/project/support/${t}/list`, {
-    params: {
-      page,
-      size,
-      keyword: q || undefined,
-    },
+    params: { page, size, keyword: q || undefined },
   });
   return res.data;
 }
@@ -36,7 +32,7 @@ export async function getSupport({ type, id, increaseView = true }) {
 
 // 생성(관리자)
 export async function createSupport({ type, dto, adminId, token }) {
-  const t = String(type || "").toLowerCase();
+  const t = normType(type);
   const axiosInstance = token ? jwtAxios : publicAxios;
   const safeAdminId = typeof adminId === "number" ? adminId : 0;
   const url = `/project/support/${t}?adminId=${safeAdminId}`;
@@ -89,4 +85,32 @@ export async function unpinSupport({ type, id, adminId, token }) {
     params: { adminId: safeAdminId },
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
+}
+
+// 좋아요 토글
+export async function toggleSupportLike({ type, id, userId, token }) {
+  const t = normType(type);
+  const axiosInstance = token ? jwtAxios : publicAxios;
+  const res = await axiosInstance.post(
+    `/project/support/${t}/${id}/like`,
+    { userId },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    }
+  );
+  return res.data;
+}
+
+// 좋아요 상태 조회
+export async function getSupportLikeStatus({ type, id, userId, token }) {
+  const t = normType(type);
+  const axiosInstance = token ? jwtAxios : publicAxios;
+  const res = await axiosInstance.get(`/project/support/${t}/${id}/like/status`, {
+    params: { userId },
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  return res.data;
 }
