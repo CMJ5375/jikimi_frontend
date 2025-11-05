@@ -5,11 +5,12 @@ import { X } from "react-bootstrap-icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { createSupport } from "../../api/supportApi";
 import { getCookie } from "../../util/cookieUtil";
+import { decodeToken } from "../../util/jwtUtil";
 
 const CATEGORY_OPTIONS = [
-  { label: "공지사항", value: "NOTICE" },
-  { label: "FAQ", value: "FAQ" },
-  { label: "자료실", value: "DATAROOM" },
+  { label: "공지사항", value: "notice" },
+  { label: "FAQ", value: "faq" },
+  { label: "자료실", value: "dataroom" },
 ];
 
 const SupportCreate = ({ onClose }) => {
@@ -18,7 +19,7 @@ const SupportCreate = ({ onClose }) => {
   const fileRef = useRef(null);
   const query = new URLSearchParams(location.search);
   const typeFromQuery = query.get("type");
-  const initialCategory = typeFromQuery || "NOTICE";
+  const initialCategory = typeFromQuery || "notice";
   const [boardCategory, setBoardCategory] = useState(initialCategory);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -59,11 +60,25 @@ const SupportCreate = ({ onClose }) => {
     }
 
     const token = parsed?.accessToken;
-    const username = parsed?.username;
-    const adminId = parsed?.id ?? parsed?.userId ?? 0;
-
-    if (!token || !username) {
+    if (!token) {
       alert("로그인 정보가 올바르지 않습니다.");
+      return;
+    }
+
+    // accessToken decode 후 adminId 정확히 추출
+    const claims = decodeToken(token);
+    const adminId =
+      claims?.id ||
+      claims?.userId ||
+      claims?.memberId ||
+      parsed?.id ||
+      parsed?.userId ||
+      0;
+
+    const username = claims?.username || parsed?.username || "unknown";
+
+    if (!adminId || adminId <= 0) {
+      alert("관리자 정보가 올바르지 않습니다.");
       return;
     }
 
@@ -85,8 +100,8 @@ const SupportCreate = ({ onClose }) => {
       alert("게시글이 등록되었습니다.");
 
       // 카테고리별 이동
-      if (boardCategory === "NOTICE") navigate("/notice");
-      else if (boardCategory === "FAQ") navigate("/faq");
+      if (boardCategory === "notice") navigate("/notice");
+      else if (boardCategory === "faq") navigate("/faq");
       else navigate("/dataroom");
     } catch (err) {
       console.error("createSupport failed:", err);
@@ -173,7 +188,7 @@ const SupportCreate = ({ onClose }) => {
         </div>
 
         {/* 자료실일 경우만 첨부 파일 표시 */}
-        {boardCategory === "DATAROOM" && (
+        {boardCategory === "dataroom" && (
           <div className="py-3">
             <label className="form-label fw-semibold">첨부 파일</label>
             <div className="d-flex flex-column gap-2">

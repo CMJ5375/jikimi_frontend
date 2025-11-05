@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
 import "../../css/Support.css";
-import { Eye, Pencil, PinAngleFill, Search, Megaphone } from "react-bootstrap-icons";
+import { Eye, Pencil, PinFill, Pin, Search, Megaphone } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
 import { Button } from "react-bootstrap";
 import { listSupport, removeSupport, pinSupport, unpinSupport } from "../../api/supportApi";
@@ -18,13 +18,13 @@ const CATEGORIES = [
 const mapCategoryToType = (cat) => {
   switch (cat) {
     case "공지사항":
-      return "NOTICE";
+      return "notice";
     case "FAQ":
-      return "FAQ";
+      return "faq";
     case "자료실":
-      return "DATAROOM";
+      return "dataroom";
     default:
-      return "NOTICE";
+      return "notice";
   }
 };
 
@@ -39,11 +39,11 @@ const Notice = () => {
   const navigate = useNavigate();
   const { loginState } = useCustomLogin();
   const user = loginState || {};
-  const isAdmin = user?.roleNames?.includes("ADMIN");
+  const roles = user?.roleNames || user?.roles || [];
+  const isAdmin = Array.isArray(roles) && roles.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
 
   const [active, setActive] = useState("공지사항");
   const [q, setQ] = useState("");
-  const [items, setItems] = useState([]);
   const [pageData, setPageData] = useState(null);
   const [bannerIdx, setBannerIdx] = useState(0);
 
@@ -61,16 +61,13 @@ const Notice = () => {
       const t = mapCategoryToType(active);
       const data = await listSupport({
         type: t,
-        page,
+        page: page - 1,
         size: 10,
         q,
       });
-      setItems(data?.dtoList || []);
-      setPageData(data || null);
+      setPageData(data);
     } catch (e) {
       console.error("공지 목록 조회 실패:", e);
-      setItems([]);
-      setPageData(null);
     }
   };
 
@@ -90,12 +87,12 @@ const Notice = () => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
     try {
       await removeSupport({
-        type: "NOTICE",
+        type: "notice",
         id,
         adminId: user.id,
         token: user.accessToken,
       });
-      fetchList(pageData?.current || 1);
+      fetchList(pageData?.number + 1 || 1);
     } catch (e) {
       console.error("삭제 실패:", e);
     }
@@ -107,33 +104,62 @@ const Notice = () => {
     try {
       if (pinned) {
         await unpinSupport({
-          type: "NOTICE",
+          type: "notice",
           id,
           adminId: user.id,
           token: user.accessToken,
         });
       } else {
         await pinSupport({
-          type: "NOTICE",
+          type: "notice",
           id,
           adminId: user.id,
           token: user.accessToken,
         });
       }
-      fetchList(pageData?.current || 1);
+      fetchList(pageData?.number + 1 || 1);
     } catch (e) {
       console.error("상단 고정/해제 실패:", e);
     }
   };
 
+  // 날짜, 최신글
+  const items = useMemo(() => {
+    if (!pageData?.content) return [];
+    return pageData.content.map((m) => {
+      const created = m.createdAt ? new Date(m.createdAt) : null;
+      const isNew =
+        created ? Date.now() - created.getTime() <= 24 * 60 * 60 * 1000 : false;
+      const excerpt = (() => {
+        const c = m.content || "";
+        return c.length > 70 ? c.slice(0, 70) + "..." : c;
+      })();
+
+      return {
+        id: m.supportId,
+        title: m.title ?? "",
+        pinned: m.pinned,
+        author: m.name || "관리자",
+        view: m.viewCount ?? 0,
+        created,
+        content: m.content ?? "",
+        excerpt,
+        isNew,
+      };
+    });
+  }, [pageData]);
+
+  // 검색 필터 적용
   const filtered = useMemo(() => {
     const ql = q.toLowerCase();
-    return (items || []).filter(
-      (m) =>
-        (m?.title || "").toLowerCase().includes(ql) ||
-        (m?.content || "").toLowerCase().includes(ql)
-    );
+    return (items || []).filter((m) => (m.title || "").toLowerCase().includes(ql));
   }, [items, q]);
+
+  // 탭 클릭 이동
+  const handleTabClick = (t) => {
+    setActive(t.name);
+    navigate(t.path.toLowerCase());
+  };
 
   return (
     <div className="bg-white">
@@ -152,9 +178,7 @@ const Notice = () => {
               >
                 <Megaphone size={16} />
               </span>
-              <span className="notice-text">
-                {banners[bannerIdx].text}
-              </span>
+              <span className="notice-text">{banners[bannerIdx].text}</span>
             </div>
 
             <div className="notice-right">
@@ -175,7 +199,6 @@ const Notice = () => {
 
       {/* ====== PC / 태블릿 ====== */}
       <div className="container py-4 d-none d-md-block">
-        {/* 타이틀 & 검색/작성 */}
         <div className="d-flex align-items-center justify-content-between mb-4 gap-3">
           <h4 className="fw-bold mb-0">공지사항</h4>
           <div className="d-flex align-items-center gap-2 position-relative">
@@ -190,10 +213,7 @@ const Notice = () => {
               <button
                 type="submit"
                 className="btn position-absolute top-0 end-0 h-100 me-1 px-3"
-                style={{
-                  background: "transparent",
-                  border: "none",
-                }}
+                style={{ background: "transparent", border: "none" }}
               >
                 <Search />
               </button>
@@ -202,7 +222,7 @@ const Notice = () => {
             {isAdmin && (
               <button
                 className="btn btn-primary rounded-pill px-3"
-                onClick={() => navigate("/supportCreate?type=NOTICE")}
+                onClick={() => navigate("/supportCreate?type=notice")}
               >
                 글작성 <Pencil className="ms-1" />
               </button>
@@ -216,10 +236,7 @@ const Notice = () => {
             <button
               key={t.name}
               className={`mbp-tabbtn ${active === t.name ? "active" : ""}`}
-              onClick={() => {
-                setActive(t.name);
-                navigate(t.path);
-              }}
+              onClick={() => handleTabClick(t)}
             >
               {t.name}
             </button>
@@ -231,16 +248,25 @@ const Notice = () => {
           {filtered.length > 0 ? (
             filtered.map((m) => (
               <button
-                key={m.supportId}
+                key={m.id}
                 type="button"
                 className={`list-group-item list-group-item-action d-flex align-items-center justify-content-between ${
                   m.pinned ? "board-item-hot" : ""
                 }`}
-                onClick={() =>
-                  navigate(`/support/notice/detail/${m.supportId}`)
-                }
+                onClick={() => navigate(`/noticedetail/${m.id}`)}
               >
                 <div className="d-flex align-items-center gap-3">
+                  {isAdmin && (
+                    <Pin
+                      className={`${m.pinned ? "text-danger" : "text-muted"}`}
+                      role="button"
+                      title={m.pinned ? "상단 고정 해제" : "상단 고정"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTogglePin(m.id, m.pinned);
+                      }}
+                    />
+                  )}
                   <span
                     className={`badge rounded-pill px-3 board-badge ${
                       m.pinned ? "popular" : "normal"
@@ -250,38 +276,27 @@ const Notice = () => {
                   </span>
                   <span className="board-title d-flex align-items-center">
                     {m.title}
-                    {isAdmin && (
-                      <PinAngleFill
-                        className={`ms-2 ${
-                          m.pinned ? "text-danger" : "text-muted"
-                        }`}
-                        role="button"
-                        title={m.pinned ? "상단 고정 해제" : "상단 고정"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTogglePin(m.supportId, m.pinned);
-                        }}
-                      />
-                    )}
+                    {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
                   </span>
                 </div>
 
                 <div className="text-secondary small d-flex justify-content-end align-items-center">
                   <div className="d-flex align-items-center me-2" style={{ minWidth: "50px" }}>
-                    <Eye size={16} className="me-1" /> {m.viewCount || 0}
+                    <Eye size={16} className="me-1" /> {m.view}
                   </div>
-                  <div>{String(m.regDate || "").split("T")[0] || "-"}</div>
-
+                  <div>{m.created ? m.created.toISOString().slice(0, 10) : "-"}</div>
                   {isAdmin && (
-                    <button
-                      className="btn btn-sm btn-outline-danger ms-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(m.supportId);
-                      }}
-                    >
-                      삭제
-                    </button>
+                    <>
+                      <button
+                        className="btn-ghost btn-ghost-danger ms-3"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(m.id);
+                        }}
+                      >
+                        삭제
+                      </button>
+                    </>
                   )}
                 </div>
               </button>
@@ -295,7 +310,16 @@ const Notice = () => {
 
         {/* 페이지네이션 */}
         {pageData && (
-          <PageComponent pageData={pageData} onPageChange={(p) => fetchList(p + 1)} />
+          <PageComponent
+            pageData={{
+              current: pageData.number + 1,
+              pageNumList: Array.from(
+                { length: pageData.totalPages },
+                (_, i) => i + 1
+              ),
+            }}
+            onPageChange={(p) => fetchList(p + 1)}
+          />
         )}
       </div>
 
@@ -334,7 +358,7 @@ const Notice = () => {
               {isAdmin && (
                 <button
                   className="btn btn-primary rounded-pill px-3"
-                  onClick={() => navigate("/supportCreate?type=NOTICE")}
+                  onClick={() => navigate("/supportCreate?type=notice")}
                   type="button"
                 >
                   글작성 <Pencil className="ms-1" />
@@ -384,58 +408,56 @@ const Notice = () => {
             filtered.map((p) => (
               <article
                 className="mbp-card"
-                key={p.supportId}
-                onClick={() =>
-                  navigate(`/support/notice/detail/${p.supportId}`)
-                }
+                key={p.id}
+                onClick={() => navigate(`/noticedetail/${p.id}`)}
                 role="button"
               >
                 <div className="d-flex justify-content-between align-items-start">
-                  <span
-                    className={`mbp-badge ${p.pinned ? "popular" : ""}`}
-                  >
-                    {p.pinned ? "상단공지" : "공지사항"}
-                  </span>
-                  {isAdmin && (
-                    <PinAngleFill
-                      className={`fs-5 ${
-                        p.pinned ? "text-danger" : "text-muted"
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTogglePin(p.supportId, p.pinned);
-                      }}
+                  <div className="d-flex align-items-center gap-2">
+                    <Pin
+                      className={`fs-5 ${p.pinned ? "text-danger" : "text-muted"}`}
                     />
-                  )}
+                    <span className={`mbp-badge ${p.pinned ? "popular" : ""}`}>
+                      {p.pinned ? "상단공지" : "공지사항"}
+                    </span>
+                  </div>
                 </div>
 
-                <h6 className="mbp-title-line">{p.title}</h6>
-
-                <div className="d-flex justify-content-between">
+                <h6 className="mbp-title-line mt-4">
+                  {p.title}
+                  {p.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                </h6>
+                <div className="d-flex justify-content-between text-secondary small">
                   <div className="mbp-meta">
-                    {String(p.regDate || "").split("T")[0] || "-"}
+                    {p.created
+                      ? `${p.created.toISOString().slice(0, 10)} ${p.created
+                          .toTimeString()
+                          .slice(0, 5)}`
+                      : "-"}
                   </div>
-                  <div className="text-end">
-                    <div className="fw-bold">{p.writerName || "관리자"}</div>
-                  </div>
+                  <div className="fw-bold text-end text-dark">{p.author}</div>
                 </div>
+                <p className="mbp-excerpt pt-1">{p.excerpt}</p>
 
-                <div className="d-flex justify-content-between align-items-center text-secondary mt-2">
+                <div className="mbp-divider"></div>
+
+                <div className="d-flex justify-content-between align-items-center text-secondary">
                   <span className="d-flex align-items-center ms-1">
                     <Eye size={16} className="me-1" />
-                    {p.viewCount || 0}
+                    {p.view}
                   </span>
-
                   {isAdmin && (
-                    <button
-                      className="btn btn-sm btn-outline-danger ms-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(p.supportId);
-                      }}
-                    >
-                      삭제
-                    </button>
+                    <div className="d-flex justify-content-end me-1">
+                      <button
+                        className="btn-ghost btn-ghost-danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(p.id);
+                        }}
+                      >
+                        삭제
+                      </button>
+                    </div>
                   )}
                 </div>
               </article>
@@ -450,7 +472,13 @@ const Notice = () => {
           {pageData && (
             <div className="px-3 py-3">
               <PageComponent
-                pageData={pageData}
+                pageData={{
+                  current: pageData.number + 1,
+                  pageNumList: Array.from(
+                    { length: pageData.totalPages },
+                    (_, i) => i + 1
+                  ),
+                }}
                 onPageChange={(p) => fetchList(p + 1)}
               />
             </div>

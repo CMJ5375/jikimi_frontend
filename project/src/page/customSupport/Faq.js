@@ -18,13 +18,13 @@ const CATEGORIES = [
 const mapCategoryToType = (cat) => {
   switch (cat) {
     case "공지사항":
-      return "NOTICE";
+      return "notice";
     case "FAQ":
-      return "FAQ";
+      return "faq";
     case "자료실":
-      return "DATAROOM";
+      return "dataroom";
     default:
-      return "FAQ";
+      return "faq";
   }
 };
 
@@ -42,7 +42,7 @@ const Faq = () => {
   const roles = user?.roleNames || user?.roles || [];
   const isAdmin = Array.isArray(roles) && roles.some((r) => r === "ROLE_ADMIN" || r === "ADMIN");
 
-  const [active, setActive] = useState("FAQ");
+  const [active, setActive] = useState("faq");
   const [q, setQ] = useState("");
   const [items, setItems] = useState([]);
   const [pageData, setPageData] = useState(null);
@@ -66,7 +66,7 @@ const Faq = () => {
         size: 10,
         q,
       });
-      setItems(data?.dtoList || []);
+      setItems(data?.content || []);
       setPageData(data || null);
     } catch (e) {
       console.error("FAQ 목록 조회 실패:", e);
@@ -91,7 +91,7 @@ const Faq = () => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
     try {
       await removeSupport({
-        type: "FAQ",
+        type: "faq",
         id,
         adminId: user.id,
         token: user.accessToken,
@@ -171,7 +171,7 @@ const Faq = () => {
             {isAdmin && (
               <button
                 className="btn btn-primary rounded-pill px-3"
-                onClick={() => navigate("/supportCreate?type=FAQ")}
+                onClick={() => navigate("/supportCreate?type=faq")}
               >
                 글작성 <Pencil className="ms-1" />
               </button>
@@ -241,7 +241,7 @@ const Faq = () => {
             {isAdmin && (
               <button
                 className="btn btn-primary rounded-pill px-3"
-                onClick={() => navigate("/supportCreate?type=FAQ")}
+                onClick={() => navigate("/supportCreate?type=faq")}
               >
                 글작성 <Pencil className="ms-1" />
               </button>

@@ -3,7 +3,7 @@ import publicAxios from "../util/publicAxios";
 import jwtAxios from "../util/jwtUtil";
 
 // 공통: type 문자열을 서버 포맷으로 정규화
-const normType = (type) => String(type || "").toUpperCase(); // "notice"->"NOTICE"
+const normType = (type) => String(type || "").toLowerCase();
 
 // 다운로드 URL 생성
 export const buildFileDownloadUrl = (supportId, fileName) => {
@@ -12,12 +12,8 @@ export const buildFileDownloadUrl = (supportId, fileName) => {
   return `/files/${supportId}/${encodeURIComponent(fileName)}`;
 };
 
-/**
- * 목록 조회(검색 포함)
- * @param {{type:"NOTICE"|"FAQ"|"DATAROOM", page?:number, size?:number, q?:string}} params
- * @returns Page 응답(backend Page<JSupportDTO> 기반)
- */
-export async function listSupport({ type, page = 1, size = 10, q = "" }) {
+// 목록 조회(검색 포함)
+export async function listSupport({ type, page = 0, size = 10, q = "" }) {
   const t = normType(type);
   const res = await publicAxios.get(`/project/support/${t}/list`, {
     params: {
@@ -29,10 +25,7 @@ export async function listSupport({ type, page = 1, size = 10, q = "" }) {
   return res.data;
 }
 
-/**
- * 조회
- * @param {{type:"NOTICE"|"FAQ"|"DATAROOM", id:number, increaseView?:boolean}} params
- */
+// 조회
 export async function getSupport({ type, id, increaseView = true }) {
   const t = normType(type);
   const res = await publicAxios.get(`/project/support/${t}/${id}`, {
@@ -41,13 +34,9 @@ export async function getSupport({ type, id, increaseView = true }) {
   return res.data;
 }
 
-/**
- * 생성(관리자)
- * @param {{type:"NOTICE"|"FAQ"|"DATAROOM", dto:Object, adminId:number, token?:string}} params
- *  dto: { title, content, fileName?, fileUrl? }  // DATAROOM의 경우 fileName/fileUrl 지원
- */
+// 생성(관리자)
 export async function createSupport({ type, dto, adminId, token }) {
-  const t = String(type || "").toUpperCase();
+  const t = String(type || "").toLowerCase();
   const axiosInstance = token ? jwtAxios : publicAxios;
   const safeAdminId = typeof adminId === "number" ? adminId : 0;
   const url = `/project/support/${t}?adminId=${safeAdminId}`;
@@ -58,10 +47,7 @@ export async function createSupport({ type, dto, adminId, token }) {
   return res.data;
 }
 
-/**
- * 수정(관리자)
- * @param {{type:"NOTICE"|"FAQ"|"DATAROOM", id:number, dto:Object, adminId:number, token?:string}} params
- */
+// 수정(관리자)
 export async function updateSupport({ type, id, dto, adminId, token }) {
   const t = normType(type);
   const axios = token ? jwtAxios : publicAxios;
@@ -72,10 +58,7 @@ export async function updateSupport({ type, id, dto, adminId, token }) {
   });
 }
 
-/**
- * 삭제(관리자)
- * @param {{type:"NOTICE"|"FAQ"|"DATAROM", id:number, adminId:number, token?:string}} params
- */
+// 삭제(관리자)
 export async function removeSupport({ type, id, adminId, token }) {
   const t = normType(type);
   const axios = token ? jwtAxios : publicAxios;
@@ -86,10 +69,7 @@ export async function removeSupport({ type, id, adminId, token }) {
   });
 }
 
-/**
- * 상단 고정(관리자) — 공지/자료실 전용
- * @param {{type:"NOTICE"|"DATAROOM", id:number, adminId:number, token?:string}} params
- */
+// 상단 고정(관리자) — 공지/자료실 전용
 export async function pinSupport({ type, id, adminId, token }) {
   const t = normType(type);
   const axios = token ? jwtAxios : publicAxios;
@@ -100,10 +80,7 @@ export async function pinSupport({ type, id, adminId, token }) {
   });
 }
 
-/**
- * 상단 고정 해제(관리자)
- * @param {{type:"NOTICE"|"DATAROOM", id:number, adminId:number, token?:string}} params
- */
+// 상단 고정 해제(관리자)
 export async function unpinSupport({ type, id, adminId, token }) {
   const t = normType(type);
   const axios = token ? jwtAxios : publicAxios;

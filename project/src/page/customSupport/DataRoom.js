@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
 import "../../css/Support.css";
-import { Eye, Pencil, PinAngleFill, Search, Megaphone, Paperclip } from "react-bootstrap-icons";
+import { Eye, Pencil, PinFill, Pin, Search, Megaphone, Paperclip } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
 import { Button } from "react-bootstrap";
 import { listSupport, removeSupport, pinSupport, unpinSupport } from "../../api/supportApi";
@@ -18,13 +18,13 @@ const CATEGORIES = [
 const mapCategoryToType = (cat) => {
   switch (cat) {
     case "공지사항":
-      return "NOTICE";
+      return "notice";
     case "FAQ":
-      return "FAQ";
+      return "faq";
     case "자료실":
-      return "DATAROOM";
+      return "dataroom";
     default:
-      return "DATAROOM";
+      return "dataroom";
   }
 };
 
@@ -68,7 +68,7 @@ const DataRoom = () => {
         size: 10,
         q,
       });
-      setItems(data?.dtoList || []);
+      setItems(data?.content || []);
       setPageData(data || null);
     } catch (e) {
       console.error("자료 목록 조회 실패:", e);
@@ -93,7 +93,7 @@ const DataRoom = () => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
     try {
       await removeSupport({
-        type: "DATAROOM",
+        type: "dataroom",
         id,
         adminId: user.id,
         token: user.accessToken,
@@ -110,14 +110,14 @@ const DataRoom = () => {
     try {
       if (pinned) {
         await unpinSupport({
-          type: "DATAROOM",
+          type: "dataroom",
           id,
           adminId: user.id,
           token: user.accessToken,
         });
       } else {
         await pinSupport({
-          type: "DATAROOM",
+          type: "dataroom",
           id,
           adminId: user.id,
           token: user.accessToken,
@@ -205,7 +205,7 @@ const DataRoom = () => {
             {isAdmin && (
               <button
                 className="btn btn-primary rounded-pill px-3"
-                onClick={() => navigate("/supportCreate?type=DATAROOM")}
+                onClick={() => navigate("/supportCreate?type=dataroom")}
               >
                 글작성 <Pencil className="ms-1" />
               </button>
@@ -240,10 +240,25 @@ const DataRoom = () => {
                   m.pinned ? "board-item-hot" : ""
                 }`}
                 onClick={() =>
-                  navigate(`/support/dataroom/detail/${m.supportId}`)
+                  navigate(`/dataroomdetail/${m.supportId}`)
                 }
               >
                 <div className="d-flex align-items-center gap-3">
+                  <span>
+                    {isAdmin && (
+                      <Pin
+                        className={`${
+                          m.pinned ? "text-danger" : "text-muted"
+                        }`}
+                        role="button"
+                        title={m.pinned ? "상단 고정 해제" : "상단 고정"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTogglePin(m.supportId, m.pinned);
+                        }}
+                      />
+                    )}
+                  </span>
                   <span
                     className={`badge rounded-pill px-3 board-badge ${
                       m.pinned ? "popular" : "normal"
@@ -255,19 +270,6 @@ const DataRoom = () => {
                     {m.title}
                     {m?.fileUrl && (
                       <Paperclip size={16} className="ms-2 text-secondary" />
-                    )}
-                    {isAdmin && (
-                      <PinAngleFill
-                        className={`ms-2 ${
-                          m.pinned ? "text-danger" : "text-muted"
-                        }`}
-                        role="button"
-                        title={m.pinned ? "상단 고정 해제" : "상단 고정"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTogglePin(m.supportId, m.pinned);
-                        }}
-                      />
                     )}
                   </span>
                 </div>
@@ -340,7 +342,7 @@ const DataRoom = () => {
               {isAdmin && (
                 <button
                   className="btn btn-primary rounded-pill px-3"
-                  onClick={() => navigate("/supportCreate?type=DATAROOM")}
+                  onClick={() => navigate("/supportCreate?type=dataroom")}
                   type="button"
                 >
                   글작성 <Pencil className="ms-1" />
@@ -392,7 +394,7 @@ const DataRoom = () => {
                 className="mbp-card"
                 key={p.supportId}
                 onClick={() =>
-                  navigate(`/support/dataroom/detail/${p.supportId}`)
+                  navigate(`/dataroomdetail/${p.supportId}`)
                 }
                 role="button"
               >
@@ -403,7 +405,7 @@ const DataRoom = () => {
                     {p.pinned ? "상단공지" : "자료실"}
                   </span>
                   {isAdmin && (
-                    <PinAngleFill
+                    <Pin
                       className={`fs-5 ${p.pinned ? "text-danger" : "text-muted"}`}
                       onClick={(e) => {
                         e.stopPropagation();

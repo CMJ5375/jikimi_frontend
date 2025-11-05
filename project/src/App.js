@@ -61,10 +61,10 @@ export default function App() {
 
         {/* 고객지원 */}
         <Route path="notice" element={<Notice />} />
-        <Route path="noticedetails" element={<NoticeDetail />} />
+        <Route path="noticedetail/:id" element={<NoticeDetail />} />
         <Route path="faq" element={<Faq />} />
         <Route path="dataroom" element={<DataRoom />} />
-        <Route path="dataroomdetails" element={<DataRoomDetail />} />
+        <Route path="dataroomdetail/:id" element={<DataRoomDetail />} />
         <Route path="supportCreate" element={<SupportCreate />} />
 
         {/*카카오 로그인 */}
