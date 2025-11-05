@@ -126,3 +126,48 @@
     font-size: 0.85rem;
   }
 }
+
+/* 상단 고정 공지 스타일 */
+.board-item-hot {
+  background-color: #e9f0ff;
+  border-left: 4px solid #3b6cff;
+  transition: background 0.2s ease;
+}
+
+.board-item-hot:hover {
+  background-color: #d9e6ff;
+}
+.pinned-card {
+  background-color: #eef3ff;
+  border: 1px solid #cfd9ff;
+  box-shadow: 0 2px 6px rgba(59, 108, 255, 0.15);
+}
+.pinned-card:hover {
+  background-color: #e5ecff;
+}
+
+.pin-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+.pin-btn:hover svg,
+.pin-btn:focus svg {
+  color: #3b6cff !important;
+}
+
+.pin-btn:active {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+.pin-btn svg {
+  transition: color 0.2s ease-in-out;
+}

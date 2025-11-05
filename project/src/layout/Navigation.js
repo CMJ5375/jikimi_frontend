@@ -9,7 +9,6 @@ import NavDropdown from "react-bootstrap/NavDropdown";
 import { useSelector } from "react-redux";
 import useCustomLogin from "../hook/useCustomLogin";
 import { getDefaultPosition, getAddressFromBackend } from "../api/kakaoMapApi";
-import { getCurrentPosition } from "../api/geolocationApi";
 
 const Navigation = () => {
   const loginState = useSelector(state => state.loginSlice)
@@ -59,8 +58,8 @@ const Navigation = () => {
               </div>
               {!loginState.username ? 
                 <div className="d-flex align-items-center gap-3">
-                  <a href="register" className="link-secondary text-decoration-none">회원가입</a>
-                  <a href="login"  className="link-secondary text-decoration-none">로그인</a>
+                  <a href="/register" className="link-secondary text-decoration-none">회원가입</a>
+                  <a href="/login"  className="link-secondary text-decoration-none">로그인</a>
                 </div>
                 :
                   <a href="/" className="link-secondary text-decoration-none" onClick={handleClickLogout}>
@@ -103,7 +102,7 @@ const Navigation = () => {
 
             <div className="nav-mobile-group">
               {!loginState.username ? (
-                <a href="login" className="nav-mobile-icon me-3">
+                <a href="/login" className="nav-mobile-icon me-3">
                   <Person />
                   <small>로그인</small>
                 </a>

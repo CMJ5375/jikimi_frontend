@@ -4,7 +4,6 @@ import "../../css/Noticeboard.css";
 import "../../css/Support.css";
 import { Eye, Pencil, PinFill, Pin, Search, Megaphone, Paperclip } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { Button } from "react-bootstrap";
 import { listSupport, removeSupport, pinSupport, unpinSupport } from "../../api/supportApi";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
@@ -40,14 +39,11 @@ const DataRoom = () => {
   const { loginState } = useCustomLogin();
   const user = loginState || {};
   const roles = user?.roleNames || user?.roles || [];
-  const isAdmin = Array.isArray(roles) && roles.some(r =>
-    r === "ROLE_ADMIN" || r === "ADMIN"
-  );
+  const isAdmin = Array.isArray(roles) && roles.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
 
   const [active, setActive] = useState("자료실");
   const [q, setQ] = useState("");
-  const [items, setItems] = useState([]);
-  const [pageData, setPageData] = useState(null);
+  const [pageData, setPageData] = useState(null);;
   const [bannerIdx, setBannerIdx] = useState(0);
 
   // 광고 자동 전환
@@ -64,16 +60,13 @@ const DataRoom = () => {
       const t = mapCategoryToType(active);
       const data = await listSupport({
         type: t,
-        page,
+        page: page - 1,
         size: 10,
         q,
       });
-      setItems(data?.content || []);
-      setPageData(data || null);
+      setPageData(data);
     } catch (e) {
-      console.error("자료 목록 조회 실패:", e);
-      setItems([]);
-      setPageData(null);
+      console.error("자료실 목록 조회 실패:", e);
     }
   };
 
@@ -98,7 +91,7 @@ const DataRoom = () => {
         adminId: user.id,
         token: user.accessToken,
       });
-      fetchList(pageData?.current || 1);
+      fetchList(pageData?.number + 1 || 1);
     } catch (e) {
       console.error("삭제 실패:", e);
     }
@@ -123,19 +116,41 @@ const DataRoom = () => {
           token: user.accessToken,
         });
       }
-      fetchList(pageData?.current || 1);
+      fetchList(pageData?.current + 1 || 1);
     } catch (e) {
       console.error("상단 고정/해제 실패:", e);
     }
   };
 
+  // 날짜, 최신글
+  const items = useMemo(() => {
+    if (!pageData?.content) return [];
+    return pageData.content.map((m) => {
+      const created = m.createdAt ? new Date(m.createdAt) : null;
+      const isNew =
+        created ? Date.now() - created.getTime() <= 24 * 60 * 60 * 1000 : false;
+      const excerpt = (() => {
+        const c = m.content || "";
+        return c.length > 70 ? c.slice(0, 70) + "..." : c;
+      })();
+
+      return {
+        id: m.supportId,
+        title: m.title ?? "",
+        author: m.name || "관리자",
+        view: m.viewCount ?? 0,
+        created,
+        fileName: m.fileName || "",
+        excerpt,
+        isNew,
+      };
+    });
+  }, [pageData]);
+
+  // 검색 필터 적용
   const filtered = useMemo(() => {
     const ql = q.toLowerCase();
-    return (items || []).filter(
-      (m) =>
-        (m?.title || "").toLowerCase().includes(ql) ||
-        (m?.content || "").toLowerCase().includes(ql)
-    );
+    return (items || []).filter((m) => (m.title || "").toLowerCase().includes(ql));
   }, [items, q]);
 
   return (
@@ -234,14 +249,10 @@ const DataRoom = () => {
           {filtered.length > 0 ? (
             filtered.map((m) => (
               <button
-                key={m.supportId}
+                key={m.id}
                 type="button"
-                className={`list-group-item list-group-item-action d-flex align-items-center justify-content-between ${
-                  m.pinned ? "board-item-hot" : ""
-                }`}
-                onClick={() =>
-                  navigate(`/dataroomdetail/${m.supportId}`)
-                }
+                className="list-group-item list-group-item-action d-flex align-items-center justify-content-between"
+                onClick={() => navigate(`/dataroomdetail/${m.id}`)}
               >
                 <div className="d-flex align-items-center gap-3">
                   <span>
@@ -268,6 +279,7 @@ const DataRoom = () => {
                   </span>
                   <span className="board-title d-flex align-items-center">
                     {m.title}
+                    {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
                     {m?.fileUrl && (
                       <Paperclip size={16} className="ms-2 text-secondary" />
                     )}
@@ -276,16 +288,15 @@ const DataRoom = () => {
 
                 <div className="text-secondary small d-flex justify-content-end align-items-center">
                   <div className="d-flex align-items-center me-2" style={{ minWidth: "50px" }}>
-                    <Eye size={16} className="me-1" /> {m.viewCount || 0}
+                    <Eye size={16} className="me-1" /> {m.view}
                   </div>
-                  <div>{String(m.regDate || "").split("T")[0] || "-"}</div>
-
+                  <div>{m.created ? m.created.toISOString().slice(0, 10) : "-"}</div>
                   {isAdmin && (
                     <button
-                      className="btn btn-sm btn-outline-danger ms-2"
+                      className="btn-ghost btn-ghost-danger ms-3"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDelete(m.supportId);
+                        onDelete(m.id);
                       }}
                     >
                       삭제
@@ -303,7 +314,13 @@ const DataRoom = () => {
 
         {/* 페이지네이션 */}
         {pageData && (
-          <PageComponent pageData={pageData} onPageChange={(p) => fetchList(p + 1)} />
+          <PageComponent
+            pageData={{
+              current: pageData.number + 1,
+              pageNumList: Array.from({ length: pageData.totalPages }, (_, i) => i + 1),
+            }}
+            onPageChange={(p) => fetchList(p + 1)}
+          />
         )}
       </div>
 
@@ -392,61 +409,62 @@ const DataRoom = () => {
             filtered.map((p) => (
               <article
                 className="mbp-card"
-                key={p.supportId}
+                key={p.id}
                 onClick={() =>
-                  navigate(`/dataroomdetail/${p.supportId}`)
+                  navigate(`/dataroomdetail/${p.id}`)
                 }
                 role="button"
               >
                 <div className="d-flex justify-content-between align-items-start">
-                  <span
-                    className={`mbp-badge ${p.pinned ? "popular" : ""}`}
-                  >
-                    {p.pinned ? "상단공지" : "자료실"}
-                  </span>
-                  {isAdmin && (
+                  <div className="d-flex align-items-center gap-2">
                     <Pin
                       className={`fs-5 ${p.pinned ? "text-danger" : "text-muted"}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTogglePin(p.supportId, p.pinned);
-                      }}
                     />
-                  )}
+                    <span className={`mbp-badge ${p.pinned ? "popular" : ""}`}>
+                      {p.pinned ? "상단공지" : "자료실"}
+                    </span>
+                  </div>
                 </div>
 
-                <h6 className="mbp-title-line d-flex align-items-center">
+                <h6 className="mbp-title-line mt-4">
                   {p.title}
+                  {p.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
                   {p?.fileUrl && (
                     <Paperclip size={16} className="ms-2 text-secondary" />
                   )}
                 </h6>
 
-                <div className="d-flex justify-content-between">
+                <div className="d-flex justify-content-between text-secondary small">
                   <div className="mbp-meta">
-                    {String(p.regDate || "").split("T")[0] || "-"}
+                    {p.created
+                      ? `${p.created.toISOString().slice(0, 10)} ${p.created
+                          .toTimeString()
+                          .slice(0, 5)}`
+                      : "-"}
                   </div>
-                  <div className="text-end">
-                    <div className="fw-bold">{p.writerName || "관리자"}</div>
-                  </div>
+                  <div className="fw-bold text-end text-dark">{p.author}</div>
                 </div>
+                <p className="mbp-excerpt pt-1">{p.excerpt}</p>
 
-                <div className="d-flex justify-content-between align-items-center text-secondary mt-2">
+                <div className="mbp-divider"></div>
+
+                <div className="d-flex justify-content-between align-items-center text-secondary">
                   <span className="d-flex align-items-center ms-1">
                     <Eye size={16} className="me-1" />
-                    {p.viewCount || 0}
+                    {p.view}
                   </span>
-
                   {isAdmin && (
-                    <button
-                      className="btn btn-sm btn-outline-danger ms-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(p.supportId);
-                      }}
-                    >
-                      삭제
-                    </button>
+                    <div className="d-flex justify-content-end me-1">
+                      <button
+                        className="btn-ghost btn-ghost-danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(p.id);
+                        }}
+                      >
+                        삭제
+                      </button>
+                    </div>
                   )}
                 </div>
               </article>
@@ -459,13 +477,14 @@ const DataRoom = () => {
 
           {/* 모바일 페이지네이션 */}
           {pageData && (
-            <div className="px-3 py-3">
-              <PageComponent
-                pageData={pageData}
-                onPageChange={(p) => fetchList(p + 1)}
-              />
-            </div>
-          )}
+          <PageComponent
+            pageData={{
+              current: pageData.number + 1,
+              pageNumList: Array.from({ length: pageData.totalPages }, (_, i) => i + 1),
+            }}
+            onPageChange={(p) => fetchList(p + 1)}
+          />
+        )}
         </div>
       </div>
     </div>

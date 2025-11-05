@@ -13,10 +13,10 @@ export const buildFileDownloadUrl = (supportId, fileName) => {
 };
 
 // 목록 조회(검색 포함)
-export async function listSupport({ type, page = 0, size = 10, q = "" }) {
+export async function listSupport({ type, page = 1, size = 10, q = "" }) {
   const t = normType(type);
   const res = await publicAxios.get(`/project/support/${t}/list`, {
-    params: { page, size, keyword: q || undefined },
+    params: { page: page - 1, size, keyword: q || undefined },
   });
   return res.data;
 }

@@ -14,7 +14,6 @@ const NoticeDetail = () => {
 
   const { loginState } = useCustomLogin();
   const user = loginState || {};
-  console.log(user)
   const roles = user?.roleNames || user?.roles || [];
   const isAdmin =
     Array.isArray(roles) && roles.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
@@ -54,6 +53,11 @@ const NoticeDetail = () => {
 
   // 공지사항 로드
   useEffect(() => {
+    if (!id || isNaN(id)) {
+      console.warn("잘못된 ID로 접근:", idParam);
+      setLoading(false);
+      return; // id가 NaN이면 요청 중단
+    }
     let ignore = false;
     (async () => {
       setLoading(true);

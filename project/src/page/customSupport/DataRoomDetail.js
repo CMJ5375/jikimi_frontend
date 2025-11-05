@@ -2,25 +2,9 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/BoardDetail.css";
-import { Eye, HandThumbsUp, Share, Folder } from "react-bootstrap-icons";
-import { getSupport, listSupport, removeSupport, updateSupport } from "../../api/supportApi";
-import { getCookie } from "../../util/cookieUtil";
-import NavModel from "../board/NavModel";
-
-const LS_LIKED_KEY = "LIKED_DATAROOM";
-
-function loadLikedMap() {
-  try {
-    const raw = localStorage.getItem(LS_LIKED_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveLikedMap(map) {
-  localStorage.setItem(LS_LIKED_KEY, JSON.stringify(map));
-}
+import { Eye, HandThumbsUp, Share, Folder, List } from "react-bootstrap-icons";
+import { getSupport, removeSupport, updateSupport, toggleSupportLike, getSupportLikeStatus } from "../../api/supportApi";
+import useCustomLogin from "../../hook/useCustomLogin";
 
 const DataRoomDetail = () => {
   const { id: idParam } = useParams();
@@ -28,20 +12,12 @@ const DataRoomDetail = () => {
   const id = Number(idParam || 0);
   const type = "dataroom";
 
-  // 로그인 사용자
-  const rawCookie = getCookie("member");
-  let loginRoles = [];
-  if (rawCookie) {
-    try {
-      const parsed =
-        typeof rawCookie === "string" ? JSON.parse(rawCookie) : rawCookie;
-      loginRoles = parsed?.roles || parsed?.roleNames || [];
-      if (!Array.isArray(loginRoles))
-        loginRoles = [loginRoles].filter(Boolean);
-    } catch {}
-  }
+  const { loginState } = useCustomLogin();
+  const user = loginState || {};
+  const roles = user?.roleNames || user?.roles || [];
+  const isAdmin =
+    Array.isArray(roles) && roles.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
 
-  // 게시글 상태
   const [post, setPost] = useState({
     title: "",
     content: "",
@@ -49,8 +25,8 @@ const DataRoomDetail = () => {
     viewCount: 0,
     createdAt: null,
     name: "",
-    fileUrl: "",
     fileName: "",
+    fileUrl: "",
   });
 
   const [liked, setLiked] = useState(false);
@@ -80,6 +56,11 @@ const DataRoomDetail = () => {
 
   // 게시글 로드
   useEffect(() => {
+    if (!id || isNaN(id)) {
+      console.warn("잘못된 ID로 접근:", idParam);
+      setLoading(false);
+      return;
+    }
     let ignore = false;
     (async () => {
       setLoading(true);
@@ -93,11 +74,23 @@ const DataRoomDetail = () => {
           viewCount: data.viewCount ?? 0,
           createdAt: data.createdAt ?? null,
           name: data.name ?? "관리자",
-          fileUrl: data.fileUrl ?? "",
           fileName: data.fileName ?? "",
+          fileUrl: data.fileUrl ?? "",
         });
         setEditTitle(data.title ?? "");
         setEditContent(data.content ?? "");
+
+        if (user?.userId) {
+          const status = await getSupportLikeStatus({
+            type,
+            id,
+            userId: user.userId,
+            token: user.accessToken,
+          });
+          setLiked(status?.liked ?? false);
+        } else {
+          setLiked(false);
+        }
       } catch (err) {
         console.error("getSupport failed", err);
       } finally {
@@ -107,9 +100,9 @@ const DataRoomDetail = () => {
     return () => {
       ignore = true;
     };
-  }, [id]);
+  }, [id, user?.userId]);
 
-  // 수정/삭제
+  // 수정모드
   const handleEditStart = () => setEditMode(true);
   const handleEditCancel = () => {
     setEditMode(false);
@@ -117,17 +110,26 @@ const DataRoomDetail = () => {
     setEditContent(post.content);
   };
 
+  // 수정
   const handleEditSave = async () => {
     const dto = {
       title: (editTitle || "").trim(),
       content: (editContent || "").trim(),
+      fileName: post.fileName,
+      fileUrl: post.fileUrl,
     };
     if (!dto.title) {
       alert("제목을 입력하세요.");
       return;
     }
     try {
-      await updateSupport({ type, id, dto, adminId: 1 });
+      await updateSupport({
+        type,
+        id,
+        dto,
+        adminId: user.userId,
+        token: user.accessToken,
+      });
       alert("수정되었습니다.");
       setPost((prev) => ({ ...prev, ...dto }));
       setEditMode(false);
@@ -137,10 +139,17 @@ const DataRoomDetail = () => {
     }
   };
 
+  // 삭제
   const handleDelete = async () => {
+    if (!isAdmin) return;
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
     try {
-      await removeSupport({ type, id, adminId: 1 });
+      await removeSupport({
+        type,
+        id,
+        adminId: user.userId,
+        token: user.accessToken,
+      });
       alert("삭제되었습니다.");
       navigate("/dataroom");
     } catch (e) {
@@ -150,16 +159,24 @@ const DataRoomDetail = () => {
   };
 
   // 좋아요
-  const handleLike = () => {
-    const likedMap = loadLikedMap();
-    const next = !likedMap[id];
-    likedMap[id] = next;
-    saveLikedMap(likedMap);
-    setLiked(next);
-    setPost((prev) => ({
-      ...prev,
-      likeCount: prev.likeCount + (next ? 1 : -1),
-    }));
+  const handleLike = async () => {
+    if (!user?.userId) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+    try {
+      const res = await toggleSupportLike({
+        type,
+        id,
+        userId: user.userId,
+        token: user.accessToken,
+      });
+      setLiked(res?.liked ?? false);
+      setPost((prev) => ({ ...prev, likeCount: res?.likeCount ?? prev.likeCount }));
+    } catch (err) {
+      console.error("좋아요 실패:", err);
+      alert("좋아요 처리 중 오류가 발생했습니다.");
+    }
   };
 
   // 공유
@@ -178,9 +195,6 @@ const DataRoomDetail = () => {
       .catch(() => alert("복사 실패"));
   }, [post.title]);
 
-  const canEdit = loginRoles.includes("ADMIN") || loginRoles.includes("ROLE_ADMIN");
-  const canDelete = canEdit;
-
   if (loading) {
     return (
       <div className="container post-detail py-5 text-center text-muted">
@@ -190,7 +204,7 @@ const DataRoomDetail = () => {
   }
 
   return (
-    <div className="container post-detail">
+    <div className="container post-detail position-relative">
       {/* 제목 + 수정/삭제 */}
       <div className="d-flex justify-content-between align-items-start mb-3">
         {!editMode ? (
@@ -204,23 +218,19 @@ const DataRoomDetail = () => {
           />
         )}
 
-        {!editMode && (
+        {!editMode && isAdmin && (
           <div className="post-actions d-none d-md-flex">
-            {canEdit && (
-              <button className="btn-ghost" onClick={handleEditStart}>
-                수정
-              </button>
-            )}
-            {canDelete && (
-              <button className="btn-ghost btn-ghost-danger" onClick={handleDelete}>
-                삭제
-              </button>
-            )}
+            <button className="btn-ghost" onClick={handleEditStart}>
+              수정
+            </button>
+            <button className="btn-ghost btn-ghost-danger" onClick={handleDelete}>
+              삭제
+            </button>
           </div>
         )}
       </div>
 
-      {/* 글 메타 */}
+      {/* 작성자 / 날짜 / 조회수 */}
       <div className="d-flex justify-content-between align-items-center post-meta mb-3">
         <div>
           <span className="fw-semibold text-dark me-2">{post.name}</span>
@@ -302,10 +312,7 @@ const DataRoomDetail = () => {
           <button className="btn-ghost" onClick={handleEditSave}>
             저장
           </button>
-          <button
-            className="btn-ghost btn-ghost-danger"
-            onClick={handleEditCancel}
-          >
+          <button className="btn-ghost btn-ghost-danger" onClick={handleEditCancel}>
             취소
           </button>
         </div>
@@ -333,16 +340,19 @@ const DataRoomDetail = () => {
         </div>
       )}
 
-      {/* NavModel 사용 */}
+      {/* '목록으로' 버튼 */}
       {!editMode && (
-        <NavModel
-          prevId={id > 1 ? id - 1 : null}
-          nextId={null}
-          totalCount={0}
-          onGoPrev={() => id > 1 && navigate(`/dataroom/detail/${id - 1}`)}
-          onGoNext={() => navigate(`/dataroom/detail/${id + 1}`)}
-          onGoList={() => navigate("/dataroom")}
-        />
+        <div className="post-nav mt-4 text-end">
+          <div className="list-wrap">
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-list px-4"
+              onClick={() => navigate("/dataroom")}
+            >
+              <List className="me-1" /> 목록으로
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

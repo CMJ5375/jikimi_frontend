@@ -3,9 +3,9 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
 import "../../css/Support.css";
 import { Pencil, Search, Megaphone } from "react-bootstrap-icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Accordion } from "react-bootstrap";
-import { listSupport, removeSupport } from "../../api/supportApi";
+import { listSupport, removeSupport, updateSupport } from "../../api/supportApi";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
 
@@ -37,16 +37,20 @@ const banners = [
 
 const Faq = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { loginState } = useCustomLogin();
   const user = loginState || {};
   const roles = user?.roleNames || user?.roles || [];
   const isAdmin = Array.isArray(roles) && roles.some((r) => r === "ROLE_ADMIN" || r === "ADMIN");
 
-  const [active, setActive] = useState("faq");
+  const [active, setActive] = useState("FAQ");
   const [q, setQ] = useState("");
   const [items, setItems] = useState([]);
   const [pageData, setPageData] = useState(null);
   const [bannerIdx, setBannerIdx] = useState(0);
+  const [editId, setEditId] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
 
   // 광고 자동 전환
   useEffect(() => {
@@ -62,22 +66,21 @@ const Faq = () => {
       const t = mapCategoryToType(active);
       const data = await listSupport({
         type: t,
-        page,
+        page: page - 1,
         size: 10,
         q,
       });
-      setItems(data?.content || []);
       setPageData(data || null);
+      setItems(data?.content || []);
     } catch (e) {
       console.error("FAQ 목록 조회 실패:", e);
-      setItems([]);
-      setPageData(null);
     }
   };
 
+  // URL 변경 시 다시 불러오기
   useEffect(() => {
     fetchList(1);
-  }, [active]);
+  }, [active, location.pathname]);
 
   // 검색
   const onSearch = (e) => {
@@ -93,15 +96,58 @@ const Faq = () => {
       await removeSupport({
         type: "faq",
         id,
-        adminId: user.id,
+        adminId: user.userId,
         token: user.accessToken,
       });
-      fetchList(pageData?.current || 1);
+      alert("삭제되었습니다.");
+      fetchList(pageData?.number + 1 || 1);
     } catch (e) {
       console.error("삭제 실패:", e);
+      alert("삭제 실패");
     }
   };
 
+  // 수정모드
+  const startEdit = (item) => {
+    setEditId(item.supportId);
+    setEditTitle(item.title);
+    setEditContent(item.content);
+  };
+
+  // 수정
+  const saveEdit = async (id) => {
+    try {
+      const dto = {
+        title: editTitle.trim(),
+        content: editContent.trim(),
+      };
+      if (!dto.title || !dto.content) {
+        alert("제목과 내용을 입력하세요.");
+        return;
+      }
+      await updateSupport({
+        type: "faq",
+        id,
+        dto,
+        adminId: user.userId,
+        token: user.accessToken,
+      });
+      alert("수정되었습니다.");
+      setEditId(null);
+      fetchList(pageData?.number + 1 || 1);
+    } catch (e) {
+      console.error("수정 실패:", e);
+      alert("수정 실패");
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditId(null);
+    setEditTitle("");
+    setEditContent("");
+  };
+
+  // 검색 필터
   const filtered = useMemo(() => {
     const ql = q.toLowerCase();
     return (items || []).filter(
@@ -202,19 +248,59 @@ const Faq = () => {
               <Accordion.Item eventKey={idx.toString()} key={m.supportId}>
                 <Accordion.Header>{m.title}</Accordion.Header>
                 <Accordion.Body>
-                  <div
-                    className="mb-2"
-                    dangerouslySetInnerHTML={{ __html: m.content }}
-                  />
-                  {isAdmin && (
-                    <div className="text-end mt-2">
-                      <button
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => onDelete(m.supportId)}
-                      >
-                        삭제
-                      </button>
+                  {editId === m.supportId ? (
+                    <div>
+                      <input
+                        className="form-control mb-2"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        placeholder="제목을 입력하세요"
+                      />
+                      <textarea
+                        className="form-control mb-2"
+                        rows={5}
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        placeholder="내용을 입력하세요"
+                      />
+                      <div className="text-end">
+                        <button
+                          className="btn btn-sm btn-primary me-2"
+                          onClick={() => saveEdit(m.supportId)}
+                        >
+                          저장
+                        </button>
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={cancelEdit}
+                        >
+                          취소
+                        </button>
+                      </div>
                     </div>
+                  ) : (
+                    <>
+                      <div
+                        className="mb-2"
+                        dangerouslySetInnerHTML={{ __html: m.content }}
+                      />
+                      {isAdmin && (
+                        <div className="post-actions text-end mt-2 d-flex justify-content-end gap-2">
+                          <button
+                            className="btn-ghost"
+                            onClick={() => startEdit(m)}
+                          >
+                            수정
+                          </button>
+                          <button
+                            className="btn-ghost btn-ghost-danger"
+                            onClick={() => onDelete(m.supportId)}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </Accordion.Body>
               </Accordion.Item>
@@ -228,98 +314,14 @@ const Faq = () => {
 
         {/* 페이지네이션 */}
         {pageData && (
-          <PageComponent pageData={pageData} onPageChange={(p) => fetchList(p + 1)} />
+          <PageComponent
+            pageData={{
+              current: pageData.number + 1,
+              pageNumList: Array.from({ length: pageData.totalPages }, (_, i) => i + 1),
+            }}
+            onPageChange={(p) => fetchList(p + 1)}
+          />
         )}
-      </div>
-
-      {/* ===== 모바일 ===== */}
-      <div className="d-block d-md-none">
-        <div className="mbp-wrap px-3 py-3">
-          {/* 헤더 */}
-          <div className="d-flex align-items-center justify-content-between mb-3">
-            <div className="mbp-title">FAQ</div>
-            {isAdmin && (
-              <button
-                className="btn btn-primary rounded-pill px-3"
-                onClick={() => navigate("/supportCreate?type=faq")}
-              >
-                글작성 <Pencil className="ms-1" />
-              </button>
-            )}
-          </div>
-
-          {/* 검색 */}
-          <form onSubmit={onSearch} className="position-relative mb-3">
-            <input
-              type="text"
-              className="form-control rounded-pill ps-4 pe-5 board-search"
-              placeholder="검색어를 입력해주세요.."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-            <button
-              type="submit"
-              className="btn position-absolute top-0 end-0 h-100 me-1 px-3"
-              style={{ background: "transparent", border: "none" }}
-            >
-              <Search />
-            </button>
-          </form>
-
-          {/* 탭 */}
-          <div className="mbp-tabs border-bottom mb-3">
-            {CATEGORIES.map((t) => (
-              <button
-                key={t.name}
-                className={`mbp-tabbtn ${active === t.name ? "active" : ""}`}
-                onClick={() => {
-                  setActive(t.name);
-                  navigate(t.path);
-                }}
-              >
-                {t.name}
-              </button>
-            ))}
-          </div>
-
-          {/* 모바일 아코디언 */}
-          <Accordion alwaysOpen>
-            {filtered.length > 0 ? (
-              filtered.map((m, idx) => (
-                <Accordion.Item eventKey={idx.toString()} key={m.supportId}>
-                  <Accordion.Header>{m.title}</Accordion.Header>
-                  <Accordion.Body>
-                    <div
-                      className="mb-2"
-                      dangerouslySetInnerHTML={{ __html: m.content }}
-                    />
-                    {isAdmin && (
-                      <div className="text-end mt-2">
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => onDelete(m.supportId)}
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    )}
-                  </Accordion.Body>
-                </Accordion.Item>
-              ))
-            ) : (
-              <div className="text-center text-secondary py-5">
-                등록된 FAQ가 없습니다.
-              </div>
-            )}
-          </Accordion>
-
-          {/* 페이지네이션 */}
-          {pageData && (
-            <div className="pt-3">
-              <PageComponent pageData={pageData} onPageChange={(p) => fetchList(p + 1)} />
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

@@ -4,7 +4,6 @@ import "../../css/Noticeboard.css";
 import "../../css/Support.css";
 import { Eye, Pencil, PinFill, Pin, Search, Megaphone } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { Button } from "react-bootstrap";
 import { listSupport, removeSupport, pinSupport, unpinSupport } from "../../api/supportApi";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
@@ -67,7 +66,7 @@ const Notice = () => {
       });
       setPageData(data);
     } catch (e) {
-      console.error("공지 목록 조회 실패:", e);
+      console.error("공지사항 목록 조회 실패:", e);
     }
   };
 
@@ -92,17 +91,19 @@ const Notice = () => {
         adminId: user.id,
         token: user.accessToken,
       });
+      alert("삭제되었습니다.");
       fetchList(pageData?.number + 1 || 1);
     } catch (e) {
       console.error("삭제 실패:", e);
+      alert("삭제 실패");
     }
   };
 
-  // 상단 고정/해제(관리자 전용)
-  const onTogglePin = async (id, pinned) => {
+  // 상단 핀 토글(관리자 전용)
+  const onTogglePin = async (id, isPinnedCopy) => {
     if (!isAdmin) return;
     try {
-      if (pinned) {
+      if (isPinnedCopy) {
         await unpinSupport({
           type: "notice",
           id,
@@ -138,10 +139,11 @@ const Notice = () => {
       return {
         id: m.supportId,
         title: m.title ?? "",
-        pinned: m.pinned,
         author: m.name || "관리자",
         view: m.viewCount ?? 0,
         created,
+        pinnedCopy: m.pinnedCopy ?? false,
+        originalId: m.originalId ?? null,
         content: m.content ?? "",
         excerpt,
         isNew,
@@ -243,50 +245,52 @@ const Notice = () => {
           ))}
         </div>
 
-        {/* 리스트 */}
-        <div className="list-group board-list">
-          {filtered.length > 0 ? (
-            filtered.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className={`list-group-item list-group-item-action d-flex align-items-center justify-content-between ${
-                  m.pinned ? "board-item-hot" : ""
-                }`}
-                onClick={() => navigate(`/noticedetail/${m.id}`)}
-              >
-                <div className="d-flex align-items-center gap-3">
-                  {isAdmin && (
-                    <Pin
-                      className={`${m.pinned ? "text-danger" : "text-muted"}`}
-                      role="button"
-                      title={m.pinned ? "상단 고정 해제" : "상단 고정"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTogglePin(m.id, m.pinned);
-                      }}
-                    />
-                  )}
-                  <span
-                    className={`badge rounded-pill px-3 board-badge ${
-                      m.pinned ? "popular" : "normal"
-                    }`}
-                  >
-                    {m.pinned ? "상단공지" : "공지사항"}
-                  </span>
-                  <span className="board-title d-flex align-items-center">
-                    {m.title}
-                    {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
-                  </span>
-                </div>
-
-                <div className="text-secondary small d-flex justify-content-end align-items-center">
-                  <div className="d-flex align-items-center me-2" style={{ minWidth: "50px" }}>
-                    <Eye size={16} className="me-1" /> {m.view}
+        {/* PC 상단 고정 리스트 */}
+        {filtered.filter((m) => m.pinnedCopy && m.originalId !== null).length >
+          0 && (
+          <div className="list-group board-list">
+            {filtered
+              .filter((m) => m.pinnedCopy && m.originalId !== null)
+              .slice(0, 5)
+              .map((m) => (
+                <button
+                  key={`pin-${m.id}`}
+                  type="button"
+                  className="list-group-item list-group-item-action d-flex align-items-center justify-content-between board-item-hot"
+                  onClick={() =>
+                    navigate(`/noticedetail/${m.originalId || m.id}`)
+                  }
+                >
+                  <div className="d-flex align-items-center gap-3">
+                    {isAdmin && (
+                      <PinFill
+                        className="text-primary pin-hover"
+                        title="상단 고정 해제"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTogglePin(m.id, true);
+                        }}
+                      />
+                    )}
+                    <span className="badge rounded-pill px-3 board-badge popular">
+                      공지사항
+                    </span>
+                    <span className="board-title d-flex align-items-center">
+                      {m.title}
+                      {m.isNew && (
+                        <span className="ms-2 text-primary fw-bold">N</span>
+                      )}
+                    </span>
                   </div>
-                  <div>{m.created ? m.created.toISOString().slice(0, 10) : "-"}</div>
-                  {isAdmin && (
-                    <>
+                  <div className="text-secondary small d-flex justify-content-end align-items-center">
+                    <div
+                      className="d-flex align-items-center me-2"
+                      style={{ minWidth: "50px" }}
+                    >
+                      <Eye size={16} className="me-1" /> {m.view}
+                    </div>
+                    <div>{m.created ? m.created.toISOString().slice(0, 10) : "-"}</div>
+                    {isAdmin && (
                       <button
                         className="btn-ghost btn-ghost-danger ms-3"
                         onClick={(e) => {
@@ -296,11 +300,79 @@ const Notice = () => {
                       >
                         삭제
                       </button>
-                    </>
-                  )}
-                </div>
-              </button>
-            ))
+                    )}
+                  </div>
+                </button>
+              ))}
+          </div>
+        )}
+
+        {/* PC 리스트 */}
+        <div className="list-group board-list">
+          {filtered.filter((m) => !m.originalId).length > 0 ? (
+            filtered
+              .filter((m) => !m.originalId)
+              .map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className="list-group-item list-group-item-action d-flex align-items-center justify-content-between"
+                  onClick={() => navigate(`/noticedetail/${m.id}`)}
+                >
+                  <div className="d-flex align-items-center gap-3">
+                    {isAdmin &&
+                      (m.pinnedCopy ? (
+                        <PinFill
+                          className="text-primary pin-hover"
+                          title="상단 고정 해제"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTogglePin(m.id, true);
+                          }}
+                        />
+                      ) : (
+                        <Pin
+                          className="text-muted pin-hover"
+                          title="상단 고정"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTogglePin(m.id, false);
+                          }}
+                        />
+                      ))}
+                    <span className="badge rounded-pill px-3 board-badge normal">
+                      공지사항
+                    </span>
+                    <span className="board-title d-flex align-items-center">
+                      {m.title}
+                      {m.isNew && (
+                        <span className="ms-2 text-primary fw-bold">N</span>
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="text-secondary small d-flex justify-content-end align-items-center">
+                    <div
+                      className="d-flex align-items-center me-2"
+                      style={{ minWidth: "50px" }}
+                    >
+                      <Eye size={16} className="me-1" /> {m.view}
+                    </div>
+                    <div>{m.created ? m.created.toISOString().slice(0, 10) : "-"}</div>
+                    {isAdmin && (
+                      <button
+                        className="btn-ghost btn-ghost-danger ms-3"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(m.id);
+                        }}
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </div>
+                </button>
+              ))
           ) : (
             <div className="text-center text-secondary py-5">
               등록된 공지사항이 없습니다.
@@ -403,65 +475,130 @@ const Notice = () => {
             ))}
           </div>
 
-          {/* 카드 리스트 (모바일) */}
-          {filtered.length > 0 ? (
-            filtered.map((p) => (
-              <article
-                className="mbp-card"
-                key={p.id}
-                onClick={() => navigate(`/noticedetail/${p.id}`)}
-                role="button"
-              >
-                <div className="d-flex justify-content-between align-items-start">
-                  <div className="d-flex align-items-center gap-2">
-                    <Pin
-                      className={`fs-5 ${p.pinned ? "text-danger" : "text-muted"}`}
-                    />
-                    <span className={`mbp-badge ${p.pinned ? "popular" : ""}`}>
-                      {p.pinned ? "상단공지" : "공지사항"}
-                    </span>
-                  </div>
-                </div>
-
-                <h6 className="mbp-title-line mt-4">
-                  {p.title}
-                  {p.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
-                </h6>
-                <div className="d-flex justify-content-between text-secondary small">
-                  <div className="mbp-meta">
-                    {p.created
-                      ? `${p.created.toISOString().slice(0, 10)} ${p.created
-                          .toTimeString()
-                          .slice(0, 5)}`
-                      : "-"}
-                  </div>
-                  <div className="fw-bold text-end text-dark">{p.author}</div>
-                </div>
-                <p className="mbp-excerpt pt-1">{p.excerpt}</p>
-
-                <div className="mbp-divider"></div>
-
-                <div className="d-flex justify-content-between align-items-center text-secondary">
-                  <span className="d-flex align-items-center ms-1">
-                    <Eye size={16} className="me-1" />
-                    {p.view}
-                  </span>
-                  {isAdmin && (
-                    <div className="d-flex justify-content-end me-1">
-                      <button
-                        className="btn-ghost btn-ghost-danger"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(p.id);
-                        }}
-                      >
-                        삭제
-                      </button>
+          {/* 모바일 상단 고정 카드 */}
+          {filtered.filter((p) => p.pinnedCopy && p.originalId !== null).length > 0 && (
+            <div className="mb-4">
+              {filtered
+                .filter((p) => p.pinnedCopy && p.originalId !== null)
+                .slice(0, 5)
+                .map((p) => (
+                  <article
+                    className="mbp-card pinned-card"
+                    key={`pin-${p.id}`}
+                    onClick={() => navigate(`/noticedetail/${p.originalId || p.id}`)}
+                    role="button"
+                  >
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div className="d-flex align-items-center gap-2">
+                        <PinFill className="text-primary fs-5" />
+                        <span className="mbp-badge popular">상단공지</span>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </article>
-            ))
+
+                    <h6 className="mbp-title-line mt-4">
+                      {p.title}
+                      {p.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                    </h6>
+                    <div className="d-flex justify-content-between text-secondary small">
+                      <div className="mbp-meta">
+                        {p.created ? `${p.created.toISOString().slice(0, 10)}` : "-"}
+                      </div>
+                      <div className="fw-bold text-dark">{p.author}</div>
+                    </div>
+                    <p className="mbp-excerpt pt-1">{p.excerpt}</p>
+                    <div className="mbp-divider"></div>
+                    <div className="d-flex justify-content-between align-items-center text-secondary">
+                      <span className="d-flex align-items-center ms-1">
+                        <Eye size={16} className="me-1" />
+                        {p.view}
+                      </span>
+                      {isAdmin && (
+                        <div className="d-flex justify-content-end me-1">
+                          <button
+                            className="btn-ghost btn-ghost-danger"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(p.id);
+                            }}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                ))}
+            </div>
+          )}
+
+          {/* 모바일 카드 리스트 */}
+          {filtered.filter((m) => !m.pinnedCopy).length > 0 ? (
+            filtered
+              .filter((m) => !m.pinnedCopy)
+              .map((p) => (
+                <article
+                  className="mbp-card"
+                  key={p.id}
+                  onClick={() => navigate(`/noticedetail/${p.id}`)}
+                  role="button"
+                >
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div className="d-flex align-items-center gap-2">
+                      {isAdmin ? (
+                        <button
+                          className="btn btn-light rounded-circle p-1 pin-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTogglePin(p.id, false);
+                          }}
+                          title="상단 고정"
+                        >
+                          <Pin className="text-muted fs-4" />
+                        </button>
+                      ) : (
+                        <Pin className="text-muted fs-4" />
+                      )}
+                      <span className="mbp-badge">공지사항</span>
+                    </div>
+                  </div>
+
+                  <h6 className="mbp-title-line mt-4">
+                    {p.title}
+                    {p.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                  </h6>
+                  <div className="d-flex justify-content-between text-secondary small">
+                    <div className="mbp-meta">
+                      {p.created
+                        ? `${p.created.toISOString().slice(0, 10)} ${p.created
+                            .toTimeString()
+                            .slice(0, 5)}`
+                        : "-"}
+                    </div>
+                    <div className="fw-bold text-end text-dark">{p.author}</div>
+                  </div>
+                  <p className="mbp-excerpt pt-1">{p.excerpt}</p>
+                  <div className="mbp-divider"></div>
+                  <div className="d-flex justify-content-between align-items-center text-secondary">
+                    <span className="d-flex align-items-center ms-1">
+                      <Eye size={16} className="me-1" />
+                      {p.view}
+                    </span>
+                    {isAdmin && (
+                      <div className="d-flex justify-content-end me-1">
+                        <button
+                          className="btn-ghost btn-ghost-danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(p.id);
+                          }}
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </article>
+              ))
           ) : (
             <div className="text-center text-secondary py-5">
               등록된 공지사항이 없습니다.
