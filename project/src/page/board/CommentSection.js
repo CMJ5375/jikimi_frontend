@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchComments, addComment, updateComment, deleteComment } from "../../api/commentApi";
 import { ThreeDots } from "react-bootstrap-icons";
 import { getCookie } from "../../util/cookieUtil";
+import Avatar from "./Avatar";
 
 // Base64URL 디코더
 const b64urlDecode = (s) => {
@@ -44,6 +45,8 @@ const useCurrentUser = () => {
     const accessToken = member?.accessToken;
     const claims = parseJwtClaims(accessToken) || {};
 
+    const profileImage = member?.profileImage ?? claims?.profileImage ?? null;
+
     // 3) 후보 키들에서 뽑아내기
     const idCandidate =
       member?.userId ??
@@ -72,6 +75,7 @@ const useCurrentUser = () => {
       username: usernameCandidate ? String(usernameCandidate) : null,
       name: nameCandidate ? String(nameCandidate) : null,
       emailLocal: emailLocal ? String(emailLocal) : null,
+      profileImage,
     };
   }, []);
 };
@@ -202,7 +206,7 @@ export default function CommentSection({ postId, hidden = false }) {
       {/* 입력창: 로그인 전용 게시판이라 항상 활성화 */}
       <div className="comment-input d-flex mb-4">
         {/* 프로필 (정사각형, 동그라미, 찌그러지지 않게) */}
-        <div className="bg-light me-2" style={{ width: "40px",height: "40px", borderRadius: "50%", flexShrink: 0,}}></div>
+        <Avatar src={me.profileImage} size={40} className="me-2" />
         
         <input
           type="text"
@@ -236,7 +240,7 @@ export default function CommentSection({ postId, hidden = false }) {
             <div key={c.commentId} className="comment-box mb-3">
               <div className="d-flex justify-content-between align-items-start">
                 <div className="d-flex align-items-start">
-                  <div className="profile-img bg-light me-2"></div>
+                  <Avatar src={c.authorProfileImage} size={36} className="me-2" />
                   <div>
                     <div className="fw-semibold">{c.authorName || "익명"}</div>
                     <div className="text-muted small">{fmt(c.createdAt)}</div>

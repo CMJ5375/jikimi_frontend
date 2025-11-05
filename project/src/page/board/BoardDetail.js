@@ -8,6 +8,7 @@ import ShareModal from "./ShareModal";
 import { Eye, HandThumbsUp, Share, Folder, } from "react-bootstrap-icons";
 import { getOne, deletePost, getList, updatePost, increaseView, increaseLike, getLikeStatus } from "../../api/postApi";
 import { getCookie } from "../../util/cookieUtil";
+import Avatar from "../board/Avatar";
 
 // ==== localStorage helpers ====
 const LS_LIKED_KEY = "LIKED_POSTS";
@@ -69,6 +70,7 @@ const BoardDetail = () => {
     createdAt: null,
     authorName: "",
     authorUsername: "",
+    authorProfileImage: "",
     fileUrl: "",
     likedUsernames: [],
   });
@@ -189,6 +191,7 @@ const BoardDetail = () => {
               data.userName ??
               `user#${data.userId ?? ""}`).toString(),
           authorUsername: data.authorUsername ?? "",
+          authorProfileImage: data.authorProfileImage ?? "",
           fileUrl: data.fileUrl ?? "",
           likedUsernames: Array.isArray(data.likedUsernames) ? data.likedUsernames : [],
         });
@@ -381,19 +384,18 @@ const BoardDetail = () => {
         게시글 {id} / 총 {totalCount}
       </div>
       <div className="d-flex justify-content-between align-items-center post-meta mb-3">
-        <div>
+        <div className="d-flex align-items-center">
+          <Avatar
+            src={post.authorProfileImage}
+            size={32}
+            className="me-2"
+          />
           {post.authorName && (
-            <span className="fw-semibold text-dark me-2">
-              {post.authorName}
-            </span>
+            <span className="fw-semibold text-dark me-2">{post.authorName}</span>
           )}
-          <span>
-            {formatted.date} {formatted.time}
-          </span>
+          <span>{formatted.date} {formatted.time}</span>
         </div>
-        <div>
-          <Eye /> {post.viewCount ?? 0}
-        </div>
+        <div><Eye /> {post.viewCount ?? 0}</div>
       </div>
 
       <hr />
