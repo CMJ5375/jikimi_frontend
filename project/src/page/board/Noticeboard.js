@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { getList, getHotPins } from "../../api/postApi";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
+import Avatar from "../board/Avatar"
 
 // 탭 라벨
 const CATEGORIES = ["전체", "인기글", "병원정보", "약국정보", "질문해요", "자유글"];
@@ -145,7 +146,8 @@ const Noticeboard = () => {
       date: p.createdAt ? p.createdAt.slice(0, 10) : "",
       time: p.createdAt ? p.createdAt.slice(11, 16) : "",
       author: p.authorName ?? (p.userId ? `user#${p.userId}` : "익명"),
-      region: "",
+      authorProfileImage: p.authorProfileImage ?? "",
+      region: p.authorAddress ?? "",
       excerpt: (() => {
         const c = p.content || "";
         return c.length > 70 ? c.slice(0, 70) + "..." : c;
@@ -161,37 +163,36 @@ const Noticeboard = () => {
 
   // 서버 데이터 → 화면 표시용 변환
   const items = useMemo(() => {
-  if (!pageData?.dtoList) return [];
+    if (!pageData?.dtoList) return [];
+    return pageData.dtoList.map((p) => {
+      // ← map 내부에서 p 기반 파생값 계산
 
-  return pageData.dtoList.map((p) => {
-    // ← map 내부에서 p 기반 파생값 계산
+      const created = p.createdAt ? new Date(p.createdAt) : null;
+      const isNew = created ? Date.now() - created.getTime() <= 24 * 60 * 60 * 1000 : false;
 
-    const created = p.createdAt ? new Date(p.createdAt) : null;
-    const isNew = created ? Date.now() - created.getTime() <= 24 * 60 * 60 * 1000 : false;
-
-    return {
-      id: p.postId,
-      cat: ENUM_TO_KOR[p.boardCategory] ?? "자유글",
-      hot: false,
-      title: p.title ?? "",
-      date: p.createdAt ? p.createdAt.slice(0, 10) : "",
-      time: p.createdAt ? p.createdAt.slice(11, 16) : "",
-      author: p.authorName ?? (p.userId ? `user#${p.userId}` : "익명"),
-      region: "",
-      excerpt: (() => {
-        const c = p.content || "";
-        return c.length > 70 ? c.slice(0, 70) + "..." : c;
-      
-      })(),
-      likes: p.likeCount ?? 0,
-      view: p.viewCount ?? 0,
-      
-      hasFile: !!(p.fileUrl && String(p.fileUrl).trim()),
-      isNew,                 // 첨부파일 클립표시, 새글 N 표기
-      comments: 0,
-    };
-  });
-}, [pageData]);
+      return {
+        id: p.postId,
+        cat: ENUM_TO_KOR[p.boardCategory] ?? "자유글",
+        hot: false,
+        title: p.title ?? "",
+        date: p.createdAt ? p.createdAt.slice(0, 10) : "",
+        time: p.createdAt ? p.createdAt.slice(11, 16) : "",
+        author: p.authorName ?? (p.userId ? `user#${p.userId}` : "익명"),
+        authorProfileImage: p.authorProfileImage ?? "",
+        region: p.authorAddress ?? "",
+        excerpt: (() => {
+          const c = p.content || "";
+          return c.length > 70 ? c.slice(0, 70) + "..." : c;
+        
+        })(),
+        likes: p.likeCount ?? 0,
+        view: p.viewCount ?? 0,
+        hasFile: !!(p.fileUrl && String(p.fileUrl).trim()),
+        isNew,                 // 첨부파일 클립표시, 새글 N 표기
+        comments: 0,
+      };
+    });
+  }, [pageData]);
 
   // 탭/검색 변경 시 1페이지로
   const handleChangeTab = (category) => {
@@ -462,11 +463,11 @@ const Noticeboard = () => {
           </div>
 
           {/* 모바일도 ‘전체’에서 핀 복사본을 카드 위에 고정 렌더 */}
-          {active === "전체" && pinnedItems.map((p) => (
+          {active === "전체" && pinnedItems.map((m) => (
             <article
               className="mbp-card"
-              key={`pinm-${p.id}`}
-              onClick={() => navigate(`/boarddetails/${p.id}`)}
+              key={`pinm-${m.id}`}
+              onClick={() => navigate(`/boarddetails/${m.id}`)}
               role="button"
               title="인기글 고정"
             >
@@ -477,87 +478,96 @@ const Noticeboard = () => {
                 </div>
               </div>
 
-              <h6 className="mbp-title-line">{p.title}</h6>
+              <h6 className="mbp-title-line">{m.title}</h6>
 
               <div className="d-flex justify-content-between">
-                <div className="mbp-meta">{p.date} {p.time}</div>
+                <div className="mbp-meta">{m.date} {m.time}</div>
                 <div className="text-end">
-                  <div className="fw-bold">{p.author}</div>
-                  <span className="mbp-region">{p.region}</span>
+                  <div className="fw-bold">{m.author}</div>
+                  <span className="mbp-region">{m.region}</span>
                 </div>
               </div>
 
-              <p className="mbp-excerpt">{p.excerpt}</p>
+              <p className="mbp-excerpt">{m.excerpt}</p>
 
               <div className="mbp-divider"></div>
 
-              <div className="d-flex justify-content-between align-items-center text-secondary">
-                <span className="d-flex align-items-center ms-1">
+              <div className="d-flex justify-content-end align-items-center text-secondary">
+                <span className="d-flex align-items-center me-3">
                   <Eye size={16} className="me-1" />
-                  {p.view}
+                  {m.view}
                 </span>
-
-                <div className="d-flex align-items-center gap-4 me-1">
-                  <span className="d-flex align-items-center">
-                    <HandThumbsUp size={16} className="me-1" />
-                    {p.likes}
-                  </span>
-                  <span className="d-flex align-items-center">
-                    <ChatDots size={16} className="me-1" />
-                    0
-                  </span>
-                </div>
+                <span className="d-flex align-items-center me-3">
+                  <HandThumbsUp size={16} className="me-1" />
+                  {m.likes}
+                </span>
+                <span className="d-flex align-items-center me-1">
+                  <ChatDots size={16} className="me-1" />
+                  {m.comments}
+                </span>
               </div>
             </article>
           ))}
 
           {/* 카드 리스트 (모바일) */}
-          {visibleItems.map((p) => (
+          {visibleItems.map((m) => (
             <article
               className="mbp-card"
-              key={p.id}
-              onClick={() => navigate(`/boarddetails/${p.id}`)}
+              key={m.id}
+              onClick={() => navigate(`/boarddetails/${m.id}`)}
               role="button"
             >
               <div className="d-flex justify-content-between align-items-start">
-                <span className={`mbp-badge ${p.hot ? "popular" : ""}`}>
-                  {p.hot ? "인기글" : p.cat}
-                </span>
-                <div className="mbp-ghostmark">
-                  <Plus className="fs-5" />
+                <div className="d-flex align-items-center gap-2">
+                  <span className={`mbp-badge ${m.hot ? "popular" : ""}`}>
+                    {m.hot ? "인기글" : m.cat}
+                  </span>
                 </div>
               </div>
 
-              <h6 className="mbp-title-line">{p.title}</h6>
+              <div className="d-flex justify-content-between align-items-stretch">
+                <div className="flex-grow-1">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <h6 className="mbp-title-line fw-semibold text-truncate mb-1">
+                      {m.title}
+                      {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                    </h6>
+                    <span className="fw-semibold text-dark small">{m.author}</span>
+                  </div>
 
-              <div className="d-flex justify-content-between">
-                <div className="mbp-meta">{p.date} {p.time}</div>
-                <div className="text-end">
-                  <div className="fw-bold">{p.author}</div>
-                  <span className="mbp-region">{p.region}</span>
+                  <div className="d-flex justify-content-between align-items-center text-secondary small mt-1">
+                    <span>
+                      {m.date} {m.time}
+                    </span>
+                    <span className="text-primary fw-semibold">{m.region || "지역 미정"}</span>
+                  </div>
+                </div>
+
+                <div className="d-flex align-items-center ms-2">
+                  <Avatar
+                    src={m.authorProfileImage}
+                    size={60}
+                    className="border border-light shadow-sm"
+                  />
                 </div>
               </div>
-
-              <p className="mbp-excerpt">{p.excerpt}</p>
+              <p className="mbp-excerpt pt-1">{m.excerpt}</p>
 
               <div className="mbp-divider"></div>
 
-              <div className="d-flex justify-content-between align-items-center text-secondary">
-                <span className="d-flex align-items-center ms-1">
+              <div className="d-flex justify-content-end align-items-center text-secondary">
+                <span className="d-flex align-items-center me-3">
                   <Eye size={16} className="me-1" />
-                  {p.view}
+                  {m.view}
                 </span>
-
-                <div className="d-flex align-items-center gap-4 me-1">
-                  <span className="d-flex align-items-center">
-                    <HandThumbsUp size={16} className="me-1" />
-                    {p.likes}
-                  </span>
-                  <span className="d-flex align-items-center">
-                    <ChatDots size={16} className="me-1" />
-                    0
-                  </span>
-                </div>
+                <span className="d-flex align-items-center me-3">
+                  <HandThumbsUp size={16} className="me-1" />
+                  {m.likes}
+                </span>
+                <span className="d-flex align-items-center me-1">
+                  <ChatDots size={16} className="me-1" />
+                  {m.comments}
+                </span>
               </div>
             </article>
           ))}
