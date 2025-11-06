@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
 import "../../css/Support.css";
-import { Eye, Pencil, PinFill, Pin, Search, Megaphone } from "react-bootstrap-icons";
+import { Eye, Pencil, PinFill, Pin, Search, Megaphone, HandThumbsUp } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
 import { listSupport, removeSupport, pinSupport, unpinSupport, listPinnedSupport } from "../../api/supportApi";
 import useCustomLogin from "../../hook/useCustomLogin";
@@ -144,6 +144,7 @@ const Notice = () => {
         title: m.title ?? "",
         author: m.name || "관리자",
         view: m.viewCount ?? 0,
+        like: m.likeCount ?? 0,
         created,
         pinnedCopy: m.pinnedCopy ?? false,
         originalId: m.originalId ?? null,
@@ -464,7 +465,7 @@ const Notice = () => {
 
           {/* 모바일 상단 고정 카드 */}
           {pinnedItems.length > 0 && (
-            <div className="mb-4">
+            <div>
               {pinnedItems.slice(0, 5).map((m) => (
                 <article
                   className="mbp-card pinned-card"
@@ -474,7 +475,7 @@ const Notice = () => {
                 >
                   <div className="d-flex justify-content-between align-items-start">
                     <div className="d-flex align-items-center gap-2">
-                      {isAdmin ? (
+                      {isAdmin && (
                         <button
                           className="btn btn-light rounded-circle p-1 pin-btn"
                           onClick={(e) => {
@@ -485,37 +486,10 @@ const Notice = () => {
                         >
                           <PinFill className="text-primary fs-4" />
                         </button>
-                      ) : (
-                        <PinFill className="text-primary fs-5" />
                       )}
                       <span className="mbp-badge popular">상단공지</span>
                     </div>
-                  </div>
-
-                  <h6 className="mbp-title-line mt-4">
-                    {m.title}
-                    {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
-                  </h6>
-                  <div className="d-flex justify-content-between text-secondary small">
-                    <div className="mbp-meta">
-                      {m.createdAt
-                        ? `${new Date(m.createdAt).toISOString().slice(0, 10)}`
-                        : "-"}
-                    </div>
-                    <div className="fw-bold text-dark">{m.author || "관리자"}</div>
-                  </div>
-                  <p className="mbp-excerpt pt-1">
-                    {m.excerpt && m.excerpt.length > 0
-                      ? m.excerpt
-                      : "내용이 없습니다."}
-                  </p>
-                  <div className="mbp-divider"></div>
-                  <div className="d-flex justify-content-between align-items-center text-secondary">
-                    <span className="d-flex align-items-center ms-1">
-                      <Eye size={16} className="me-1" /> {m.viewCount ?? 0}
-                    </span>
                     {isAdmin && (
-                      <div className="d-flex justify-content-end me-1">
                         <button
                           className="btn-ghost btn-ghost-danger"
                           onClick={(e) => {
@@ -525,8 +499,53 @@ const Notice = () => {
                         >
                           삭제
                         </button>
-                      </div>
                     )}
+                  </div>
+
+                  <h6 className="mbp-title-line mt-3">
+                    {m.title || "제목 없음"}
+                    {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                  </h6>
+
+                  <div className="d-flex justify-content-between text-secondary small">
+                    <div className="mbp-meta">
+                      {m.createdAt
+                        ? `${new Date(m.createdAt).toISOString().slice(0, 10)} ${new Date(
+                            m.createdAt
+                          )
+                            .toTimeString()
+                            .slice(0, 5)}`
+                        : m.originalCreatedAt
+                        ? `${new Date(m.originalCreatedAt).toISOString().slice(0, 10)} ${new Date(
+                            m.originalCreatedAt
+                          )
+                            .toTimeString()
+                            .slice(0, 5)}`
+                        : "-"}
+                    </div>
+                    <div className="fw-bold text-dark">{m.author || "관리자"}</div>
+                  </div>
+
+                  <p className="mbp-excerpt pt-1">
+                    {m.content && m.content.length > 0
+                      ? m.content.slice(0, 70) + (m.content.length > 70 ? "..." : "")
+                      : m.originalContent && m.originalContent.length > 0
+                      ? m.originalContent.slice(0, 70) +
+                        (m.originalContent.length > 70 ? "..." : "")
+                      : "내용이 없습니다."}
+                  </p>
+
+                  <div className="mbp-divider"></div>
+
+                  <div className="d-flex justify-content-end align-items-center text-secondary me-1">
+                    <span className="d-flex align-items-center me-3">
+                      <Eye size={16} className="me-1" />
+                      {m.viewCount ?? 0}
+                    </span>
+                    <span className="d-flex align-items-center me-1">
+                      <HandThumbsUp size={16} className="me-1" />
+                      {m.likeCount ?? 0}
+                    </span>
                   </div>
                 </article>
               ))}
@@ -548,7 +567,7 @@ const Notice = () => {
                   >
                     <div className="d-flex justify-content-between align-items-start">
                       <div className="d-flex align-items-center gap-2">
-                        {isAdmin ? (
+                        {isAdmin && (
                           hasPinnedCopy ? (
                             // 이미 복제글 있을 때 핀 누르면 상단 복제글 삭제
                             <button
@@ -558,8 +577,7 @@ const Notice = () => {
                                 const copy = pinnedItems.find(
                                   (c) => c.originalId === m.id
                                 );
-                                if (copy)
-                                  onTogglePin(copy.supportId, true, m.id);
+                                if (copy) onTogglePin(copy.supportId, true, m.id);
                               }}
                               title="상단 고정 해제"
                             >
@@ -578,14 +596,23 @@ const Notice = () => {
                               <Pin className="text-muted fs-4" />
                             </button>
                           )
-                        ) : (
-                          <Pin className="text-muted fs-4" />
                         )}
                         <span className="mbp-badge">공지사항</span>
                       </div>
+                      {isAdmin && (
+                        <button
+                          className="btn-ghost btn-ghost-danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(m.id);
+                          }}
+                        >
+                          삭제
+                        </button>
+                      )}
                     </div>
 
-                    <h6 className="mbp-title-line mt-4">
+                    <h6 className="mbp-title-line mt-3">
                       {m.title}
                       {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
                     </h6>
@@ -597,9 +624,7 @@ const Notice = () => {
                               .slice(0, 5)}`
                           : "-"}
                       </div>
-                      <div className="fw-bold text-end text-dark">
-                        {m.author || "관리자"}
-                      </div>
+                      <div className="fw-bold text-end text-dark">{m.author}</div>
                     </div>
                     <p className="mbp-excerpt pt-1">
                       {m.excerpt && m.excerpt.length > 0
@@ -607,24 +632,16 @@ const Notice = () => {
                         : "내용이 없습니다."}
                     </p>
                     <div className="mbp-divider"></div>
-                    <div className="d-flex justify-content-between align-items-center text-secondary">
-                      <span className="d-flex align-items-center ms-1">
-                        <Eye size={16} className="me-1" /> {m.view}
-                      </span>
-                      {isAdmin && (
-                        <div className="d-flex justify-content-end me-1">
-                          <button
-                            className="btn-ghost btn-ghost-danger"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDelete(m.id);
-                            }}
-                          >
-                            삭제
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    <div className="d-flex justify-content-end align-items-center text-secondary me-1">
+                    <span className="d-flex align-items-center me-3">
+                      <Eye size={16} className="me-1" />
+                      {m.view}
+                    </span>
+                    <span className="d-flex align-items-center me-1">
+                      <HandThumbsUp size={16} className="me-1" />
+                      {m.like}
+                    </span>
+                  </div>
                   </article>
                 );
               })

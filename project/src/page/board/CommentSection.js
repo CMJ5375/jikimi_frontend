@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import "../../css/BoardDetail.css";
 import { fetchComments, addComment, updateComment, deleteComment } from "../../api/commentApi";
 import { ThreeDots } from "react-bootstrap-icons";
 import { getCookie } from "../../util/cookieUtil";
@@ -253,13 +254,13 @@ export default function CommentSection({ postId, hidden = false }) {
                     {editingId !== c.commentId && (
                       <>
                         <button
-                          className="btn btn-link text-secondary p-0"
+                          className="btn-ghost p-0"
                           onClick={() => startEdit(c)}
                         >
                           수정
                         </button>
                         <button
-                          className="btn btn-link text-danger p-0"
+                          className="btn-ghost btn-ghost-danger p-0"
                           onClick={() => removeOne(c)}
                         >
                           삭제

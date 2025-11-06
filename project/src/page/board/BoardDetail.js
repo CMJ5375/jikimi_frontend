@@ -5,7 +5,7 @@ import "../../css/BoardDetail.css";
 import CommentSection from "./CommentSection";
 import NavModel from "./NavModel";
 import ShareModal from "./ShareModal";
-import { Eye, HandThumbsUp, Share, Folder, } from "react-bootstrap-icons";
+import { Eye, HandThumbsUp, Share, Folder } from "react-bootstrap-icons";
 import { getOne, deletePost, getList, updatePost, increaseView, increaseLike } from "../../api/postApi";
 import { getCookie } from "../../util/cookieUtil";
 import Avatar from "../board/Avatar";
@@ -368,7 +368,7 @@ const BoardDetail = () => {
         )}
 
         {!editMode && (
-          <div className="post-actions d-none d-md-flex">
+          <div className="post-actions d-flex">
             {canEdit && (
               <button className="btn-ghost" onClick={handleEditStart}> 수정 </button>
             )}
