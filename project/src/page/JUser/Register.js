@@ -5,6 +5,7 @@ import { API_SERVER_HOST } from '../../api/userApi';
 import axios from 'axios';
 import useCustomLogin from '../../hook/useCustomLogin';
 import { getKakaoLoginLink } from '../../api/kakaoApi';
+import { useNavigate } from 'react-router-dom';
 
 const initState = {
   username: '',
@@ -15,6 +16,7 @@ const initState = {
 }
 
 const Register = () => {
+  const navigate = useNavigate();
   const [form, setForm] = useState({initState})
   const {moveToPath} = useCustomLogin()
 
@@ -177,7 +179,10 @@ const Register = () => {
               >
                 회원가입
               </Button>
-              <Button className="w-100 fw-bold btn-outline-blue" >
+              <Button
+                className="w-100 fw-bold btn-outline-blue"
+                onClick={() => navigate('/login')}  // ✅ 로그인 페이지로 이동
+              >
                 취소
               </Button>
             </div>
@@ -208,7 +213,7 @@ const Register = () => {
                 카카오로 시작하기
               </Button>
 
-              {/* 구글 */}
+              {/* 구글
               <Button
                 variant="light"
                 className="d-flex align-items-center justify-content-center border fw-semibold shadow"
@@ -221,7 +226,7 @@ const Register = () => {
                   className="me-2"
                 />
                 구글로 시작하기
-              </Button>
+              </Button> */}
             </div>
           </Form>
         </Col>
