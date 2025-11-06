@@ -5,6 +5,7 @@ import "../../css/BoardDetail.css";
 import { Eye, HandThumbsUp, Share, Folder, List } from "react-bootstrap-icons";
 import { getSupport, removeSupport, updateSupport, toggleSupportLike, getSupportLikeStatus } from "../../api/supportApi";
 import useCustomLogin from "../../hook/useCustomLogin";
+import Avatar from "../board/Avatar";
 
 const DataRoomDetail = () => {
   const { id: idParam } = useParams();
@@ -251,7 +252,12 @@ const DataRoomDetail = () => {
 
       {/* 작성자 / 날짜 / 조회수 */}
       <div className="d-flex justify-content-between align-items-center post-meta mb-3">
-        <div>
+        <div className="d-flex align-items-center">
+          <Avatar
+            src={post.authorProfileImage}
+            size={40}
+            className="me-2 border border-light shadow-sm"
+          />
           <span className="fw-semibold text-dark me-2">{post.name}</span>
           <span>
             {formatted.date} {formatted.time}

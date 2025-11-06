@@ -137,18 +137,9 @@
 .board-item-hot:hover {
   background-color: #d9e6ff;
 }
-.pinned-card {
-  background-color: #eef3ff;
-  border: 1px solid #cfd9ff;
-  box-shadow: 0 2px 6px rgba(59, 108, 255, 0.15);
-}
-.pinned-card:hover {
-  background-color: #e5ecff;
-}
 
+/* 투명 배경, 기본 회색 아이콘 */
 .pin-btn {
-  width: 36px;
-  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -156,18 +147,124 @@
   border: none !important;
   box-shadow: none !important;
   cursor: pointer;
+  padding: 6px; /* 클릭하기 편하게 */
+  transition: transform 0.2s ease-in-out;
 }
 
-.pin-btn:hover svg,
-.pin-btn:focus svg {
-  color: #3b6cff !important;
-}
-
-.pin-btn:active {
-  background: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-}
+/* 기본 색(회색) */
 .pin-btn svg {
-  transition: color 0.2s ease-in-out;
+  color: #888 !important;
+  transition: color 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+/* hover 시 파란색으로 변함 */
+.pin-btn:hover svg {
+  color: #3341F3 !important;
+  transform: scale(1.15);
+}
+
+/* 클릭 후 focus 남지 않게 처리 */
+.pin-btn:focus {
+  outline: none !important;
+}
+.pin-btn:focus svg {
+  color: #888 !important;
+  transform: none;
+}
+
+/* 클릭 시 약간 눌림 효과 */
+.pin-btn:active svg {
+  transform: scale(0.95);
+}
+
+/* PC 전용 (크기 작게, 클릭영역 유지) */
+@media (min-width: 768px) {
+  .pin-btn svg {
+    font-size: 1.0rem; /* 약 20px */
+  }
+  .pin-btn {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+/* 모바일 전용 (아이콘 더 크게, 터치영역 넓게) */
+@media (max-width: 767px) {
+  .pin-btn svg {
+    font-size: 1.5rem; /* 약 26px */
+  }
+  .pin-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* =============== FAQ 아코디언 전용 스타일 =============== */
+
+.faq-accordion {
+  /* 색 변수를 먼저 정의 */
+  --faq-muted: #555;
+  --faq-active: #3341F3;
+
+  /* Bootstrap 5 Accordion 변수 덮어쓰기 */
+  --bs-accordion-color: var(--faq-muted);
+  --bs-accordion-bg: #fff;
+  --bs-accordion-border-color: #e5e7eb;
+  --bs-accordion-border-radius: 5px;
+  --bs-accordion-btn-focus-box-shadow: none;
+  --bs-accordion-active-color: var(--faq-active);
+  --bs-accordion-active-bg: #ddebff;
+
+  /* 패딩(버튼/바디) */
+  --bs-accordion-btn-padding-x: 1.25rem;
+  --bs-accordion-btn-padding-y: 1rem;
+  --bs-accordion-body-padding-x: 1.25rem;
+  --bs-accordion-body-padding-y: 1rem;
+
+  /* ▼ 아이콘(기본=회색, 활성=파랑) : Bootstrap 5.3 변수 사용 */
+  --bs-accordion-btn-icon: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="%23888"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>');
+  --bs-accordion-btn-active-icon: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="%233341F3"><path fill-rule="evenodd" d="M1.646 10.354a.5.5 0 0 0 .708 0L8 4.707l5.646 5.647a.5.5 0 0 0 .708-.708l-6-6a.5.5 0 0 0-.708 0l-6 6a.5.5 0 0 0 0 .708z"/></svg>');
+}
+
+/* 카드처럼 보이게 (아이템 컨테이너) */
+.faq-accordion .accordion-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0,0,0,.04);
+  transition: box-shadow .25s ease;
+}
+.faq-accordion .accordion-item:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+}
+
+/* 헤더(버튼) 상태별 색 */
+.faq-accordion .accordion-button {
+  color: var(--faq-muted) !important;
+  background: var(--bs-accordion-bg) !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  border-radius: 5px; /* 모서리 둥글게 */
+}
+.faq-accordion .accordion-button:not(.collapsed) {
+  color: var(--faq-active) !important;
+  background: var(--bs-accordion-active-bg) !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  border-bottom: 1px solid #eee;
+}
+.faq-accordion .accordion-button:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+/* 바디 */
+.faq-accordion .accordion-body {
+  background: #fafbff;
+  border-top: 0; /* 위에서 버튼에 경계선 줌 */
+  animation: faq-fade .25s ease;
+}
+@keyframes faq-fade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { listSupport, removeSupport, pinSupport, unpinSupport, listPinnedSupport } from "../../api/supportApi";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
+import Avatar from "../board/Avatar";
 
 const CATEGORIES = [
   { name: "공지사항", path: "/notice" },
@@ -127,7 +128,7 @@ const Notice = () => {
     }
   };
 
-  // 날짜 및 최신글 여부
+  // 일반 목록 데이터 정제
   const items = useMemo(() => {
     if (!pageData?.content) return [];
     return pageData.content.map((m) => {
@@ -155,11 +156,18 @@ const Notice = () => {
     });
   }, [pageData]);
 
-  // 검색 필터 적용
   const filtered = useMemo(() => {
     const ql = q.toLowerCase();
-    return (items || []).filter((m) => (m.title || "").toLowerCase().includes(ql));
+    return items.filter((m) => (m.title || "").toLowerCase().includes(ql));
   }, [items, q]);
+
+  // N표시 계산 추가
+  const pinnedItemsWithNew = pinnedItems.map((p) => ({
+    ...p,
+    isNew: p.createdAt
+      ? Date.now() - new Date(p.createdAt).getTime() <= 24 * 60 * 60 * 1000
+      : false,
+  }));
 
   // 탭 클릭 이동
   const handleTabClick = (t) => {
@@ -250,9 +258,9 @@ const Notice = () => {
         </div>
 
         {/* PC 상단 고정 리스트 */}
-        {pinnedItems.length > 0 && (
+        {pinnedItemsWithNew.length > 0 && (
           <div className="list-group board-list">
-            {pinnedItems.slice(0, 5).map((p) => (
+            {pinnedItemsWithNew.slice(0, 5).map((p) => (
               <button
                 key={`pin-${p.supportId}`}
                 type="button"
@@ -261,19 +269,28 @@ const Notice = () => {
               >
                 <div className="d-flex align-items-center gap-3">
                   {isAdmin && (
-                    <PinFill
-                      className="text-primary pin-hover"
-                      title="상단 고정 해제"
+                    <button
+                      className="pin-btn"
                       onClick={(e) => {
                         e.stopPropagation();
                         onTogglePin(p.supportId, true, p.originalId);
                       }}
-                    />
+                      title="상단 고정 해제"
+                    >
+                      <PinFill className="fs-5" />
+                    </button>
                   )}
-                  <span className="badge rounded-pill px-3 board-badge popular">공지사항</span>
+                  <span className="badge rounded-pill px-3 board-badge popular">중요공지</span>
                   <span className="board-title d-flex align-items-center">
                     {p.title}
-                    {p.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                    {p.isNew && (
+                    <span
+                      className="ms-2 fw-bold"
+                      style={{ fontSize: "0.9rem", color: "#3341F3" }}
+                    >
+                      N
+                    </span>
+                  )}
                   </span>
                 </div>
                 <div className="text-secondary small d-flex justify-content-end align-items-center">
@@ -315,9 +332,8 @@ const Notice = () => {
                     <div className="d-flex align-items-center gap-3">
                       {isAdmin &&
                         (hasPinnedCopy ? (
-                          <PinFill
-                            className="text-primary pin-hover"
-                            title="상단 고정 해제"
+                          <button
+                            className="pin-btn"
                             onClick={(e) => {
                               e.stopPropagation();
                               const copy = pinnedItems.find(
@@ -325,23 +341,35 @@ const Notice = () => {
                               );
                               if (copy) onTogglePin(copy.supportId, true, p.id);
                             }}
-                          />
+                            title="상단 고정 해제"
+                          >
+                            <PinFill className="fs-5" />
+                          </button>
                         ) : (
-                          <Pin
-                            className="text-muted pin-hover"
-                            title="상단 고정"
+                          <button
+                            className="pin-btn"
                             onClick={(e) => {
                               e.stopPropagation();
                               onTogglePin(p.id, false, null);
                             }}
-                          />
+                            title="상단 고정"
+                          >
+                            <Pin className="fs-5" />
+                          </button>
                         ))}
                       <span className="badge rounded-pill px-3 board-badge normal">
                         공지사항
                       </span>
                       <span className="board-title d-flex align-items-center">
                         {p.title}
-                        {p.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                        {p.isNew && (
+                          <span
+                            className="ms-2 fw-bold"
+                            style={{ fontSize: "0.9rem", color: "#3341F3" }}
+                          >
+                            N
+                          </span>
+                        )}
                       </span>
                     </div>
                     <div className="text-secondary small d-flex justify-content-end align-items-center">
@@ -464,11 +492,11 @@ const Notice = () => {
           </div>
 
           {/* 모바일 상단 고정 카드 */}
-          {pinnedItems.length > 0 && (
+          {pinnedItemsWithNew.length > 0 && (
             <div>
-              {pinnedItems.slice(0, 5).map((m) => (
+              {pinnedItemsWithNew.slice(0, 5).map((m) => (
                 <article
-                  className="mbp-card pinned-card"
+                  className="mbp-card"
                   key={`pin-${m.supportId}`}
                   onClick={() => navigate(`/noticedetail/${m.originalId || m.supportId}`)}
                   role="button"
@@ -477,17 +505,17 @@ const Notice = () => {
                     <div className="d-flex align-items-center gap-2">
                       {isAdmin && (
                         <button
-                          className="btn btn-light rounded-circle p-1 pin-btn"
+                          className="pin-btn"
                           onClick={(e) => {
                             e.stopPropagation();
                             onTogglePin(m.supportId, true, m.originalId);
                           }}
                           title="상단 고정 해제"
                         >
-                          <PinFill className="text-primary fs-4" />
+                          <PinFill className="fs-4" />
                         </button>
                       )}
-                      <span className="mbp-badge popular">상단공지</span>
+                      <span className="mbp-badge popular">중요공지</span>
                     </div>
                     {isAdmin && (
                         <button
@@ -502,41 +530,60 @@ const Notice = () => {
                     )}
                   </div>
 
-                  <h6 className="mbp-title-line mt-3">
-                    {m.title || "제목 없음"}
-                    {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
-                  </h6>
+                  <div className="d-flex justify-content-between align-items-stretch mt-2">
+                    <div className="flex-grow-1">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <h6 className="mbp-title-line fw-semibold text-truncate mb-1">
+                          {m.title}
+                          {m.isNew && (
+                            <span
+                              className="ms-2 fw-bold"
+                              style={{ fontSize: "1rem", color: "#3341F3" }}
+                            >
+                              N
+                            </span>
+                          )}
+                        </h6>
+                        <span className="fw-semibold text-dark small">
+                          {m.author || "관리자"}
+                        </span>
+                      </div>
 
-                  <div className="d-flex justify-content-between text-secondary small">
-                    <div className="mbp-meta">
-                      {m.createdAt
-                        ? `${new Date(m.createdAt).toISOString().slice(0, 10)} ${new Date(
-                            m.createdAt
-                          )
-                            .toTimeString()
-                            .slice(0, 5)}`
-                        : m.originalCreatedAt
-                        ? `${new Date(m.originalCreatedAt).toISOString().slice(0, 10)} ${new Date(
-                            m.originalCreatedAt
-                          )
-                            .toTimeString()
-                            .slice(0, 5)}`
-                        : "-"}
+                      <div className="d-flex justify-content-between text-secondary small mt-1">
+                        <span>
+                          {m.createdAt
+                            ? `${new Date(m.createdAt)
+                                .toISOString()
+                                .slice(0, 10)} ${new Date(m.createdAt)
+                                .toTimeString()
+                                .slice(0, 5)}`
+                            : "-"}
+                        </span>
+                        <span
+                          className="fw-semibold"
+                          style={{ color: "#3341F3" }}
+                        >
+                          {m.authorAddress || "성남"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="fw-bold text-dark">{m.author || "관리자"}</div>
+
+                    <div className="d-flex align-items-center ms-2">
+                      <Avatar
+                        src={m.authorProfileImage}
+                        size={56}
+                        className="border border-light shadow-sm"
+                      />
+                    </div>
                   </div>
 
                   <p className="mbp-excerpt pt-1">
                     {m.content && m.content.length > 0
-                      ? m.content.slice(0, 70) + (m.content.length > 70 ? "..." : "")
-                      : m.originalContent && m.originalContent.length > 0
-                      ? m.originalContent.slice(0, 70) +
-                        (m.originalContent.length > 70 ? "..." : "")
+                      ? m.content.slice(0, 70) +
+                        (m.content.length > 70 ? "..." : "")
                       : "내용이 없습니다."}
                   </p>
-
                   <div className="mbp-divider"></div>
-
                   <div className="d-flex justify-content-end align-items-center text-secondary me-1">
                     <span className="d-flex align-items-center me-3">
                       <Eye size={16} className="me-1" />
@@ -571,7 +618,7 @@ const Notice = () => {
                           hasPinnedCopy ? (
                             // 이미 복제글 있을 때 핀 누르면 상단 복제글 삭제
                             <button
-                              className="btn btn-light rounded-circle p-1 pin-btn"
+                              className="pin-btn"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const copy = pinnedItems.find(
@@ -581,19 +628,19 @@ const Notice = () => {
                               }}
                               title="상단 고정 해제"
                             >
-                              <PinFill className="text-primary fs-4" />
+                              <PinFill className="fs-4" />
                             </button>
                           ) : (
                             // 복제글 없을 때 핀 누르면 복제글 생성
                             <button
-                              className="btn btn-light rounded-circle p-1 pin-btn"
+                              className="pin-btn"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onTogglePin(m.id, false, null);
                               }}
                               title="상단 고정"
                             >
-                              <Pin className="text-muted fs-4" />
+                              <Pin className="fs-4" />
                             </button>
                           )
                         )}
@@ -612,20 +659,53 @@ const Notice = () => {
                       )}
                     </div>
 
-                    <h6 className="mbp-title-line mt-3">
-                      {m.title}
-                      {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
-                    </h6>
-                    <div className="d-flex justify-content-between text-secondary small">
-                      <div className="mbp-meta">
-                        {m.created
-                          ? `${m.created.toISOString().slice(0, 10)} ${m.created
-                              .toTimeString()
-                              .slice(0, 5)}`
-                          : "-"}
+                    {/* 제목 + 프로필 (제목/날짜 라인과 정렬 맞춤) */}
+                    <div className="d-flex justify-content-between align-items-stretch mt-2">
+                      <div className="flex-grow-1">
+                        {/* 제목 라인 */}
+                        <div className="d-flex justify-content-between align-items-center">
+                          <h6 className="mbp-title-line fw-semibold text-truncate mb-1">
+                            {m.title}
+                            {m.isNew && (
+                              <span
+                                className="ms-2 fw-bold"
+                                style={{ fontSize: "1rem", color: "#3341F3" }}
+                              >
+                                N
+                              </span>
+                            )}
+                          </h6>
+                          <span className="fw-semibold text-dark small">{m.author}</span>
+                        </div>
+
+                        {/* 날짜 라인 */}
+                        <div className="d-flex justify-content-between text-secondary small mt-1">
+                          <span>
+                            {m.created
+                              ? `${m.created.toISOString().slice(0, 10)} ${m.created
+                                  .toTimeString()
+                                  .slice(0, 5)}`
+                              : "-"}
+                          </span>
+                          <span
+                            className="fw-semibold"
+                            style={{ color: "#3341F3" }}
+                          >
+                            성남
+                          </span>
+                        </div>
                       </div>
-                      <div className="fw-bold text-end text-dark">{m.author}</div>
+
+                      {/* 프로필 사진 (오른쪽 끝, 제목+날짜 높이만큼) */}
+                      <div className="d-flex align-items-center ms-2">
+                        <Avatar
+                          src={m.authorProfileImage}
+                          size={56}
+                          className="border border-light shadow-sm"
+                        />
+                      </div>
                     </div>
+
                     <p className="mbp-excerpt pt-1">
                       {m.excerpt && m.excerpt.length > 0
                         ? m.excerpt

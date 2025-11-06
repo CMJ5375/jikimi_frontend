@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
 import "../../css/Support.css";
-import { Eye, Pencil, PinFill, Pin, Search, Megaphone, Paperclip } from "react-bootstrap-icons";
+import { Eye, Pencil, PinFill, Pin, Search, Megaphone, Paperclip, HandThumbsUp } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { listSupport, removeSupport, pinSupport, unpinSupport } from "../../api/supportApi";
+import { listSupport, removeSupport, pinSupport, unpinSupport, listPinnedSupport } from "../../api/supportApi";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
+import Avatar from "../board/Avatar";
 
 const CATEGORIES = [
   { name: "공지사항", path: "/notice" },
@@ -29,9 +30,9 @@ const mapCategoryToType = (cat) => {
 
 const ROTATE_MS = 3500;
 const banners = [
-  { kind: "notice", text: "지금 확인하세요! 새로운 공지사항이 등록되었습니다." },
-  { kind: "ad", text: "광고 예시: 지역 병원 홍보 배너", brand: "Jikimi" },
-  { kind: "notice", text: "사이트 점검 예정 안내 (11/10 02:00 ~ 04:00)" },
+  { kind: "notice", text: "새로운 자료가 등록되었습니다!" },
+  { kind: "ad", text: "광고 예시: 병원 및 제휴사 홍보 배너", brand: "Jikimi" },
+  { kind: "notice", text: "자료실 이용 안내 - 첨부파일 다운로드 가능" },
 ];
 
 const DataRoom = () => {
@@ -40,7 +41,7 @@ const DataRoom = () => {
   const user = loginState || {};
   const roles = user?.roleNames || user?.roles || [];
   const isAdmin = Array.isArray(roles) && roles.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
-
+  const [pinnedItems, setPinnedItems] = useState([]);
   const [active, setActive] = useState("자료실");
   const [q, setQ] = useState("");
   const [pageData, setPageData] = useState(null);;
@@ -58,6 +59,8 @@ const DataRoom = () => {
   const fetchList = async (page = 1) => {
     try {
       const t = mapCategoryToType(active);
+      const pinnedData = await listPinnedSupport({ type: t });
+      setPinnedItems(pinnedData || []);
       const data = await listSupport({
         type: t,
         page: page,
@@ -88,41 +91,43 @@ const DataRoom = () => {
       await removeSupport({
         type: "dataroom",
         id,
-        adminId: user.userId,
+        adminId: user.id,
         token: user.accessToken,
       });
-      fetchList((pageData?.number ?? 0) + 1);
+      alert("삭제되었습니다.");
+      fetchList(pageData?.number + 1 || 1);
     } catch (e) {
       console.error("삭제 실패:", e);
+      alert("삭제 실패");
     }
   };
 
   // 상단 고정/해제(관리자 전용)
-  const onTogglePin = async (id, pinned) => {
+  const onTogglePin = async (id, isPinnedCopy, originalId = null) => {
     if (!isAdmin) return;
     try {
-      if (pinned) {
+      if (isPinnedCopy && originalId !== null) {
         await unpinSupport({
           type: "dataroom",
           id,
-          adminId: user.userId,
+          adminId: user.id,
           token: user.accessToken,
         });
-      } else {
+      } else if (!isPinnedCopy && originalId === null) {
         await pinSupport({
           type: "dataroom",
           id,
-          adminId: user.userId,
+          adminId: user.id,
           token: user.accessToken,
         });
       }
-      fetchList((pageData?.current ?? 0) + 1);
+      fetchList(pageData?.number + 1 || 1);
     } catch (e) {
       console.error("상단 고정/해제 실패:", e);
     }
   };
 
-  // 날짜, 최신글
+  // 일반 목록 데이터 정제
   const items = useMemo(() => {
     if (!pageData?.content) return [];
     return pageData.content.map((m) => {
@@ -139,20 +144,36 @@ const DataRoom = () => {
         title: m.title ?? "",
         author: m.name || "관리자",
         view: m.viewCount ?? 0,
+        like: m.likeCount ?? 0,
         created,
-        fileName: m.fileName || "",
-        fileUrl: m.fileUrl || "",
-        pinned: !! m.pinned,
+        fileUrl: m.fileUrl ?? "",
+        fileName: m.fileName ?? "",
+        pinnedCopy: m.pinnedCopy ?? false,
+        originalId: m.originalId ?? null,
+        content: m.content ?? "",
         excerpt,
         isNew,
       };
     });
   }, [pageData]);
 
+  // N 표시 계산 추가
+  const pinnedItemsWithNew = pinnedItems.map((p) => ({
+    ...p,
+    isNew: p.createdAt
+      ? Date.now() - new Date(p.createdAt).getTime() <= 24 * 60 * 60 * 1000
+      : false,
+  }));
+
+  const handleTabClick = (t) => {
+    setActive(t.name);
+    navigate(t.path.toLowerCase());
+  };
+
   // 검색 필터 적용
   const filtered = useMemo(() => {
     const ql = q.toLowerCase();
-    return (items || []).filter((m) => (m.title || "").toLowerCase().includes(ql));
+    return items.filter((m) => (m.title || "").toLowerCase().includes(ql));
   }, [items, q]);
 
   return (
@@ -195,7 +216,6 @@ const DataRoom = () => {
 
       {/* ====== PC / 태블릿 ====== */}
       <div className="container py-4 d-none d-md-block">
-        {/* 타이틀 & 검색/작성 */}
         <div className="d-flex align-items-center justify-content-between mb-4 gap-3">
           <h4 className="fw-bold mb-0">자료실</h4>
           <div className="d-flex align-items-center gap-2 position-relative">
@@ -210,10 +230,7 @@ const DataRoom = () => {
               <button
                 type="submit"
                 className="btn position-absolute top-0 end-0 h-100 me-1 px-3"
-                style={{
-                  background: "transparent",
-                  border: "none",
-                }}
+                style={{ background: "transparent", border: "none" }}
               >
                 <Search />
               </button>
@@ -236,64 +253,72 @@ const DataRoom = () => {
             <button
               key={t.name}
               className={`mbp-tabbtn ${active === t.name ? "active" : ""}`}
-              onClick={() => {
-                setActive(t.name);
-                navigate(t.path);
-              }}
+              onClick={() => handleTabClick(t)}
             >
               {t.name}
             </button>
           ))}
         </div>
 
-        {/* 리스트 (PC) */}
-        <div className="list-group board-list">
-          {filtered.length > 0 ? (
-            filtered.map((m) => (
+        {/* PC 상단 고정 리스트 */}
+        {pinnedItemsWithNew.length > 0 && (
+          <div className="list-group board-list">
+            {pinnedItemsWithNew.slice(0, 5).map((p) => (
               <button
-                key={m.id}
+                key={`pin-${p.supportId}`}
                 type="button"
-                className="list-group-item list-group-item-action d-flex align-items-center justify-content-between"
-                onClick={() => navigate(`/dataroomdetail/${m.id}`)}
+                className="list-group-item list-group-item-action d-flex align-items-center justify-content-between board-item-hot"
+                onClick={() =>
+                  navigate(`/dataroomdetail/${p.originalId || p.supportId}`)
+                }
               >
                 <div className="d-flex align-items-center gap-3">
-                  <span>
-                    {isAdmin && (
-                      <Pin
-                        className={`${
-                          m.pinned ? "text-danger" : "text-muted"
-                        }`}
-                        role="button"
-                        title={m.pinned ? "상단 고정 해제" : "상단 고정"}
-                        onClick={(e) => { e.stopPropagation(); onTogglePin(m.id, m.pinned); }}
-                      />
-                    )}
-                  </span>
-                  <span
-                    className={`badge rounded-pill px-3 board-badge ${
-                      m.pinned ? "popular" : "normal"
-                    }`}
-                  >
-                    {m.pinned ? "상단공지" : "자료실"}
+                  {isAdmin && (
+                    <button
+                      className="pin-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTogglePin(p.supportId, true, p.originalId);
+                      }}
+                      title="상단 고정 해제"
+                    >
+                      <PinFill className="fs-5" />
+                    </button>
+                  )}
+                  <span className="badge rounded-pill px-3 board-badge popular">
+                    중요자료
                   </span>
                   <span className="board-title d-flex align-items-center">
-                    {m.title}
-                    {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
-                    {(m.fileName || m.fileUrl) && <Paperclip size={16} className="ms-2 text-secondary" />}
+                    {p.title}
+                    {p.fileUrl && (
+                      <Paperclip className="ms-2 text-secondary" size={18} title="첨부파일 있음" />
+                    )}
+                    {p.isNew && (
+                      <span
+                        className="ms-2 fw-bold"
+                        style={{ fontSize: "0.9rem", color: "#3341F3" }}
+                      >
+                        N
+                      </span>
+                    )}
                   </span>
                 </div>
-
                 <div className="text-secondary small d-flex justify-content-end align-items-center">
-                  <div className="d-flex align-items-center me-2" style={{ minWidth: "50px" }}>
-                    <Eye size={16} className="me-1" /> {m.view}
+                  <div
+                    className="d-flex align-items-center me-2"
+                    style={{ minWidth: "50px" }}
+                  >
+                    <Eye size={16} className="me-1" /> {p.viewCount}
                   </div>
-                  <div>{m.created ? m.created.toISOString().slice(0, 10) : "-"}</div>
+                  <div>
+                    {p.createdAt ? p.createdAt.slice(0, 10) : "-"}
+                  </div>
                   {isAdmin && (
                     <button
                       className="btn-ghost btn-ghost-danger ms-3"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDelete(m.id);
+                        onDelete(p.supportId);
                       }}
                     >
                       삭제
@@ -301,7 +326,99 @@ const DataRoom = () => {
                   )}
                 </div>
               </button>
-            ))
+            ))}
+          </div>
+        )}
+
+        {/* PC 일반 리스트 */}
+        <div className="list-group board-list">
+          {filtered.length > 0 ? (
+            filtered
+              .filter((p) => !p.originalId)
+              .map((p) => {
+                const hasPinnedCopy = pinnedItems.some(
+                  (c) => c.originalId === p.id
+                );
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="list-group-item list-group-item-action d-flex align-items-center justify-content-between"
+                    onClick={() => navigate(`/dataroomdetail/${p.id}`)}
+                  >
+                    <div className="d-flex align-items-center gap-3">
+                      {isAdmin &&
+                        (hasPinnedCopy ? (
+                          <button
+                            className="pin-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const copy = pinnedItems.find(
+                                (c) => c.originalId === p.id
+                              );
+                              if (copy) onTogglePin(copy.supportId, true, p.id);
+                            }}
+                            title="상단 고정 해제"
+                          >
+                            <PinFill className="fs-5" />
+                          </button>
+                        ) : (
+                          <button
+                            className="pin-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTogglePin(p.id, false, null);
+                            }}
+                            title="상단 고정"
+                          >
+                            <Pin className="fs-5" />
+                          </button>
+                        ))}
+                      <span className="badge rounded-pill px-3 board-badge normal">
+                        자료실
+                      </span>
+                      <span className="board-title d-flex align-items-center">
+                        {p.title}
+                        {p.fileUrl && (
+                          <Paperclip className="ms-2 text-secondary" size={18} title="첨부파일 있음" />
+                        )}
+                        {p.isNew && (
+                          <span
+                            className="ms-2 fw-bold"
+                            style={{ fontSize: "0.9rem", color: "#3341F3" }}
+                          >
+                            N
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="text-secondary small d-flex justify-content-end align-items-center">
+                      <div
+                        className="d-flex align-items-center me-2"
+                        style={{ minWidth: "50px" }}
+                      >
+                        <Eye size={16} className="me-1" /> {p.view}
+                      </div>
+                      <div>
+                        {p.created
+                          ? p.created.toISOString().slice(0, 10)
+                          : "-"}
+                      </div>
+                      {isAdmin && (
+                        <button
+                          className="btn-ghost btn-ghost-danger ms-3"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(p.id);
+                          }}
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                  </button>
+                );
+              })
           ) : (
             <div className="text-center text-secondary py-5">
               등록된 자료가 없습니다.
@@ -401,87 +518,261 @@ const DataRoom = () => {
             ))}
           </div>
 
-          {/* 카드 리스트 (모바일) */}
-          {filtered.length > 0 ? (
-            filtered.map((p) => (
-              <article
-                className="mbp-card"
-                key={p.id}
-                onClick={() =>
-                  navigate(`/dataroomdetail/${p.id}`)
-                }
-                role="button"
-              >
-                <div className="d-flex justify-content-between align-items-start">
-                  <div className="d-flex align-items-center gap-2">
-                    <Pin
-                      className={`fs-5 ${p.pinned ? "text-danger" : "text-muted"}`}
-                    />
-                    <span className={`mbp-badge ${p.pinned ? "popular" : ""}`}>
-                      {p.pinned ? "상단공지" : "자료실"}
-                    </span>
-                  </div>
-                </div>
-
-                <h6 className="mbp-title-line mt-4">
-                  {p.title}
-                  {p.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
-                  {(p.fileName || p.fileUrl) && (
-                    <Paperclip size={16} className="ms-2 text-secondary" />
-                  )}
-                </h6>
-
-                <div className="d-flex justify-content-between text-secondary small">
-                  <div className="mbp-meta">
-                    {p.created
-                      ? `${p.created.toISOString().slice(0, 10)} ${p.created
-                          .toTimeString()
-                          .slice(0, 5)}`
-                      : "-"}
-                  </div>
-                  <div className="fw-bold text-end text-dark">{p.author}</div>
-                </div>
-                <p className="mbp-excerpt pt-1">{p.excerpt}</p>
-
-                <div className="mbp-divider"></div>
-
-                <div className="d-flex justify-content-between align-items-center text-secondary">
-                  <span className="d-flex align-items-center ms-1">
-                    <Eye size={16} className="me-1" />
-                    {p.view}
-                  </span>
-                  {isAdmin && (
-                    <div className="d-flex justify-content-end me-1">
+          {/* 모바일 상단고정 카드 */}
+          {pinnedItemsWithNew.length > 0 && (
+            <div>
+              {pinnedItemsWithNew.slice(0, 5).map((m) => (
+                <article
+                  className="mbp-card"
+                  key={`pin-${m.supportId}`}
+                  onClick={() =>
+                    navigate(`/dataroomdetail/${m.originalId || m.supportId}`)
+                  }
+                  role="button"
+                >
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div className="d-flex align-items-center gap-2">
+                      {isAdmin && (
+                        <button
+                          className="pin-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTogglePin(m.supportId, true, m.originalId);
+                          }}
+                          title="상단 고정 해제"
+                        >
+                          <PinFill className="fs-4" />
+                        </button>
+                      )}
+                      <span className="mbp-badge popular">중요자료</span>
+                    </div>
+                    {isAdmin && (
                       <button
                         className="btn-ghost btn-ghost-danger"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onDelete(p.id);
+                          onDelete(m.supportId);
                         }}
                       >
                         삭제
                       </button>
+                    )}
+                  </div>
+
+                  <div className="d-flex justify-content-between align-items-stretch mt-2">
+                    <div className="flex-grow-1">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <h6 className="mbp-title-line fw-semibold text-truncate mb-1">
+                          {m.title}
+                          {m.fileUrl && (
+                            <Paperclip className="ms-2 text-secondary" size={18} title="첨부파일 있음" />
+                          )}
+                          {m.isNew && (
+                            <span
+                              className="ms-2 fw-bold"
+                              style={{ fontSize: "1rem", color: "#3341F3" }}
+                            >
+                              N
+                            </span>
+                          )}
+                        </h6>
+                        <span className="fw-semibold text-dark small">
+                          {m.author || "관리자"}
+                        </span>
+                      </div>
+                      <div className="d-flex justify-content-between text-secondary small mt-1">
+                        <span>
+                          {m.createdAt
+                            ? `${new Date(m.createdAt)
+                                .toISOString()
+                                .slice(0, 10)} ${new Date(m.createdAt)
+                                .toTimeString()
+                                .slice(0, 5)}`
+                            : "-"}
+                        </span>
+                        <span
+                          className="fw-semibold"
+                          style={{ color: "#3341F3" }}
+                        >
+                          성남
+                        </span>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </article>
-            ))
+                    <div className="d-flex align-items-center ms-2">
+                      <Avatar
+                        src={m.authorProfileImage}
+                        size={56}
+                        className="border border-light shadow-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <p className="mbp-excerpt pt-1">
+                    {m.content && m.content.length > 0
+                      ? m.content.slice(0, 70) +
+                        (m.content.length > 70 ? "..." : "")
+                      : "내용이 없습니다."}
+                  </p>
+                  <div className="mbp-divider"></div>
+                  <div className="d-flex justify-content-end align-items-center text-secondary me-1">
+                    <span className="d-flex align-items-center me-3">
+                      <Eye size={16} className="me-1" />
+                      {m.viewCount ?? 0}
+                    </span>
+                    <span className="d-flex align-items-center me-1">
+                      <HandThumbsUp size={16} className="me-1" />
+                      {m.likeCount ?? 0}
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+
+          {/* 모바일 일반 리스트 */}
+          {filtered.filter((m) => !m.pinnedCopy).length > 0 ? (
+            filtered
+              .filter((m) => !m.pinnedCopy)
+              .map((m) => {
+                const hasPinnedCopy = pinnedItems.some(
+                  (c) => c.originalId === m.id
+                );
+                return (
+                  <article
+                    className="mbp-card"
+                    key={m.id}
+                    onClick={() => navigate(`/dataroomdetail/${m.id}`)}
+                    role="button"
+                  >
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div className="d-flex align-items-center gap-2">
+                        {isAdmin &&
+                          (hasPinnedCopy ? (
+                            <button
+                              className="pin-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const copy = pinnedItems.find(
+                                  (c) => c.originalId === m.id
+                                );
+                                if (copy)
+                                  onTogglePin(copy.supportId, true, m.id);
+                              }}
+                              title="상단 고정 해제"
+                            >
+                              <PinFill className="fs-4" />
+                            </button>
+                          ) : (
+                            <button
+                              className="pin-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onTogglePin(m.id, false, null);
+                              }}
+                              title="상단 고정"
+                            >
+                              <Pin className="fs-4" />
+                            </button>
+                          ))}
+                        <span className="mbp-badge">자료실</span>
+                      </div>
+                      {isAdmin && (
+                        <button
+                          className="btn-ghost btn-ghost-danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(m.id);
+                          }}
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="d-flex justify-content-between align-items-stretch mt-2">
+                      <div className="flex-grow-1">
+                        <div className="d-flex justify-content-between align-items-center">
+                          <h6 className="mbp-title-line fw-semibold text-truncate mb-1">
+                            {m.title}
+                            {m.fileUrl && (
+                              <Paperclip className="ms-2 text-secondary" size={18} title="첨부파일 있음" />
+                            )}
+                            {m.isNew && (
+                              <span
+                                className="ms-2 fw-bold"
+                                style={{ fontSize: "1rem", color: "#3341F3" }}
+                              >
+                                N
+                              </span>
+                            )}
+                          </h6>
+                          <span className="fw-semibold text-dark small">
+                            {m.author}
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between text-secondary small mt-1">
+                          <span>
+                            {m.created
+                              ? `${m.created.toISOString().slice(0, 10)} ${m.created
+                                  .toTimeString()
+                                  .slice(0, 5)}`
+                              : "-"}
+                          </span>
+                          <span
+                            className="fw-semibold"
+                            style={{ color: "#3341F3" }}
+                          >
+                            성남
+                          </span>
+                        </div>
+                      </div>
+                      <div className="d-flex align-items-center ms-2">
+                        <Avatar
+                          src={m.authorProfileImage}
+                          size={56}
+                          className="border border-light shadow-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <p className="mbp-excerpt pt-1">
+                      {m.excerpt && m.excerpt.length > 0
+                        ? m.excerpt
+                        : "내용이 없습니다."}
+                    </p>
+                    <div className="mbp-divider"></div>
+                    <div className="d-flex justify-content-end align-items-center text-secondary me-1">
+                      <span className="d-flex align-items-center me-3">
+                        <Eye size={16} className="me-1" />
+                        {m.view}
+                      </span>
+                      <span className="d-flex align-items-center me-1">
+                        <HandThumbsUp size={16} className="me-1" />
+                        {m.like}
+                      </span>
+                    </div>
+                  </article>
+                );
+              })
           ) : (
             <div className="text-center text-secondary py-5">
               등록된 자료가 없습니다.
             </div>
           )}
 
-          {/* 모바일 페이지네이션 */}
+          {/* 페이지네이션 */}
           {pageData && (
-          <PageComponent
-            pageData={{
-              current: pageData.number + 1,
-              pageNumList: Array.from({ length: pageData.totalPages }, (_, i) => i + 1),
-            }}
-            onPageChange={(p) => fetchList(p + 1)}
-          />
-        )}
+            <PageComponent
+              pageData={{
+                current: pageData.number + 1,
+                pageNumList: Array.from(
+                  { length: pageData.totalPages },
+                  (_, i) => i + 1
+                ),
+              }}
+              onPageChange={(p) => fetchList(p + 1)}
+            />
+          )}
         </div>
       </div>
     </div>
