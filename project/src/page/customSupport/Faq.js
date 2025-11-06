@@ -66,7 +66,7 @@ const Faq = () => {
       const t = mapCategoryToType(active);
       const data = await listSupport({
         type: t,
-        page: page - 1,
+        page: page,
         size: 10,
         q,
       });

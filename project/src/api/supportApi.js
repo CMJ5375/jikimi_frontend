@@ -87,6 +87,12 @@ export async function unpinSupport({ type, id, adminId, token }) {
   });
 }
 
+// 상단 고정 리스트
+export const listPinnedSupport = async ({ type }) => {
+  const res = await publicAxios.get(`/project/support/${type}/pinned`);
+  return res.data;
+};
+
 // 좋아요 토글
 export async function toggleSupportLike({ type, id, userId, token }) {
   const t = normType(type);

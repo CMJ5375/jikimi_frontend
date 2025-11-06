@@ -4,7 +4,7 @@ import "../../css/Noticeboard.css";
 import "../../css/Support.css";
 import { Eye, Pencil, PinFill, Pin, Search, Megaphone } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { listSupport, removeSupport, pinSupport, unpinSupport } from "../../api/supportApi";
+import { listSupport, removeSupport, pinSupport, unpinSupport, listPinnedSupport } from "../../api/supportApi";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
 
@@ -40,7 +40,7 @@ const Notice = () => {
   const user = loginState || {};
   const roles = user?.roleNames || user?.roles || [];
   const isAdmin = Array.isArray(roles) && roles.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
-
+  const [pinnedItems, setPinnedItems] = useState([]);
   const [active, setActive] = useState("공지사항");
   const [q, setQ] = useState("");
   const [pageData, setPageData] = useState(null);
@@ -55,20 +55,22 @@ const Notice = () => {
   }, []);
 
   // 목록 조회
-  const fetchList = async (page = 1) => {
-    try {
-      const t = mapCategoryToType(active);
-      const data = await listSupport({
-        type: t,
-        page: page - 1,
-        size: 10,
-        q,
-      });
-      setPageData(data);
-    } catch (e) {
-      console.error("공지사항 목록 조회 실패:", e);
-    }
-  };
+ const fetchList = async (page = 1) => {
+  try {
+    const t = mapCategoryToType(active);
+    const pinnedData = await listPinnedSupport({ type: t });
+    setPinnedItems(pinnedData || []);
+    const data = await listSupport({
+      type: t,
+      page: page,
+      size: 10,
+      q,
+    });
+    setPageData(data);
+  } catch (e) {
+    console.error("공지사항 목록 조회 실패:", e);
+  }
+};
 
   useEffect(() => {
     fetchList(1);
@@ -100,17 +102,18 @@ const Notice = () => {
   };
 
   // 상단 핀 토글(관리자 전용)
-  const onTogglePin = async (id, isPinnedCopy) => {
+  const onTogglePin = async (id, isPinnedCopy, originalId = null) => {
     if (!isAdmin) return;
     try {
-      if (isPinnedCopy) {
+      // 복제본은 해제, 원본은 복제 생성
+      if (isPinnedCopy && originalId !== null) {
         await unpinSupport({
           type: "notice",
           id,
           adminId: user.id,
           token: user.accessToken,
         });
-      } else {
+      } else if (!isPinnedCopy && originalId === null) {
         await pinSupport({
           type: "notice",
           id,
@@ -124,7 +127,7 @@ const Notice = () => {
     }
   };
 
-  // 날짜, 최신글
+  // 날짜 및 최신글 여부
   const items = useMemo(() => {
     if (!pageData?.content) return [];
     return pageData.content.map((m) => {
@@ -246,133 +249,120 @@ const Notice = () => {
         </div>
 
         {/* PC 상단 고정 리스트 */}
-        {filtered.filter((m) => m.pinnedCopy && m.originalId !== null).length >
-          0 && (
+        {pinnedItems.length > 0 && (
           <div className="list-group board-list">
-            {filtered
-              .filter((m) => m.pinnedCopy && m.originalId !== null)
-              .slice(0, 5)
-              .map((m) => (
-                <button
-                  key={`pin-${m.id}`}
-                  type="button"
-                  className="list-group-item list-group-item-action d-flex align-items-center justify-content-between board-item-hot"
-                  onClick={() =>
-                    navigate(`/noticedetail/${m.originalId || m.id}`)
-                  }
-                >
-                  <div className="d-flex align-items-center gap-3">
-                    {isAdmin && (
-                      <PinFill
-                        className="text-primary pin-hover"
-                        title="상단 고정 해제"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTogglePin(m.id, true);
-                        }}
-                      />
-                    )}
-                    <span className="badge rounded-pill px-3 board-badge popular">
-                      공지사항
-                    </span>
-                    <span className="board-title d-flex align-items-center">
-                      {m.title}
-                      {m.isNew && (
-                        <span className="ms-2 text-primary fw-bold">N</span>
-                      )}
-                    </span>
+            {pinnedItems.slice(0, 5).map((p) => (
+              <button
+                key={`pin-${p.supportId}`}
+                type="button"
+                className="list-group-item list-group-item-action d-flex align-items-center justify-content-between board-item-hot"
+                onClick={() => navigate(`/noticedetail/${p.originalId || p.supportId}`)}
+              >
+                <div className="d-flex align-items-center gap-3">
+                  {isAdmin && (
+                    <PinFill
+                      className="text-primary pin-hover"
+                      title="상단 고정 해제"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTogglePin(p.supportId, true, p.originalId);
+                      }}
+                    />
+                  )}
+                  <span className="badge rounded-pill px-3 board-badge popular">공지사항</span>
+                  <span className="board-title d-flex align-items-center">
+                    {p.title}
+                    {p.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                  </span>
+                </div>
+                <div className="text-secondary small d-flex justify-content-end align-items-center">
+                  <div className="d-flex align-items-center me-2" style={{ minWidth: "50px" }}>
+                    <Eye size={16} className="me-1" /> {p.viewCount}
                   </div>
-                  <div className="text-secondary small d-flex justify-content-end align-items-center">
-                    <div
-                      className="d-flex align-items-center me-2"
-                      style={{ minWidth: "50px" }}
+                  <div>{p.createdAt ? p.createdAt.slice(0, 10) : "-"}</div>
+                  {isAdmin && (
+                    <button
+                      className="btn-ghost btn-ghost-danger ms-3"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(p.supportId);
+                      }}
                     >
-                      <Eye size={16} className="me-1" /> {m.view}
-                    </div>
-                    <div>{m.created ? m.created.toISOString().slice(0, 10) : "-"}</div>
-                    {isAdmin && (
-                      <button
-                        className="btn-ghost btn-ghost-danger ms-3"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(m.id);
-                        }}
-                      >
-                        삭제
-                      </button>
-                    )}
-                  </div>
-                </button>
-              ))}
+                      삭제
+                    </button>
+                  )}
+                </div>
+              </button>
+            ))}
           </div>
         )}
 
         {/* PC 리스트 */}
         <div className="list-group board-list">
-          {filtered.filter((m) => !m.originalId).length > 0 ? (
+          {filtered.length > 0 ? (
             filtered
-              .filter((m) => !m.originalId)
-              .map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  className="list-group-item list-group-item-action d-flex align-items-center justify-content-between"
-                  onClick={() => navigate(`/noticedetail/${m.id}`)}
-                >
-                  <div className="d-flex align-items-center gap-3">
-                    {isAdmin &&
-                      (m.pinnedCopy ? (
-                        <PinFill
-                          className="text-primary pin-hover"
-                          title="상단 고정 해제"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onTogglePin(m.id, true);
-                          }}
-                        />
-                      ) : (
-                        <Pin
-                          className="text-muted pin-hover"
-                          title="상단 고정"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onTogglePin(m.id, false);
-                          }}
-                        />
-                      ))}
-                    <span className="badge rounded-pill px-3 board-badge normal">
-                      공지사항
-                    </span>
-                    <span className="board-title d-flex align-items-center">
-                      {m.title}
-                      {m.isNew && (
-                        <span className="ms-2 text-primary fw-bold">N</span>
-                      )}
-                    </span>
-                  </div>
-
-                  <div className="text-secondary small d-flex justify-content-end align-items-center">
-                    <div
-                      className="d-flex align-items-center me-2"
-                      style={{ minWidth: "50px" }}
-                    >
-                      <Eye size={16} className="me-1" /> {m.view}
+              .filter((p) => !p.originalId)
+              .map((p) => {
+                const hasPinnedCopy = pinnedItems.some((c) => c.originalId === p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="list-group-item list-group-item-action d-flex align-items-center justify-content-between"
+                    onClick={() => navigate(`/noticedetail/${p.id}`)}
+                  >
+                    <div className="d-flex align-items-center gap-3">
+                      {isAdmin &&
+                        (hasPinnedCopy ? (
+                          <PinFill
+                            className="text-primary pin-hover"
+                            title="상단 고정 해제"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const copy = pinnedItems.find(
+                                (c) => c.originalId === p.id
+                              );
+                              if (copy) onTogglePin(copy.supportId, true, p.id);
+                            }}
+                          />
+                        ) : (
+                          <Pin
+                            className="text-muted pin-hover"
+                            title="상단 고정"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTogglePin(p.id, false, null);
+                            }}
+                          />
+                        ))}
+                      <span className="badge rounded-pill px-3 board-badge normal">
+                        공지사항
+                      </span>
+                      <span className="board-title d-flex align-items-center">
+                        {p.title}
+                        {p.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                      </span>
                     </div>
-                    <div>{m.created ? m.created.toISOString().slice(0, 10) : "-"}</div>
-                    {isAdmin && (
-                      <button
-                        className="btn-ghost btn-ghost-danger ms-3"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(m.id);
-                        }}
-                      >
-                        삭제
-                      </button>
-                    )}
-                  </div>
-                </button>
-              ))
+                    <div className="text-secondary small d-flex justify-content-end align-items-center">
+                      <div className="d-flex align-items-center me-2" style={{ minWidth: "50px" }}>
+                        <Eye size={16} className="me-1" /> {p.view}
+                      </div>
+                      <div>{p.created ? p.created.toISOString().slice(0, 10) : "-"}</div>
+                      {isAdmin && (
+                        <button
+                          className="btn-ghost btn-ghost-danger ms-3"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(p.id);
+                          }}
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                  </button>
+                );
+              })
           ) : (
             <div className="text-center text-secondary py-5">
               등록된 공지사항이 없습니다.
@@ -385,10 +375,7 @@ const Notice = () => {
           <PageComponent
             pageData={{
               current: pageData.number + 1,
-              pageNumList: Array.from(
-                { length: pageData.totalPages },
-                (_, i) => i + 1
-              ),
+              pageNumList: Array.from({ length: pageData.totalPages }, (_, i) => i + 1),
             }}
             onPageChange={(p) => fetchList(p + 1)}
           />
@@ -476,70 +463,13 @@ const Notice = () => {
           </div>
 
           {/* 모바일 상단 고정 카드 */}
-          {filtered.filter((p) => p.pinnedCopy && p.originalId !== null).length > 0 && (
+          {pinnedItems.length > 0 && (
             <div className="mb-4">
-              {filtered
-                .filter((p) => p.pinnedCopy && p.originalId !== null)
-                .slice(0, 5)
-                .map((p) => (
-                  <article
-                    className="mbp-card pinned-card"
-                    key={`pin-${p.id}`}
-                    onClick={() => navigate(`/noticedetail/${p.originalId || p.id}`)}
-                    role="button"
-                  >
-                    <div className="d-flex justify-content-between align-items-start">
-                      <div className="d-flex align-items-center gap-2">
-                        <PinFill className="text-primary fs-5" />
-                        <span className="mbp-badge popular">상단공지</span>
-                      </div>
-                    </div>
-
-                    <h6 className="mbp-title-line mt-4">
-                      {p.title}
-                      {p.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
-                    </h6>
-                    <div className="d-flex justify-content-between text-secondary small">
-                      <div className="mbp-meta">
-                        {p.created ? `${p.created.toISOString().slice(0, 10)}` : "-"}
-                      </div>
-                      <div className="fw-bold text-dark">{p.author}</div>
-                    </div>
-                    <p className="mbp-excerpt pt-1">{p.excerpt}</p>
-                    <div className="mbp-divider"></div>
-                    <div className="d-flex justify-content-between align-items-center text-secondary">
-                      <span className="d-flex align-items-center ms-1">
-                        <Eye size={16} className="me-1" />
-                        {p.view}
-                      </span>
-                      {isAdmin && (
-                        <div className="d-flex justify-content-end me-1">
-                          <button
-                            className="btn-ghost btn-ghost-danger"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDelete(p.id);
-                            }}
-                          >
-                            삭제
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                ))}
-            </div>
-          )}
-
-          {/* 모바일 카드 리스트 */}
-          {filtered.filter((m) => !m.pinnedCopy).length > 0 ? (
-            filtered
-              .filter((m) => !m.pinnedCopy)
-              .map((p) => (
+              {pinnedItems.slice(0, 5).map((m) => (
                 <article
-                  className="mbp-card"
-                  key={p.id}
-                  onClick={() => navigate(`/noticedetail/${p.id}`)}
+                  className="mbp-card pinned-card"
+                  key={`pin-${m.supportId}`}
+                  onClick={() => navigate(`/noticedetail/${m.originalId || m.supportId}`)}
                   role="button"
                 >
                   <div className="d-flex justify-content-between align-items-start">
@@ -549,39 +479,40 @@ const Notice = () => {
                           className="btn btn-light rounded-circle p-1 pin-btn"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onTogglePin(p.id, false);
+                            onTogglePin(m.supportId, true, m.originalId);
                           }}
-                          title="상단 고정"
+                          title="상단 고정 해제"
                         >
-                          <Pin className="text-muted fs-4" />
+                          <PinFill className="text-primary fs-4" />
                         </button>
                       ) : (
-                        <Pin className="text-muted fs-4" />
+                        <PinFill className="text-primary fs-5" />
                       )}
-                      <span className="mbp-badge">공지사항</span>
+                      <span className="mbp-badge popular">상단공지</span>
                     </div>
                   </div>
 
                   <h6 className="mbp-title-line mt-4">
-                    {p.title}
-                    {p.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                    {m.title}
+                    {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
                   </h6>
                   <div className="d-flex justify-content-between text-secondary small">
                     <div className="mbp-meta">
-                      {p.created
-                        ? `${p.created.toISOString().slice(0, 10)} ${p.created
-                            .toTimeString()
-                            .slice(0, 5)}`
+                      {m.createdAt
+                        ? `${new Date(m.createdAt).toISOString().slice(0, 10)}`
                         : "-"}
                     </div>
-                    <div className="fw-bold text-end text-dark">{p.author}</div>
+                    <div className="fw-bold text-dark">{m.author || "관리자"}</div>
                   </div>
-                  <p className="mbp-excerpt pt-1">{p.excerpt}</p>
+                  <p className="mbp-excerpt pt-1">
+                    {m.excerpt && m.excerpt.length > 0
+                      ? m.excerpt
+                      : "내용이 없습니다."}
+                  </p>
                   <div className="mbp-divider"></div>
                   <div className="d-flex justify-content-between align-items-center text-secondary">
                     <span className="d-flex align-items-center ms-1">
-                      <Eye size={16} className="me-1" />
-                      {p.view}
+                      <Eye size={16} className="me-1" /> {m.viewCount ?? 0}
                     </span>
                     {isAdmin && (
                       <div className="d-flex justify-content-end me-1">
@@ -589,7 +520,7 @@ const Notice = () => {
                           className="btn-ghost btn-ghost-danger"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDelete(p.id);
+                            onDelete(m.supportId);
                           }}
                         >
                           삭제
@@ -598,7 +529,105 @@ const Notice = () => {
                     )}
                   </div>
                 </article>
-              ))
+              ))}
+            </div>
+          )}
+
+          {/* 모바일 카드 리스트 */}
+          {filtered.filter((m) => !m.pinnedCopy).length > 0 ? (
+            filtered
+              .filter((m) => !m.pinnedCopy)
+              .map((m) => {
+                const hasPinnedCopy = pinnedItems.some((c) => c.originalId === m.id);
+                return (
+                  <article
+                    className="mbp-card"
+                    key={m.id}
+                    onClick={() => navigate(`/noticedetail/${m.id}`)}
+                    role="button"
+                  >
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div className="d-flex align-items-center gap-2">
+                        {isAdmin ? (
+                          hasPinnedCopy ? (
+                            // 이미 복제글 있을 때 핀 누르면 상단 복제글 삭제
+                            <button
+                              className="btn btn-light rounded-circle p-1 pin-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const copy = pinnedItems.find(
+                                  (c) => c.originalId === m.id
+                                );
+                                if (copy)
+                                  onTogglePin(copy.supportId, true, m.id);
+                              }}
+                              title="상단 고정 해제"
+                            >
+                              <PinFill className="text-primary fs-4" />
+                            </button>
+                          ) : (
+                            // 복제글 없을 때 핀 누르면 복제글 생성
+                            <button
+                              className="btn btn-light rounded-circle p-1 pin-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onTogglePin(m.id, false, null);
+                              }}
+                              title="상단 고정"
+                            >
+                              <Pin className="text-muted fs-4" />
+                            </button>
+                          )
+                        ) : (
+                          <Pin className="text-muted fs-4" />
+                        )}
+                        <span className="mbp-badge">공지사항</span>
+                      </div>
+                    </div>
+
+                    <h6 className="mbp-title-line mt-4">
+                      {m.title}
+                      {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                    </h6>
+                    <div className="d-flex justify-content-between text-secondary small">
+                      <div className="mbp-meta">
+                        {m.created
+                          ? `${m.created.toISOString().slice(0, 10)} ${m.created
+                              .toTimeString()
+                              .slice(0, 5)}`
+                          : "-"}
+                      </div>
+                      <div className="fw-bold text-end text-dark">
+                        {m.author || "관리자"}
+                      </div>
+                    </div>
+                    <p className="mbp-excerpt pt-1">
+                      {m.excerpt && m.excerpt.length > 0
+                        ? m.excerpt
+                        : "내용이 없습니다."}
+                    </p>
+                    <div className="mbp-divider"></div>
+                    <div className="d-flex justify-content-between align-items-center text-secondary">
+                      <span className="d-flex align-items-center ms-1">
+                        <Eye size={16} className="me-1" /> {m.view}
+                      </span>
+                      {isAdmin && (
+                        <div className="d-flex justify-content-end me-1">
+                          <button
+                            className="btn-ghost btn-ghost-danger"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(m.id);
+                            }}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                );
+              })
           ) : (
             <div className="text-center text-secondary py-5">
               등록된 공지사항이 없습니다.
@@ -607,18 +636,13 @@ const Notice = () => {
 
           {/* 모바일 페이지네이션 */}
           {pageData && (
-            <div className="px-3 py-3">
-              <PageComponent
-                pageData={{
-                  current: pageData.number + 1,
-                  pageNumList: Array.from(
-                    { length: pageData.totalPages },
-                    (_, i) => i + 1
-                  ),
-                }}
-                onPageChange={(p) => fetchList(p + 1)}
-              />
-            </div>
+            <PageComponent
+              pageData={{
+                current: pageData.number + 1,
+                pageNumList: Array.from({ length: pageData.totalPages }, (_, i) => i + 1),
+              }}
+              onPageChange={(p) => fetchList(p + 1)}
+            />
           )}
         </div>
       </div>
