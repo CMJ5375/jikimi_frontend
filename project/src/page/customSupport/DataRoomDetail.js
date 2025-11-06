@@ -29,6 +29,25 @@ const DataRoomDetail = () => {
     fileUrl: "",
   });
 
+  //첨부파일 다운로드 3000번으로 열리는거 문제
+  const apiBase = process.env.REACT_APP_API_BASE_URL || "http://localhost:8080";
+
+  const resolvedUrl = useMemo(() => {
+    // 1순위: fileName이 있으면 fileName으로 안전하게 만들기(권장)
+    if (post.fileName) {
+      return `${apiBase}/uploads/support/${encodeURIComponent(post.fileName)}`;
+    }
+    // 2순위: fileUrl이 저장돼 있으면 그것도 보정
+    if (post.fileUrl) {
+      // 절대 URL이면 그대로, 상대면 apiBase 붙이고 마지막 파일명만 인코딩
+      if (post.fileUrl.startsWith("http")) return post.fileUrl;
+      const segs = post.fileUrl.split("/");
+      const last = segs.pop() || "";
+      return `${apiBase}${segs.join("/")}/${encodeURIComponent(last)}`;
+    }
+    return null;
+  }, [post.fileName, post.fileUrl, apiBase]);
+
   const [liked, setLiked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
@@ -246,7 +265,7 @@ const DataRoomDetail = () => {
       <hr />
 
       {/* 첨부파일 */}
-      {post.fileName && (
+      {(post.fileName || post.fileUrl) && (
         <div className="text-end position-relative mb-3">
           <div
             className="d-inline-flex align-items-center gap-1 text-muted small popup-trigger"
@@ -264,21 +283,26 @@ const DataRoomDetail = () => {
                 className="d-flex justify-content-between align-items-center"
                 style={{ minWidth: "220px" }}
               >
-                <span
-                  className="text-truncate small fw-semibold text-dark"
+                <a
+                  href={resolvedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-truncate small fw-semibold text-dark text-decoration-none"
                   style={{ maxWidth: "140px" }}
                   title={post.fileName}
+                  download // ← 저장 대화상자 띄우고 싶으면 추가
                 >
-                  {post.fileName}
-                </span>
+                  {post.fileName || "첨부파일"}
+                </a>
 
                 <span className="text-muted mx-2">|</span>
 
                 <button
                   className="btn btn-link btn-sm p-0 text-decoration-none text-secondary"
                   onClick={() => {
-                    const downloadUrl = `http://localhost:8080/files/${id}/${post.fileName}`;
-                    window.open(downloadUrl, "_blank");
+                    const apiBase = process.env.REACT_APP_API_BASE_URL || "";
+                    const downloadUrl = `${apiBase}/project/support/${id}/download`;
+                    window.location.href = downloadUrl; // 브라우저가 바로 다운로드 처리
                   }}
                 >
                   내PC 저장

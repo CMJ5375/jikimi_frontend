@@ -88,10 +88,10 @@ const DataRoom = () => {
       await removeSupport({
         type: "dataroom",
         id,
-        adminId: user.id,
+        adminId: user.userId,
         token: user.accessToken,
       });
-      fetchList(pageData?.number + 1 || 1);
+      fetchList((pageData?.number ?? 0) + 1);
     } catch (e) {
       console.error("삭제 실패:", e);
     }
@@ -105,18 +105,18 @@ const DataRoom = () => {
         await unpinSupport({
           type: "dataroom",
           id,
-          adminId: user.id,
+          adminId: user.userId,
           token: user.accessToken,
         });
       } else {
         await pinSupport({
           type: "dataroom",
           id,
-          adminId: user.id,
+          adminId: user.userId,
           token: user.accessToken,
         });
       }
-      fetchList(pageData?.current + 1 || 1);
+      fetchList((pageData?.current ?? 0) + 1);
     } catch (e) {
       console.error("상단 고정/해제 실패:", e);
     }
@@ -141,6 +141,8 @@ const DataRoom = () => {
         view: m.viewCount ?? 0,
         created,
         fileName: m.fileName || "",
+        fileUrl: m.fileUrl || "",
+        pinned: !! m.pinned,
         excerpt,
         isNew,
       };
@@ -263,10 +265,7 @@ const DataRoom = () => {
                         }`}
                         role="button"
                         title={m.pinned ? "상단 고정 해제" : "상단 고정"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTogglePin(m.supportId, m.pinned);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); onTogglePin(m.id, m.pinned); }}
                       />
                     )}
                   </span>
@@ -280,9 +279,7 @@ const DataRoom = () => {
                   <span className="board-title d-flex align-items-center">
                     {m.title}
                     {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
-                    {m?.fileUrl && (
-                      <Paperclip size={16} className="ms-2 text-secondary" />
-                    )}
+                    {(m.fileName || m.fileUrl) && <Paperclip size={16} className="ms-2 text-secondary" />}
                   </span>
                 </div>
 
@@ -429,7 +426,7 @@ const DataRoom = () => {
                 <h6 className="mbp-title-line mt-4">
                   {p.title}
                   {p.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
-                  {p?.fileUrl && (
+                  {(p.fileName || p.fileUrl) && (
                     <Paperclip size={16} className="ms-2 text-secondary" />
                   )}
                 </h6>

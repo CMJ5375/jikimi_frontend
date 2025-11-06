@@ -37,77 +37,82 @@ const SupportCreate = ({ onClose }) => {
   };
 
   // 등록 처리
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!title.trim() || !content.trim()) {
-      alert("제목과 내용을 입력해주세요.");
-      return;
-    }
+  if (!title.trim() || !content.trim()) {
+    alert("제목과 내용을 입력해주세요.");
+    return;
+  }
 
-    const raw = getCookie("member");
-    if (!raw) {
-      alert("로그인 후 이용해주세요.");
-      return;
-    }
+  const raw = getCookie("member");
+  if (!raw) {
+    alert("로그인 후 이용해주세요.");
+    return;
+  }
 
-    let parsed;
-    try {
-      parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-    } catch {
-      alert("로그인 정보가 손상되었습니다. 다시 로그인해주세요.");
-      return;
-    }
+  let parsed;
+  try {
+    parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch {
+    alert("로그인 정보가 손상되었습니다. 다시 로그인해주세요.");
+    return;
+  }
 
-    const token = parsed?.accessToken;
-    if (!token) {
-      alert("로그인 정보가 올바르지 않습니다.");
-      return;
-    }
+  const token = parsed?.accessToken;
+  if (!token) {
+    alert("로그인 정보가 올바르지 않습니다.");
+    return;
+  }
 
-    // accessToken decode 후 adminId 정확히 추출
-    const claims = decodeToken(token);
-    const adminId =
-      claims?.id ||
-      claims?.userId ||
-      claims?.memberId ||
-      parsed?.id ||
-      parsed?.userId ||
-      0;
+  const claims = decodeToken(token);
+  const adminId =
+    claims?.id ||
+    claims?.userId ||
+    claims?.memberId ||
+    parsed?.id ||
+    parsed?.userId ||
+    0;
 
-    const username = claims?.username || parsed?.username || "unknown";
+  if (!adminId || adminId <= 0) {
+    alert("관리자 정보가 올바르지 않습니다.");
+    return;
+  }
 
-    if (!adminId || adminId <= 0) {
-      alert("관리자 정보가 올바르지 않습니다.");
-      return;
-    }
+  // FormData 전송 (Content-Type 수동 지정 금지)
+  const fd = new FormData();
+  fd.append("adminId", String(adminId));
+  fd.append("title", title);
+  fd.append("content", content);
+  if (boardCategory === "dataroom" && files[0]) {
+    fd.append("file", files[0]); // 단일 파일만 전송 (백엔드가 단일 file 받음)
+  }
 
-    // 백엔드 DTO 형태
-    const dto = {
-      title,
-      content,
-      writerName: username,
-    };
+  try {
+    await createSupport({
+      type: boardCategory,
+      formData: fd,
+      token,
+    });
 
-    // FormData가 아닌 JSON 기반 전송 (createSupport 내부 구조 유지)
-    try {
-      await createSupport({
-        type: boardCategory,
-        dto,
-        adminId: Number(adminId),
-        token,
-      });
-      alert("게시글이 등록되었습니다.");
+    alert("게시글이 등록되었습니다.");
 
-      // 카테고리별 이동
-      if (boardCategory === "notice") navigate("/notice");
-      else if (boardCategory === "faq") navigate("/faq");
-      else navigate("/dataroom");
-    } catch (err) {
-      console.error("createSupport failed:", err);
-      alert("등록 중 오류가 발생했습니다.");
-    }
-  };
+    // 입력값/파일 초기화 (선택)
+    setTitle("");
+    setContent("");
+    setFiles([]);
+    if (fileRef.current) fileRef.current.value = "";
+
+    // 카테고리별 이동
+    if (boardCategory === "notice") navigate("/notice");
+    else if (boardCategory === "faq") navigate("/faq");
+    else navigate("/dataroom");
+  } catch (err) {
+    console.error("createSupport failed:", err);
+    const msg = err?.response?.data?.message || "등록 중 오류가 발생했습니다.";
+    alert(msg);
+  }
+};
 
   const selectedLabel =
     CATEGORY_OPTIONS.find((o) => o.value === boardCategory)?.label || "공지사항";

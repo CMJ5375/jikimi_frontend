@@ -1,6 +1,7 @@
 // src/api/supportApi.js
 import publicAxios from "../util/publicAxios";
 import jwtAxios from "../util/jwtUtil";
+import axios from "axios";
 
 // 공통: type 문자열을 서버 포맷으로 정규화
 const normType = (type) => String(type || "").toLowerCase();
@@ -31,17 +32,15 @@ export async function getSupport({ type, id, increaseView = true }) {
 }
 
 // 생성(관리자)
-export async function createSupport({ type, dto, adminId, token }) {
-  const t = normType(type);
-  const axiosInstance = token ? jwtAxios : publicAxios;
-  const safeAdminId = typeof adminId === "number" ? adminId : 0;
-  const url = `/project/support/${t}?adminId=${safeAdminId}`;
-  const res = await axiosInstance.post(url, dto, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+// ✅ 멀티파트 전송 전용
+export const createSupport = async ({ type, formData, token }) => {
+  return axios.post(`/project/support/${type}`, formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      // Content-Type 지정하지 말 것! (브라우저가 boundary 포함해서 자동 설정)
+    },
   });
-
-  return res.data;
-}
+};
 
 // 수정(관리자)
 export async function updateSupport({ type, id, dto, adminId, token }) {
