@@ -241,7 +241,7 @@ export default function CommentSection({ postId, hidden = false }) {
             <div key={c.commentId} className="comment-box mb-3">
               <div className="d-flex justify-content-between align-items-start">
                 <div className="d-flex align-items-start">
-                  <Avatar src={c.authorProfileImage} size={36} className="me-2" />
+                  <Avatar src={c.authorProfileImage} size={40} className="me-2" />
                   <div>
                     <div className="fw-semibold">{c.authorName || "익명"}</div>
                     <div className="text-muted small">{fmt(c.createdAt)}</div>

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
-import { ChatDots, HandThumbsUp, Pencil, Plus, Search, Megaphone, Paperclip, Eye } from "react-bootstrap-icons";
+import { ChatDots, HandThumbsUp, Pencil, Search, Megaphone, Paperclip, Eye } from "react-bootstrap-icons";
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getList, getHotPins } from "../../api/postApi";
@@ -156,7 +156,7 @@ const Noticeboard = () => {
       view: p.viewCount ?? 0,
       hasFile: !!(p.fileUrl && String(p.fileUrl).trim()),
       isNew: false,
-      comments: 0,
+      comments: p.commentCount ?? 0,
       __PIN__: true, // 표시용 플래그(스타일은 기존과 동일하게 유지)
     }));
   }, [hotPins]);
@@ -188,8 +188,8 @@ const Noticeboard = () => {
         likes: p.likeCount ?? 0,
         view: p.viewCount ?? 0,
         hasFile: !!(p.fileUrl && String(p.fileUrl).trim()),
-        isNew,                 // 첨부파일 클립표시, 새글 N 표기
-        comments: 0,
+        isNew,
+        comments: p.commentCount ?? 0,
       };
     });
   }, [pageData]);
@@ -334,8 +334,17 @@ const Noticeboard = () => {
                 <span className={`badge rounded-pill px-3 board-badge popular`}>인기글</span>
                 <span className="board-title d-flex align-items-center">
                   {m.title}
-                  {m.hasFile && <Paperclip className="ms-2 text-secondary" size={16} />}
-                  {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                  {m.hasFile && (
+                    <Paperclip className="ms-2 text-secondary" size={18} />
+                  )}
+                  {m.isNew && (
+                    <span
+                      className="ms-2 fw-bold"
+                      style={{ fontSize: "0.9rem", color: "#3341F3" }}
+                    >
+                      N
+                    </span>
+                  )}
                 </span>
               </div>
               <div className="text-secondary small d-flex justify-content-end align-items-center">
@@ -364,8 +373,17 @@ const Noticeboard = () => {
                 </span>
                 <span className="board-title d-flex align-items-center">
                  {m.title}
-                 {m.hasFile && <Paperclip className="ms-2 text-secondary" size={16} />}
-                 {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                 {m.hasFile && (
+                    <Paperclip className="ms-2 text-secondary" size={18} />
+                  )}
+                  {m.isNew && (
+                    <span
+                      className="ms-2 fw-bold"
+                      style={{ fontSize: "0.9rem", color: "#3341F3" }}
+                    >
+                      N
+                    </span>
+                  )}
                 </span>
               </div>
               <div className="text-secondary small d-flex justify-content-end align-items-center">
@@ -473,22 +491,52 @@ const Noticeboard = () => {
             >
               <div className="d-flex justify-content-between align-items-start">
                 <span className={`mbp-badge popular`}>인기글</span>
-                <div className="mbp-ghostmark">
-                  <Plus className="fs-5" />
+              </div>
+
+              <div className="d-flex justify-content-between align-items-stretch mt-2">
+                <div className="flex-grow-1">
+                  {/* 제목 + 작성자 */}
+                  <div className="d-flex justify-content-between align-items-center">
+                    <h6 className="mbp-title-line fw-semibold text-truncate mb-1">
+                      {m.title}
+                      {m.hasFile && (
+                        <Paperclip className="ms-2 text-secondary" size={18} />
+                      )}
+                      {m.isNew && (
+                        <span
+                          className="ms-2 fw-bold"
+                          style={{ fontSize: "1rem", color: "#3341F3" }}
+                        >
+                          N
+                        </span>
+                      )}
+                    </h6>
+                    <span className="fw-semibold text-dark small">{m.author}</span>
+                  </div>
+
+                  {/* 날짜 + 지역 */}
+                  <div className="d-flex justify-content-between align-items-center text-secondary small mt-1">
+                    <span>{m.date} {m.time}</span>
+                    <span
+                      className="fw-semibold"
+                      style={{ color: "#3341F3" }}
+                    >
+                      {m.region || "지역 미정"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 프로필 사진 (오른쪽 끝) */}
+                <div className="d-flex align-items-center ms-2">
+                  <Avatar
+                    src={m.authorProfileImage}
+                    size={60}
+                    className="border border-light shadow-sm"
+                  />
                 </div>
               </div>
 
-              <h6 className="mbp-title-line">{m.title}</h6>
-
-              <div className="d-flex justify-content-between">
-                <div className="mbp-meta">{m.date} {m.time}</div>
-                <div className="text-end">
-                  <div className="fw-bold">{m.author}</div>
-                  <span className="mbp-region">{m.region}</span>
-                </div>
-              </div>
-
-              <p className="mbp-excerpt">{m.excerpt}</p>
+               <p className="mbp-excerpt pt-1">{m.excerpt}</p>
 
               <div className="mbp-divider"></div>
 
@@ -525,12 +573,22 @@ const Noticeboard = () => {
                 </div>
               </div>
 
-              <div className="d-flex justify-content-between align-items-stretch">
+              <div className="d-flex justify-content-between align-items-stretch mt-2">
                 <div className="flex-grow-1">
                   <div className="d-flex justify-content-between align-items-center">
                     <h6 className="mbp-title-line fw-semibold text-truncate mb-1">
                       {m.title}
-                      {m.isNew && <span className="ms-2 text-primary fw-bold">N</span>}
+                      {m.hasFile && (
+                        <Paperclip className="ms-2 text-secondary" size={18} />
+                      )}
+                      {m.isNew && (
+                        <span
+                          className="ms-2 fw-bold"
+                          style={{ fontSize: "1rem", color: "#3341F3" }}
+                        >
+                          N
+                        </span>
+                      )}
                     </h6>
                     <span className="fw-semibold text-dark small">{m.author}</span>
                   </div>
@@ -539,7 +597,12 @@ const Noticeboard = () => {
                     <span>
                       {m.date} {m.time}
                     </span>
-                    <span className="text-primary fw-semibold">{m.region || "지역 미정"}</span>
+                    <span
+                      className="fw-semibold"
+                      style={{ color: "#3341F3" }}
+                    >
+                      {m.region || "지역 미정"}
+                    </span>
                   </div>
                 </div>
 

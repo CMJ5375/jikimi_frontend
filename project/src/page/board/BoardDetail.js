@@ -387,7 +387,7 @@ const BoardDetail = () => {
         <div className="d-flex align-items-center">
           <Avatar
             src={post.authorProfileImage}
-            size={32}
+            size={40}
             className="me-2"
           />
           {post.authorName && (

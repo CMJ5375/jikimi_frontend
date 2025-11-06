@@ -192,7 +192,7 @@ const Faq = () => {
       </div>
 
       {/* ===== PC / 태블릿 ===== */}
-      <div className="container py-4 d-none d-md-block">
+      <div className="container py-4">
         {/* 헤더 */}
         <div className="d-flex align-items-center justify-content-between mb-4 gap-3">
           <h4 className="fw-bold mb-0">FAQ</h4>
@@ -242,7 +242,7 @@ const Faq = () => {
         </div>
 
         {/* 아코디언 FAQ 목록 */}
-        <Accordion alwaysOpen>
+        <Accordion alwaysOpen className="faq-accordion">
           {filtered.length > 0 ? (
             filtered.map((m, idx) => (
               <Accordion.Item eventKey={idx.toString()} key={m.supportId}>
