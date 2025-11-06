@@ -206,10 +206,12 @@ const FindUserPW = () => {
       <Container className="py-5">
         <Row className="justify-content-center align-items-center">
           <Col lg={6} className="d-none d-lg-block text-center order-lg-1">
-            <img src="/image/loginLogo.png" alt="로고" style={{ width: '360px' }} className="mb-4" />
-            <div className="fs-5">
-              주변 공휴일에도 걱정없이,<br />지금 열려있는 병원/약국 안내
-            </div>
+                    <img
+                      src="/image/loginLogo.png"
+                      alt="로고"
+                      style={{ width: '480px' }}
+                      className="mb-4"
+                    />
           </Col>
 
           <Col xs={12} md={8} lg={6} className="order-lg-2">

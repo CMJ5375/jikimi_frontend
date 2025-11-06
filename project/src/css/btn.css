@@ -88,3 +88,7 @@
   color: #dc3545;    
   opacity: 1;     
 }
+
+.divider {
+  border-top: none !important; /* 위쪽 줄 제거 */
+}

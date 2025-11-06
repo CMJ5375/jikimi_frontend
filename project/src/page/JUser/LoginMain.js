@@ -195,7 +195,7 @@ const LoginMain = () => {
                 카카오로 시작하기
               </Button>
 
-              {/* 구글 */}
+              {/* 구글
               <Button
                 variant="light"
                 className="d-flex align-items-center justify-content-center border fw-semibold shadow"
@@ -208,7 +208,7 @@ const LoginMain = () => {
                   className="me-2"
                 />
                 구글로 시작하기
-              </Button>
+              </Button> */}
             </div>
           </Form>
         </Col>
