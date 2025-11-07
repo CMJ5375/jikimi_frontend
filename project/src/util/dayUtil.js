@@ -1,5 +1,3 @@
-// src/util/dayUtil.js
-
 /** 요일 키 매핑 */
 export const DAY_KEYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
@@ -27,19 +25,37 @@ const KOR_TO_ENG = {
 /** 입력 요일 문자열 표준화 */
 function normalizeDaysString(raw) {
   let s = String(raw || "").trim();
+  if (!s) return "";
 
-  // 한글 요일을 영문 키로 변환 (예: "월-금" → "MON-금" → "MON-FRI")
+  // 한국어 전체 요일 → 영문 키
+  s = s
+    .replace(/월요일/g, "MON")
+    .replace(/화요일/g, "TUE")
+    .replace(/수요일/g, "WED")
+    .replace(/목요일/g, "THU")
+    .replace(/금요일/g, "FRI")
+    .replace(/토요일/g, "SAT")
+    .replace(/일요일/g, "SUN");
+
+  // 한글 요일 한 글자 → 영문 키
   s = s.replace(/[월화수목금토일]/g, (m) => KOR_TO_ENG[m] || m);
 
-  // 다양한 대시/물결 기호를 '-' 로 통일
+  // 잔여 "요일" 제거
+  s = s.replace(/요일/g, "");
+
+  // 다양한 대시/물결 기호 정규화
   s = s.replace(/[~–—－~]/g, "-");
 
-  // 대소문자 통일
+  // 대문자 통일
   s = s.toUpperCase();
 
-  // WEEKDAY(S)/WEEKEND(S) 변형 지원
+  // 영어 그룹 키워드
   if (s === "WEEKDAY" || s === "WEEKDAYS") return "MON,TUE,WED,THU,FRI";
   if (s === "WEEKEND" || s === "WEEKENDS") return "SAT,SUN";
+
+  // 한국어 그룹 키워드
+  if (s === "평일") return "MON,TUE,WED,THU,FRI";
+  if (s === "주말") return "SAT,SUN";
 
   return s;
 }
@@ -56,7 +72,12 @@ export const expandRange = (token) => {
   if (si === -1 || ei === -1) return [t];
 
   const out = [];
-  for (let i = si; i <= ei; i++) out.push(DAY_KEYS[i]);
+  if (si <= ei) {
+    for (let i = si; i <= ei; i++) out.push(DAY_KEYS[i]);
+  } else {
+    for (let i = si; i < DAY_KEYS.length; i++) out.push(DAY_KEYS[i]);
+    for (let i = 0; i <= ei; i++) out.push(DAY_KEYS[i]);
+  }
   return out;
 };
 
