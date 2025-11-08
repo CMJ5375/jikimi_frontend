@@ -167,7 +167,6 @@ const PharmacyMain = () => {
             const res = await jwtAxios.get(`/project/pharmacy/${pid}`);
             const item = res.data;
             if (currentPos?.lat && item?.facility?.latitude) {
-              // calculateDistance는 참조가 자주 바뀔 수 있으니 호출은 하되 deps엔 넣지 않음
               item.distance = calculateDistance(
                 currentPos.lat,
                 currentPos.lng,

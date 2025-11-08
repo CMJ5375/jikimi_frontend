@@ -33,8 +33,6 @@ const LoginMain = () => {
           null;
  
         setCookie("member", { ...data, profileImage }, 1); // 유효기간 1일(필요에 맞게 변경)
- 
-        alert("로그인 성공")
         moveToPath('/')
       }
     })
