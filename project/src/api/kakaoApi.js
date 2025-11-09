@@ -1,14 +1,14 @@
 // HTTP 요청을 위한 axios 라이브러리 임포트
 import axios from "axios"
 // 백엔드 API 서버의 기본 호스트 주소를 userApi 파일에서 임포트
-import { API_SERVER_HOST } from "./userApi"
+import { API_SERVER_HOST } from '../config/api';
 
 // === 카카오 API 설정 정보 ===
 
 // 카카오 디벨로퍼스에서 발급받은 REST API 키
-const rest_api_key = `82ca008b766f817676784e0da82ce811`
+const rest_api_key = `b8a3046848c797ecc91af475c7037a0e`
 // 카카오 로그인 성공 후 인가 코드를 받을 리디렉션 URI
-const redirect_uri = `http://localhost:3000/user/kakao`
+const redirect_uri = `https://d3s30j0qk5vpe1.cloudfront.net/user/kakao`
 // 인가 코드(Authorization Code)를 요청하는 카카오 인증 서버 경로
 const auth_code_path = `https://kauth.kakao.com/oauth/authorize`
 // 액세스 토큰(Access Token)을 요청하는 카카오 토큰 서버 경로

@@ -1,4 +1,4 @@
-import { API_SERVER_HOST } from "../../api/userApi";
+import { API_SERVER_HOST } from "../../config/api";
 const toAbs = (u) => (!u ? u : u.startsWith("http") ? u : `${API_SERVER_HOST}${u}`);
 
 export default function Avatar({ src, size=32, className="" }) {

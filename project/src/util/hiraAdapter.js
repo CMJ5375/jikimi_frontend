@@ -13,7 +13,6 @@ const DAY_KEY_BY_INDEX = {
   7: "SUN",
 };
 
-// ───────────────────────── helpers ─────────────────────────
 
 // '0900' → '09:00', '900' → '09:00', '09:00' → '09:00', 'null'/'', undefined → null
 function toHHMM(v) {

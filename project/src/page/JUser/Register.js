@@ -1,8 +1,8 @@
+// src/page/user/Register.js (또는 Register.jsx)
 import React, { useState } from "react";
 import { Container, Row, Col, Form, Button, Alert, Spinner } from "react-bootstrap";
 import "../../css/btn.css";
-import { API_SERVER_HOST } from "../../api/userApi";
-import axios from "axios";
+import publicAxios from "../../util/publicAxios";
 import useCustomLogin from "../../hook/useCustomLogin";
 import { getKakaoLoginLink } from "../../api/kakaoApi";
 import { useNavigate } from "react-router-dom";
@@ -50,42 +50,94 @@ const Register = () => {
       return;
     }
 
-    // ✅ 서버가 기대하는 필드만 전송 (confirmPassword 제외)
-    const payload = {
-      username,
-      password,
-      name: name || "",
-      email: email || "",
-      address: "",          // 백엔드 필드만 맞춰 보냄 (없으면 빈문자)
-      profileImage: null,   // 필요시만 사용
-      roleNames: ["USER"],  // 기본 권한
-    };
+    // ✅ 최소 페이로드 (빈 값은 키 자체를 안 보냄)
+    const payload = { username, password };
+    if (name)  payload.name  = name;
+    if (email) payload.email = email;
+
+    const url = "/project/register";
+    const headers = { "Content-Type": "application/json" };
 
     try {
       setSubmitting(true);
       setErrMsg("");
       setOkMsg("");
 
-      // 반드시 JSON으로 보냄
-      const res = await axios.post(`${API_SERVER_HOST}/project/register`, payload, {
-        headers: { "Content-Type": "application/json" },
+      // ── 요청 로그 ─────────────────────────────────────────────
+      console.groupCollapsed("[REGISTER] Request");
+      console.log("URL:", publicAxios?.defaults?.baseURL ? publicAxios.defaults.baseURL + url : url);
+      console.log("Method:", "POST");
+      console.log("Headers:", headers);
+      console.log("Payload:", payload);
+      console.groupEnd();
+      // ─────────────────────────────────────────────────────────
+
+      const res = await publicAxios.post(url, payload, {
+        withCredentials: false,
+        headers,
       });
 
-      const msg = typeof res.data === "string" ? res.data : "회원가입 성공";
-      setOkMsg(msg);
+      // ── 응답 로그 ─────────────────────────────────────────────
+      console.groupCollapsed("[REGISTER] Response ✅");
+      console.log("Status:", res.status);
+      console.log("StatusText:", res.statusText);
+      console.log("Headers:", res.headers);
+      console.log("Data:", res.data);
+      console.groupEnd();
+      // ─────────────────────────────────────────────────────────
+
+      const serverMsg =
+        (typeof res.data === "string" && res.data) ||
+        res.data?.message ||
+        "회원가입 성공";
+
+      setOkMsg(serverMsg);
       setForm(initState);
 
-      // 살짝 딜레이 후 이동
       setTimeout(() => moveToPath("/login"), 500);
     } catch (err) {
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        (typeof err.response?.data === "string" ? err.response.data : "") ||
+      // ── 에러 로그(네트워크/응답 모두) ─────────────────────────
+      console.groupCollapsed("[REGISTER] Error ❌");
+      if (err.response) {
+        // 서버가 4xx/5xx 응답을 준 케이스
+        console.log("Status:", err.response.status);
+        console.log("Headers:", err.response.headers);
+        console.log("Data:", err.response.data);
+      } else if (err.request) {
+        // 요청은 갔지만 응답이 없는 케이스
+        console.log("No response. Request object:", err.request);
+      } else {
+        // 요청 만들기도 전에 터짐 (config 문제 등)
+        console.log("Error message:", err.message);
+      }
+      // axios 에러 원형
+      console.log("Axios Error (raw):", err);
+      // axios 표준화 객체
+      try {
+        console.log("Axios Error (toJSON):", err.toJSON?.());
+      } catch {}
+      console.groupEnd();
+      // ─────────────────────────────────────────────────────────
+
+      const data = err.response?.data;
+
+      // 화면에 더 디테일하게 표시 (detail까지)
+      const summary =
+        data?.error ||
+        data?.message ||
+        (typeof data === "string" ? data : "") ||
         err.message ||
         "알 수 없는 오류가 발생했습니다.";
-      setErrMsg(msg);
-      console.error("REGISTER error:", err.response?.data || err);
+
+      const detail = data?.detail || data?.trace || data?.cause || "";
+      const combined = detail ? `${summary}\n- ${detail}` : summary;
+
+      // Bean Validation 타입 에러 배열 처리
+      const fieldErrors = Array.isArray(data?.errors)
+        ? data.errors.map((e) => e.defaultMessage || e.message).join("\n")
+        : "";
+
+      setErrMsg(fieldErrors ? `${combined}\n${fieldErrors}` : combined);
     } finally {
       setSubmitting(false);
     }
@@ -105,7 +157,7 @@ const Register = () => {
         <Col xs={12} md={8} lg={6} className="order-lg-2">
           <h3 className="mb-4 fw-bold text-center text-lg-center">회원가입</h3>
 
-          {errMsg && <Alert variant="danger">{errMsg}</Alert>}
+          {errMsg && <Alert variant="danger" style={{ whiteSpace: "pre-line" }}>{errMsg}</Alert>}
           {okMsg && <Alert variant="success">{okMsg}</Alert>}
 
           <Form onSubmit={handleClickRegister}>
@@ -118,6 +170,7 @@ const Register = () => {
                 value={form.username}
                 onChange={onChange}
                 disabled={submitting}
+                autoComplete="username"
               />
             </Form.Group>
 
@@ -125,11 +178,12 @@ const Register = () => {
               <Form.Control
                 type="email"
                 name="email"
-                placeholder="이메일을 입력해주세요."
+                placeholder="이메일을 입력해주세요. (선택)"
                 className="bg-light rounded-0"
                 value={form.email}
                 onChange={onChange}
                 disabled={submitting}
+                autoComplete="email"
               />
             </Form.Group>
 
@@ -137,11 +191,12 @@ const Register = () => {
               <Form.Control
                 type="text"
                 name="name"
-                placeholder="이름을 입력해주세요."
+                placeholder="이름을 입력해주세요. (선택)"
                 className="bg-light rounded-0"
                 value={form.name}
                 onChange={onChange}
                 disabled={submitting}
+                autoComplete="name"
               />
             </Form.Group>
 
@@ -154,6 +209,7 @@ const Register = () => {
                 value={form.password}
                 onChange={onChange}
                 disabled={submitting}
+                autoComplete="new-password"
               />
             </Form.Group>
 
@@ -166,6 +222,7 @@ const Register = () => {
                 value={form.confirmPassword}
                 onChange={onChange}
                 disabled={submitting}
+                autoComplete="new-password"
               />
             </Form.Group>
 

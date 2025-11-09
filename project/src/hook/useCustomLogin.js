@@ -1,6 +1,7 @@
-import { useDispatch, useSelector } from "react-redux"
-import { Navigate, useNavigate } from "react-router-dom"
-import { loginPostAsync, logout } from "../slice/loginSlice"
+// src/hook/useCustomLogin.js
+import { useDispatch, useSelector } from "react-redux";
+import { Navigate, useNavigate } from "react-router-dom";
+import { loginPostAsync, logout } from "../slice/loginSlice"; // 경로 네가 준 대로 유지
 import { getCookie } from "../util/cookieUtil";
 
 function parseJwt(token) {
@@ -15,68 +16,52 @@ function parseJwt(token) {
         .join("")
     );
     return JSON.parse(jsonPayload);
-  } catch (err) {
-    console.error("JWT 파싱 실패:", err);
+  } catch {
     return {};
   }
 }
 
 const useCustomLogin = () => {
-    const navigate = useNavigate()
-    const dispatch = useDispatch()
-    const loginState = useSelector(state => state.loginSlice)
-    const isLogin = loginState.username ? true : false
-    const cookieMember = getCookie("member") || {};
-    const accessToken = loginState?.accessToken || cookieMember?.accessToken || null;
-    const decoded = parseJwt(accessToken);
-    const userId = decoded?.userId || decoded?.id || decoded?.uid || null;
-    const username = decoded?.username || decoded?.sub || loginState?.username || cookieMember?.username;
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const loginState = useSelector((state) => state.loginSlice);
 
-    const mergedLogin = {
-        ...loginState,
-        accessToken,
-        userId,
-        username,
-    };
+  const cookieMember = getCookie("member") || {};
+  const accessToken = loginState?.accessToken || cookieMember?.accessToken || null;
 
-    // 로그인 함수
-    const doLogin = async (loginParam) => {
-        const action = await dispatch(loginPostAsync(loginParam))
-        return action.payload
-    }
-    // 로그아웃 함수
-    const doLogout = () => {
-        dispatch(logout())
-    }
-    // 페이지 이동
-    const moveToPath = (path) => {
-        navigate({pathname: path}, {replace: true})
-    }
-    // 로그인 페이지로 이동
-    const moveToLogin = () => {
-        navigate({pathname: '/user/login'}, {replace: true})
-    }
-    // 로그인 페이지로 이동 컴포넌트
-    const moveToLoginReturn = () => {
-        return <Navigate replace to="/login" />
-    }
-    // 로그인 객체 통합
-    const enhancedLoginState = {
-        ...loginState,
-        userId,
-        username,
-        accessToken,
-    };
+  const decoded = parseJwt(accessToken);
+  const userId = decoded?.userId || decoded?.id || decoded?.uid || null;
+  const username = decoded?.username || decoded?.sub || loginState?.username || cookieMember?.username;
 
-    return {
-        loginState: enhancedLoginState,
-        isLogin,
-        doLogin,
-        doLogout,
-        moveToPath,
-        moveToLogin,
-        moveToLoginReturn,
-    }
-}
+  const enhancedLoginState = {
+    ...loginState,
+    userId,
+    username,
+    accessToken,
+  };
+
+  // ✅ 실패 시 throw, 성공 시 data (unwrap)
+  const doLogin = (loginParam) => dispatch(loginPostAsync(loginParam)).unwrap();
+
+  const doLogout = () => dispatch(logout());
+
+  const moveToPath = (path) => navigate({ pathname: path }, { replace: true });
+
+  const moveToLogin = () => navigate({ pathname: "/user/login" }, { replace: true });
+
+  const moveToLoginReturn = () => <Navigate replace to="/user/login" />;
+
+  const isLogin = !!accessToken; // 최소 기준: 토큰 존재
+
+  return {
+    loginState: enhancedLoginState,
+    isLogin,
+    doLogin,
+    doLogout,
+    moveToPath,
+    moveToLogin,
+    moveToLoginReturn,
+  };
+};
 
 export default useCustomLogin;

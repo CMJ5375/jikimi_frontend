@@ -2,19 +2,34 @@ import React, { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
 import "../../css/Support.css";
-import { Eye, Pencil, PinFill, Pin, Search, Megaphone, Paperclip, HandThumbsUp } from "react-bootstrap-icons";
+import {
+  Eye,
+  Pencil,
+  PinFill,
+  Pin,
+  Search,
+  Megaphone,
+  Paperclip,
+  HandThumbsUp,
+} from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { listSupport, removeSupport, pinSupport, unpinSupport, listPinnedSupport } from "../../api/supportApi";
+import {
+  listSupport,
+  removeSupport,
+  pinSupport,
+  unpinSupport,
+  listPinnedSupport,
+} from "../../api/supportApi";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
 import Avatar from "../board/Avatar";
 
+/** ===== 공통 상수 ===== */
 const CATEGORIES = [
   { name: "공지사항", path: "/notice" },
   { name: "FAQ", path: "/faq" },
   { name: "자료실", path: "/dataroom" },
 ];
-
 const mapCategoryToType = (cat) => {
   switch (cat) {
     case "공지사항":
@@ -27,7 +42,6 @@ const mapCategoryToType = (cat) => {
       return "dataroom";
   }
 };
-
 const ROTATE_MS = 3500;
 const banners = [
   { kind: "notice", text: "새로운 자료가 등록되었습니다!" },
@@ -35,16 +49,69 @@ const banners = [
   { kind: "notice", text: "자료실 이용 안내 - 첨부파일 다운로드 가능" },
 ];
 
+/** ===== 권한 유틸(FAQ/DataRoomDetail와 동일) ===== */
+function decodeJwt(token) {
+  try {
+    const b = token.split(".")[1];
+    const json = atob(b.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+function normalizeToList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === "string") {
+    return value.split(",").map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+function pickRolesFromAny(user) {
+  const bag = [];
+  bag.push(...normalizeToList(user?.roleNames));
+  bag.push(...normalizeToList(user?.roles));
+  bag.push(...normalizeToList(user?.authorities));
+  const token = user?.accessToken || user?.token;
+  if (token) {
+    const p = decodeJwt(token);
+    if (p) {
+      bag.push(...normalizeToList(p.roleNames));
+      bag.push(...normalizeToList(p.roles));
+      bag.push(...normalizeToList(p.authorities));
+    }
+  }
+  return Array.from(
+    new Set(
+      bag
+        .flatMap((v) =>
+          typeof v === "string"
+            ? v.split(",").map((s) => s.trim()).filter(Boolean)
+            : v
+        )
+        .filter(Boolean)
+    )
+  );
+}
+function hasAdminRole(roleList) {
+  return roleList.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
+}
+
+/** ===== 컴포넌트 ===== */
 const DataRoom = () => {
   const navigate = useNavigate();
   const { loginState } = useCustomLogin();
   const user = loginState || {};
-  const roles = user?.roleNames || user?.roles || [];
-  const isAdmin = Array.isArray(roles) && roles.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
+
+  // 통일된 관리자 판단
+  const rolesAll = useMemo(() => pickRolesFromAny(user), [user]);
+  const isAdmin = useMemo(() => hasAdminRole(rolesAll), [rolesAll]);
+  const adminIdSafe = user?.userId ?? user?.id ?? 0; // 서버는 userId 기대
+
   const [pinnedItems, setPinnedItems] = useState([]);
   const [active, setActive] = useState("자료실");
   const [q, setQ] = useState("");
-  const [pageData, setPageData] = useState(null);;
+  const [pageData, setPageData] = useState(null);
   const [bannerIdx, setBannerIdx] = useState(0);
 
   // 광고 자동 전환
@@ -63,18 +130,19 @@ const DataRoom = () => {
       setPinnedItems(pinnedData || []);
       const data = await listSupport({
         type: t,
-        page: page,
+        page,
         size: 10,
         q,
       });
-      setPageData(data);
+      setPageData(data || null);
     } catch (e) {
-      console.error("자료실 목록 조회 실패:", e);
+      console.error("[DataRoom] 목록 조회 실패:", e);
     }
   };
 
   useEffect(() => {
     fetchList(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   // 검색
@@ -91,13 +159,13 @@ const DataRoom = () => {
       await removeSupport({
         type: "dataroom",
         id,
-        adminId: user.id,
+        adminId: adminIdSafe,
         token: user.accessToken,
       });
       alert("삭제되었습니다.");
-      fetchList(pageData?.number + 1 || 1);
+      fetchList((pageData?.number ?? 0) + 1);
     } catch (e) {
-      console.error("삭제 실패:", e);
+      console.error("[DataRoom] 삭제 실패:", e);
       alert("삭제 실패");
     }
   };
@@ -110,20 +178,20 @@ const DataRoom = () => {
         await unpinSupport({
           type: "dataroom",
           id,
-          adminId: user.id,
+          adminId: adminIdSafe,
           token: user.accessToken,
         });
       } else if (!isPinnedCopy && originalId === null) {
         await pinSupport({
           type: "dataroom",
           id,
-          adminId: user.id,
+          adminId: adminIdSafe,
           token: user.accessToken,
         });
       }
-      fetchList(pageData?.number + 1 || 1);
+      fetchList((pageData?.number ?? 0) + 1);
     } catch (e) {
-      console.error("상단 고정/해제 실패:", e);
+      console.error("[DataRoom] 상단 고정/해제 실패:", e);
     }
   };
 
@@ -134,10 +202,8 @@ const DataRoom = () => {
       const created = m.createdAt ? new Date(m.createdAt) : null;
       const isNew =
         created ? Date.now() - created.getTime() <= 24 * 60 * 60 * 1000 : false;
-      const excerpt = (() => {
-        const c = m.content || "";
-        return c.length > 70 ? c.slice(0, 70) + "..." : c;
-      })();
+      const c = m.content || "";
+      const excerpt = c.length > 70 ? c.slice(0, 70) + "..." : c;
 
       return {
         id: m.supportId,
@@ -150,14 +216,15 @@ const DataRoom = () => {
         fileName: m.fileName ?? "",
         pinnedCopy: m.pinnedCopy ?? false,
         originalId: m.originalId ?? null,
-        content: m.content ?? "",
+        content: c,
         excerpt,
         isNew,
+        authorProfileImage: m.authorProfileImage ?? null,
       };
     });
   }, [pageData]);
 
-  // N 표시 계산 추가
+  // N 표시 포함해 핀 목록 정제
   const pinnedItemsWithNew = pinnedItems.map((p) => ({
     ...p,
     isNew: p.createdAt
@@ -165,12 +232,13 @@ const DataRoom = () => {
       : false,
   }));
 
+  // 탭 이동
   const handleTabClick = (t) => {
     setActive(t.name);
-    navigate(t.path.toLowerCase());
+    navigate(t.path); // 이미 소문자 경로 사용 중
   };
 
-  // 검색 필터 적용
+  // 검색 필터
   const filtered = useMemo(() => {
     const ql = q.toLowerCase();
     return items.filter((m) => (m.title || "").toLowerCase().includes(ql));
@@ -193,9 +261,7 @@ const DataRoom = () => {
               >
                 <Megaphone size={16} />
               </span>
-              <span className="notice-text">
-                {banners[bannerIdx].text}
-              </span>
+              <span className="notice-text">{banners[bannerIdx].text}</span>
             </div>
 
             <div className="notice-right">
@@ -291,7 +357,11 @@ const DataRoom = () => {
                   <span className="board-title d-flex align-items-center">
                     {p.title}
                     {p.fileUrl && (
-                      <Paperclip className="ms-2 text-secondary" size={18} title="첨부파일 있음" />
+                      <Paperclip
+                        className="ms-2 text-secondary"
+                        size={18}
+                        title="첨부파일 있음"
+                      />
                     )}
                     {p.isNew && (
                       <span
@@ -308,11 +378,9 @@ const DataRoom = () => {
                     className="d-flex align-items-center me-2"
                     style={{ minWidth: "50px" }}
                   >
-                    <Eye size={16} className="me-1" /> {p.viewCount}
+                    <Eye size={16} className="me-1" /> {p.viewCount ?? 0}
                   </div>
-                  <div>
-                    {p.createdAt ? p.createdAt.slice(0, 10) : "-"}
-                  </div>
+                  <div>{p.createdAt ? p.createdAt.slice(0, 10) : "-"}</div>
                   {isAdmin && (
                     <button
                       className="btn-ghost btn-ghost-danger ms-3"
@@ -380,7 +448,11 @@ const DataRoom = () => {
                       <span className="board-title d-flex align-items-center">
                         {p.title}
                         {p.fileUrl && (
-                          <Paperclip className="ms-2 text-secondary" size={18} title="첨부파일 있음" />
+                          <Paperclip
+                            className="ms-2 text-secondary"
+                            size={18}
+                            title="첨부파일 있음"
+                          />
                         )}
                         {p.isNew && (
                           <span
@@ -433,7 +505,7 @@ const DataRoom = () => {
               current: pageData.number + 1,
               pageNumList: Array.from({ length: pageData.totalPages }, (_, i) => i + 1),
             }}
-            onPageChange={(p) => fetchList(p + 1)}
+            onPageChange={(p) => fetchList(p)} 
           />
         )}
       </div>
@@ -441,13 +513,19 @@ const DataRoom = () => {
       {/* ====== 모바일 ====== */}
       <div className="d-block d-md-none">
         <div className="mbp-wrap">
-
           {/* 공지/광고 배너 (모바일) */}
           <div className="px-3 pt-2 d-block d-md-none">
             <div className="notice-banner">
-              <div key={bannerIdx} className="notice-anim d-flex w-100 align-items-center justify-content-between">
+              <div
+                key={bannerIdx}
+                className="notice-anim d-flex w-100 align-items-center justify-content-between"
+              >
                 <div className="notice-left">
-                  <span className={`notice-icon ${banners[bannerIdx].kind === "ad" ? "is-ad" : "is-notice"}`}>
+                  <span
+                    className={`notice-icon ${
+                      banners[bannerIdx].kind === "ad" ? "is-ad" : "is-notice"
+                    }`}
+                  >
                     <Megaphone size={16} />
                   </span>
                   <span className="notice-text">{banners[bannerIdx].text}</span>
@@ -455,7 +533,9 @@ const DataRoom = () => {
                 <div className="notice-right">
                   {banners[bannerIdx].kind === "ad" ? (
                     <>
-                      <span className="notice-brand">{banners[bannerIdx].brand}</span>
+                      <span className="notice-brand">
+                        {banners[bannerIdx].brand}
+                      </span>
                       <span className="notice-ad">광고</span>
                     </>
                   ) : (
@@ -565,7 +645,11 @@ const DataRoom = () => {
                         <h6 className="mbp-title-line fw-semibold text-truncate mb-1">
                           {m.title}
                           {m.fileUrl && (
-                            <Paperclip className="ms-2 text-secondary" size={18} title="첨부파일 있음" />
+                            <Paperclip
+                              className="ms-2 text-secondary"
+                              size={18}
+                              title="첨부파일 있음"
+                            />
                           )}
                           {m.isNew && (
                             <span
@@ -695,7 +779,11 @@ const DataRoom = () => {
                           <h6 className="mbp-title-line fw-semibold text-truncate mb-1">
                             {m.title}
                             {m.fileUrl && (
-                              <Paperclip className="ms-2 text-secondary" size={18} title="첨부파일 있음" />
+                              <Paperclip
+                                className="ms-2 text-secondary"
+                                size={18}
+                                title="첨부파일 있음"
+                              />
                             )}
                             {m.isNew && (
                               <span
@@ -770,7 +858,7 @@ const DataRoom = () => {
                   (_, i) => i + 1
                 ),
               }}
-              onPageChange={(p) => fetchList(p + 1)}
+              onPageChange={(p) => fetchList(p)} // 모바일도 1-based 그대로
             />
           )}
         </div>

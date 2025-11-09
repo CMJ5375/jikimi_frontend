@@ -2,11 +2,10 @@
 import axios from 'axios'
 import jwtAxios from '../util/jwtUtil'
 import { getCookie, setCookie } from '../util/cookieUtil'
+import { API_SERVER_HOST } from "../config/api";
 
-// 백엔드 API 서버의 기본 호스트 주소를 정의합니다.
-// 이 값은 다른 API 파일(예: kakaoApi.js)에서 임포트하여 사용됩니다.
-export const API_SERVER_HOST = 'http://localhost:8080'
-// 사용자 관련 API의 기본 경로를 설정합니다. (예: http://localhost:8080/project/user)
+
+
 const host = `${API_SERVER_HOST}/project/user`
 
 /**
@@ -14,17 +13,13 @@ const host = `${API_SERVER_HOST}/project/user`
  * @param {object} loginParam - 로그인에 필요한 사용자 이름(username)과 비밀번호(password)를 포함하는 객체
  * @returns {Promise<any>} - 로그인 성공 시 서버에서 반환하는 데이터 (예: JWT 토큰, 사용자 정보)
  */
-export const loginPost = async (loginParam) => {
-    const header = { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-    const form = new FormData()
-    form.append('username', loginParam.username) // 사용자 이름을 폼 데이터에 추가
-    form.append('password', loginParam.password) // 비밀번호를 폼 데이터에 추가
-    
-    // 백엔드 서버의 로그인 엔드포인트(`/login`)에 POST 요청을 보냅니다.
-    const res = await axios.post(`${host}/login`, form, header)
-    
-    // 서버 응답 데이터를 반환합니다.
-    return res.data
+export const loginPost = async ({ username, password }) => {
+  const { data } = await axios.post(
+    `${host}/login`,
+    { username, password },
+    { headers: { 'Content-Type': 'application/json' } }
+  )
+  return data
 }
 // 계정찾기(아이디 찾기) 전용 API Base
 const ACCOUNT_BASE = `${API_SERVER_HOST}/api/account`;

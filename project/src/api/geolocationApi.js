@@ -1,5 +1,3 @@
-//src/api/geolocationApi.js
-
 //성남 모란 두드림IT학원 기준
 const DEFAULT_LOCATION = {
   lat: 37.432764,

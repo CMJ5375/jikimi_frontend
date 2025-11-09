@@ -28,7 +28,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "dev": "cross-env HOST=localhost WDS_ALLOWED_HOSTS=all react-scripts start"
   },
   "eslintConfig": {
     "extends": [
@@ -48,5 +49,8 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "https://apis.data.go.kr"
+  "proxy": "https://apis.data.go.kr",
+  "devDependencies": {
+    "cross-env": "^10.1.0"
+  }
 }

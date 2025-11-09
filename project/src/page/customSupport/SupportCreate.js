@@ -1,11 +1,15 @@
-import { useRef, useState } from "react";
+// src/page/support/SupportCreate.jsx
+import { useRef, useState, useMemo } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/BoardCreate.css";
 import { X } from "react-bootstrap-icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { createSupport } from "../../api/supportApi";
 import { getCookie } from "../../util/cookieUtil";
-import { decodeToken } from "../../util/jwtUtil";
+import useCustomLogin from "../../hook/useCustomLogin";
+import { resolveAdminId, decodeJwtPayload } from "../../util/adminIdResolver";
+
+const DEBUG = true;
 
 const CATEGORY_OPTIONS = [
   { label: "공지사항", value: "notice" },
@@ -17,15 +21,37 @@ const SupportCreate = ({ onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const fileRef = useRef(null);
+
   const query = new URLSearchParams(location.search);
-  const typeFromQuery = query.get("type");
-  const initialCategory = typeFromQuery || "notice";
-  const [boardCategory, setBoardCategory] = useState(initialCategory);
+  const typeFromQuery = query.get("type") || "notice";
+
+  const [boardCategory, setBoardCategory] = useState(typeFromQuery);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [files, setFiles] = useState([]);
 
-  // 파일 선택 (자료실에서만 허용)
+  const { loginState } = useCustomLogin();
+
+  // 쿠키 member 파싱
+  const cookieMemberRaw = getCookie("member");
+  const cookieMember = useMemo(() => {
+    if (!cookieMemberRaw) return null;
+    try {
+      return typeof cookieMemberRaw === "string"
+        ? JSON.parse(cookieMemberRaw)
+        : cookieMemberRaw;
+    } catch {
+      return null;
+    }
+  }, [cookieMemberRaw]);
+
+  // 토큰: 훅 → 쿠키(accessToken) → 쿠키(token)
+  const token =
+    loginState?.accessToken ||
+    cookieMember?.accessToken ||
+    cookieMember?.token ||
+    null;
+
   const handleFiles = (e) => {
     const list = Array.from(e.target.files || []);
     setFiles(list);
@@ -36,83 +62,77 @@ const SupportCreate = ({ onClose }) => {
     if (fileRef.current && files.length === 1) fileRef.current.value = "";
   };
 
-  // 등록 처리
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  if (!title.trim() || !content.trim()) {
-    alert("제목과 내용을 입력해주세요.");
-    return;
-  }
+    if (!title.trim() || !content.trim()) {
+      alert("제목과 내용을 입력해주세요.");
+      return;
+    }
+    if (!token) {
+      alert("로그인 후 이용해주세요.");
+      return;
+    }
 
-  const raw = getCookie("member");
-  if (!raw) {
-    alert("로그인 후 이용해주세요.");
-    return;
-  }
-
-  let parsed;
-  try {
-    parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-  } catch {
-    alert("로그인 정보가 손상되었습니다. 다시 로그인해주세요.");
-    return;
-  }
-
-  const token = parsed?.accessToken;
-  if (!token) {
-    alert("로그인 정보가 올바르지 않습니다.");
-    return;
-  }
-
-  const claims = decodeToken(token);
-  const adminId =
-    claims?.id ||
-    claims?.userId ||
-    claims?.memberId ||
-    parsed?.id ||
-    parsed?.userId ||
-    0;
-
-  if (!adminId || adminId <= 0) {
-    alert("관리자 정보가 올바르지 않습니다.");
-    return;
-  }
-
-  // FormData 전송 (Content-Type 수동 지정 금지)
-  const fd = new FormData();
-  fd.append("adminId", String(adminId));
-  fd.append("title", title);
-  fd.append("content", content);
-  if (boardCategory === "dataroom" && files[0]) {
-    fd.append("file", files[0]); // 단일 파일만 전송 (백엔드가 단일 file 받음)
-  }
-
-  try {
-    await createSupport({
-      type: boardCategory,
-      formData: fd,
+    // ★★★★★ 프론트에서 adminId 해석(백엔드는 그대로)
+    const adminId = resolveAdminId({
+      user: loginState,
+      cookieMember,
       token,
+      // 로컬 개발 편의: admin → 1 매핑 (필요 없으면 지워도 OK)
+      devUsernameMap: { admin: 1 },
     });
 
-    alert("게시글이 등록되었습니다.");
+    if (DEBUG) {
+      console.debug("[SupportCreate] loginState:", loginState);
+      console.debug("[SupportCreate] cookieMember:", cookieMember);
+      console.debug("[SupportCreate] token payload:", decodeJwtPayload(token));
+      console.debug("[SupportCreate] resolved adminId:", adminId);
+    }
 
-    // 입력값/파일 초기화 (선택)
-    setTitle("");
-    setContent("");
-    setFiles([]);
-    if (fileRef.current) fileRef.current.value = "";
+    if (!adminId) {
+      alert(
+        "관리자 정보가 올바르지 않습니다. (id 미확보)\n" +
+          "로컬 테스트면 .env에 REACT_APP_ADMIN_ID=1 같은 환경변수를 넣거나,\n" +
+          "devUsernameMap에서 매핑하세요."
+      );
+      return;
+    }
 
-    // 카테고리별 이동
-    if (boardCategory === "notice") navigate("/notice");
-    else if (boardCategory === "faq") navigate("/faq");
-    else navigate("/dataroom");
-  } catch (err) {
-    console.error("createSupport failed:", err);
-    const msg = err?.response?.data?.message || "등록 중 오류가 발생했습니다.";
-    alert(msg);
-  }
-};
+    // FormData (Content-Type 자동)
+    const fd = new FormData();
+    fd.append("title", title);
+    fd.append("content", content);
+    if (boardCategory === "dataroom" && files[0]) {
+      fd.append("file", files[0]); // 단일 파일만 전송(백엔드 단일 file 매핑)
+    }
+
+    try {
+      await createSupport({
+        type: boardCategory,
+        formData: fd,
+        token,
+        adminId, // ← 쿼리 + form-data 양쪽으로 실려감 (supportApi에서 처리)
+      });
+
+      alert("게시글이 등록되었습니다.");
+      setTitle("");
+      setContent("");
+      setFiles([]);
+      if (fileRef.current) fileRef.current.value = "";
+
+      if (boardCategory === "notice") navigate("/notice");
+      else if (boardCategory === "faq") navigate("/faq");
+      else navigate("/dataroom");
+    } catch (err) {
+      console.error("createSupport failed:", err);
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "등록 중 오류가 발생했습니다.";
+      alert(msg);
+    }
+  };
 
   const selectedLabel =
     CATEGORY_OPTIONS.find((o) => o.value === boardCategory)?.label || "공지사항";
@@ -141,7 +161,7 @@ const handleSubmit = async (e) => {
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* 카테고리 선택 */}
+        {/* 카테고리 */}
         <div className="border-bottom py-3">
           <label className="form-label text-muted mb-1">게시판을 선택하세요.</label>
           <div className="dropdown">
@@ -192,7 +212,7 @@ const handleSubmit = async (e) => {
           />
         </div>
 
-        {/* 자료실일 경우만 첨부 파일 표시 */}
+        {/* 자료실 첨부 */}
         {boardCategory === "dataroom" && (
           <div className="py-3">
             <label className="form-label fw-semibold">첨부 파일</label>
@@ -201,7 +221,6 @@ const handleSubmit = async (e) => {
                 ref={fileRef}
                 className="form-control"
                 type="file"
-                multiple
                 onChange={handleFiles}
               />
               {files.length > 0 && (
@@ -209,10 +228,7 @@ const handleSubmit = async (e) => {
                   {files.map((f, idx) => {
                     const url = URL.createObjectURL(f);
                     return (
-                      <div
-                        key={`${f.name}-${idx}`}
-                        className="thumb position-relative"
-                      >
+                      <div key={`${f.name}-${idx}`} className="thumb position-relative">
                         <img
                           src={url}
                           alt={f.name}
@@ -222,7 +238,10 @@ const handleSubmit = async (e) => {
                         <button
                           type="button"
                           className="btn btn-sm btn-light position-absolute top-0 end-0 m-1"
-                          onClick={() => removeFile(idx)}
+                          onClick={() => {
+                            // 썸네일 revoke는 페이지 떠날 때 브라우저가 정리해줌
+                            removeFile(idx);
+                          }}
                           title="삭제"
                         >
                           <i className="bi bi-x-lg"></i>

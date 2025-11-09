@@ -1,6 +1,6 @@
 // src/api/commentApi.js
 import jwtAxios from "../util/jwtUtil";
-import { API_SERVER_HOST } from "./userApi";
+import { API_SERVER_HOST } from '../config/api';
 import { getCookie } from "../util/cookieUtil";
 
 const COMMENT_BASE = `${API_SERVER_HOST}/api/posts`;

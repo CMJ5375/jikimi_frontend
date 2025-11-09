@@ -1,11 +1,71 @@
+// src/page/support/NoticeDetail.jsx (경로는 네 프로젝트 구조에 맞춰 유지)
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/BoardDetail.css";
 import { Eye, HandThumbsUp, Share, List } from "react-bootstrap-icons";
-import { getSupport, removeSupport, updateSupport, toggleSupportLike, getSupportLikeStatus } from "../../api/supportApi";
+import {
+  getSupport,
+  removeSupport,
+  updateSupport,
+  toggleSupportLike,
+  getSupportLikeStatus,
+} from "../../api/supportApi";
 import useCustomLogin from "../../hook/useCustomLogin";
 import Avatar from "../board/Avatar";
+
+// ===== 권한 유틸 =====
+function decodeJwt(token) {
+  try {
+    const b = token.split(".")[1];
+    const json = atob(b.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+function normalizeToList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+function pickRolesFromAny(user) {
+  const bag = [];
+  // 상태 내 필드
+  bag.push(...normalizeToList(user?.roleNames));
+  bag.push(...normalizeToList(user?.roles));
+  bag.push(...normalizeToList(user?.authorities));
+  // 토큰 payload
+  const token = user?.accessToken || user?.token;
+  if (token) {
+    const p = decodeJwt(token);
+    if (p) {
+      bag.push(...normalizeToList(p.roleNames));
+      bag.push(...normalizeToList(p.roles));
+      bag.push(...normalizeToList(p.authorities));
+    }
+  }
+  return Array.from(
+    new Set(
+      bag
+        .flatMap((v) =>
+          typeof v === "string"
+            ? v.split(",").map((s) => s.trim()).filter(Boolean)
+            : v
+        )
+        .filter(Boolean)
+    )
+  );
+}
+function hasAdminRole(roleList) {
+  return roleList.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
+}
 
 const NoticeDetail = () => {
   const { id: idParam } = useParams();
@@ -15,9 +75,10 @@ const NoticeDetail = () => {
 
   const { loginState } = useCustomLogin();
   const user = loginState || {};
-  const roles = user?.roleNames || user?.roles || [];
-  const isAdmin =
-    Array.isArray(roles) && roles.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
+
+  // 🔒 관리자 판정 (강화)
+  const rolesAll = useMemo(() => pickRolesFromAny(user), [user]);
+  const isAdmin = useMemo(() => hasAdminRole(rolesAll), [rolesAll]);
 
   const [post, setPost] = useState({
     title: "",
@@ -26,6 +87,7 @@ const NoticeDetail = () => {
     viewCount: 0,
     createdAt: null,
     name: "",
+    authorProfileImage: null,
   });
 
   const [liked, setLiked] = useState(false);
@@ -57,7 +119,7 @@ const NoticeDetail = () => {
     if (!id || isNaN(id)) {
       console.warn("잘못된 ID로 접근:", idParam);
       setLoading(false);
-      return; // id가 NaN이면 요청 중단
+      return;
     }
     let ignore = false;
     (async () => {
@@ -72,11 +134,12 @@ const NoticeDetail = () => {
           viewCount: data.viewCount ?? 0,
           createdAt: data.createdAt ?? null,
           name: data.name ?? "관리자",
+          authorProfileImage: data.authorProfileImage ?? null,
         });
         setEditTitle(data.title ?? "");
         setEditContent(data.content ?? "");
 
-        if (user?.userId) {
+        if (user?.userId && user?.accessToken) {
           const status = await getSupportLikeStatus({
             type,
             id,
@@ -96,7 +159,7 @@ const NoticeDetail = () => {
     return () => {
       ignore = true;
     };
-  }, [id, user?.userId]);
+  }, [id, user?.userId, user?.accessToken, idParam]);
 
   // 수정모드
   const handleEditStart = () => setEditMode(true);
@@ -154,8 +217,7 @@ const NoticeDetail = () => {
 
   // 좋아요
   const handleLike = async () => {
-    console.log("로그인 유저 ID:", user.userId)
-    if (!user?.userId) {
+    if (!user?.userId || !user?.accessToken) {
       alert("로그인이 필요합니다.");
       return;
     }
@@ -167,7 +229,10 @@ const NoticeDetail = () => {
         token: user.accessToken,
       });
       setLiked(res?.liked ?? false);
-      setPost((prev) => ({ ...prev, likeCount: res?.likeCount ?? prev.likeCount }));
+      setPost((prev) => ({
+        ...prev,
+        likeCount: res?.likeCount ?? prev.likeCount,
+      }));
     } catch (err) {
       console.error("좋아요 실패:", err);
       alert("좋아요 처리 중 오류가 발생했습니다.");

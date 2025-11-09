@@ -5,7 +5,6 @@ import "../../css/Hospital.css";
 import { Container, Row, Col, Card, Button, Form, Dropdown } from "react-bootstrap";
 import { GeoAltFill, StarFill, Star, TelephoneFill, HospitalFill, CheckCircleFill, XCircleFill } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-
 import useFavorites from "../../hook/useFavorites";
 import useFacilitySearch from "../../hook/useFacilitySearch";
 import PageComponent from "../../component/common/PageComponent";

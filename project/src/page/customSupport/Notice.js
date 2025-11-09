@@ -1,13 +1,90 @@
+// src/page/support/Notice.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
 import "../../css/Support.css";
-import { Eye, Pencil, PinFill, Pin, Search, Megaphone, HandThumbsUp } from "react-bootstrap-icons";
+import {
+  Eye,
+  Pencil,
+  PinFill,
+  Pin,
+  Search,
+  Megaphone,
+  HandThumbsUp,
+} from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
-import { listSupport, removeSupport, pinSupport, unpinSupport, listPinnedSupport } from "../../api/supportApi";
+import {
+  listSupport,
+  removeSupport,
+  pinSupport,
+  unpinSupport,
+  listPinnedSupport,
+} from "../../api/supportApi";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
 import Avatar from "../board/Avatar";
+
+/* ===== 권한 유틸 ===== */
+function decodeJwtRaw(token) {
+  try {
+    const b = token.split(".")[1];
+    const json = atob(b.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+function normalizeToList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === "string")
+    return value
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  return [];
+}
+function pickRolesFromAny(userLike) {
+  const bag = [];
+  if (!userLike) return [];
+  bag.push(...normalizeToList(userLike.roleNames));
+  bag.push(...normalizeToList(userLike.roles));
+  bag.push(...normalizeToList(userLike.authorities));
+  const token = userLike.accessToken || userLike.token;
+  if (token) {
+    const p = decodeJwtRaw(token);
+    if (p) {
+      bag.push(...normalizeToList(p.roleNames));
+      bag.push(...normalizeToList(p.roles));
+      bag.push(...normalizeToList(p.authorities));
+    }
+  }
+  return Array.from(
+    new Set(
+      bag
+        .flatMap((v) =>
+          typeof v === "string"
+            ? v.split(",").map((s) => s.trim())
+            : v
+        )
+        .filter(Boolean)
+    )
+  );
+}
+function hasAdminRole(list) {
+  return list.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
+}
+function extractUserId(userLike) {
+  const token = userLike?.accessToken || userLike?.token;
+  const p = token ? decodeJwtRaw(token) : null;
+  return (
+    p?.userId ??
+    p?.id ??
+    userLike?.userId ??
+    userLike?.id ??
+    0
+  );
+}
 
 const CATEGORIES = [
   { name: "공지사항", path: "/notice" },
@@ -28,7 +105,7 @@ const mapCategoryToType = (cat) => {
   }
 };
 
-const ROTATE_MS = 3500; // 광고 교체 주기(ms)
+const ROTATE_MS = 3500;
 const banners = [
   { kind: "notice", text: "지금 확인하세요! 새로운 공지사항이 등록되었습니다." },
   { kind: "ad", text: "광고 예시: 지역 병원 홍보 배너", brand: "Jikimi" },
@@ -39,8 +116,11 @@ const Notice = () => {
   const navigate = useNavigate();
   const { loginState } = useCustomLogin();
   const user = loginState || {};
-  const roles = user?.roleNames || user?.roles || [];
-  const isAdmin = Array.isArray(roles) && roles.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
+  const rolesAll = useMemo(() => pickRolesFromAny(user), [user]);
+  const isAdmin = useMemo(() => hasAdminRole(rolesAll), [rolesAll]);
+  const adminId = useMemo(() => extractUserId(user), [user]);
+  const token = user?.accessToken || user?.token || null;
+
   const [pinnedItems, setPinnedItems] = useState([]);
   const [active, setActive] = useState("공지사항");
   const [q, setQ] = useState("");
@@ -56,25 +136,26 @@ const Notice = () => {
   }, []);
 
   // 목록 조회
- const fetchList = async (page = 1) => {
-  try {
-    const t = mapCategoryToType(active);
-    const pinnedData = await listPinnedSupport({ type: t });
-    setPinnedItems(pinnedData || []);
-    const data = await listSupport({
-      type: t,
-      page: page,
-      size: 10,
-      q,
-    });
-    setPageData(data);
-  } catch (e) {
-    console.error("공지사항 목록 조회 실패:", e);
-  }
-};
+  const fetchList = async (page = 1) => {
+    try {
+      const t = mapCategoryToType(active);
+      const pinnedData = await listPinnedSupport({ type: t });
+      setPinnedItems(Array.isArray(pinnedData) ? pinnedData : []);
+      const data = await listSupport({
+        type: t,
+        page,
+        size: 10,
+        q,
+      });
+      setPageData(data || null);
+    } catch (e) {
+      console.error("공지사항 목록 조회 실패:", e);
+    }
+  };
 
   useEffect(() => {
     fetchList(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   // 검색
@@ -91,11 +172,11 @@ const Notice = () => {
       await removeSupport({
         type: "notice",
         id,
-        adminId: user.id,
-        token: user.accessToken,
+        adminId,
+        token,
       });
       alert("삭제되었습니다.");
-      fetchList(pageData?.number + 1 || 1);
+      fetchList((pageData?.number ?? 0) + 1 || 1);
     } catch (e) {
       console.error("삭제 실패:", e);
       alert("삭제 실패");
@@ -106,23 +187,22 @@ const Notice = () => {
   const onTogglePin = async (id, isPinnedCopy, originalId = null) => {
     if (!isAdmin) return;
     try {
-      // 복제본은 해제, 원본은 복제 생성
       if (isPinnedCopy && originalId !== null) {
         await unpinSupport({
           type: "notice",
           id,
-          adminId: user.id,
-          token: user.accessToken,
+          adminId,
+          token,
         });
       } else if (!isPinnedCopy && originalId === null) {
         await pinSupport({
           type: "notice",
           id,
-          adminId: user.id,
-          token: user.accessToken,
+          adminId,
+          token,
         });
       }
-      fetchList(pageData?.number + 1 || 1);
+      fetchList((pageData?.number ?? 0) + 1 || 1);
     } catch (e) {
       console.error("상단 고정/해제 실패:", e);
     }
@@ -130,16 +210,14 @@ const Notice = () => {
 
   // 일반 목록 데이터 정제
   const items = useMemo(() => {
-    if (!pageData?.content) return [];
-    return pageData.content.map((m) => {
+    const list = pageData?.content || [];
+    return list.map((m) => {
       const created = m.createdAt ? new Date(m.createdAt) : null;
       const isNew =
         created ? Date.now() - created.getTime() <= 24 * 60 * 60 * 1000 : false;
-      const excerpt = (() => {
-        const c = m.content || "";
-        return c.length > 70 ? c.slice(0, 70) + "..." : c;
-      })();
-
+      const contentStr = m.content || "";
+      const excerpt =
+        contentStr.length > 70 ? contentStr.slice(0, 70) + "..." : contentStr;
       return {
         id: m.supportId,
         title: m.title ?? "",
@@ -149,9 +227,10 @@ const Notice = () => {
         created,
         pinnedCopy: m.pinnedCopy ?? false,
         originalId: m.originalId ?? null,
-        content: m.content ?? "",
+        content: contentStr,
         excerpt,
         isNew,
+        authorProfileImage: m.authorProfileImage ?? null,
       };
     });
   }, [pageData]);
@@ -161,13 +240,17 @@ const Notice = () => {
     return items.filter((m) => (m.title || "").toLowerCase().includes(ql));
   }, [items, q]);
 
-  // N표시 계산 추가
-  const pinnedItemsWithNew = pinnedItems.map((p) => ({
-    ...p,
-    isNew: p.createdAt
-      ? Date.now() - new Date(p.createdAt).getTime() <= 24 * 60 * 60 * 1000
-      : false,
-  }));
+  // 핀 목록 N표시
+  const pinnedItemsWithNew = useMemo(
+    () =>
+      (pinnedItems || []).map((p) => ({
+        ...p,
+        isNew: p.createdAt
+          ? Date.now() - new Date(p.createdAt).getTime() <= 24 * 60 * 60 * 1000
+          : false,
+      })),
+    [pinnedItems]
+  );
 
   // 탭 클릭 이동
   const handleTabClick = (t) => {
@@ -265,7 +348,9 @@ const Notice = () => {
                 key={`pin-${p.supportId}`}
                 type="button"
                 className="list-group-item list-group-item-action d-flex align-items-center justify-content-between board-item-hot"
-                onClick={() => navigate(`/noticedetail/${p.originalId || p.supportId}`)}
+                onClick={() =>
+                  navigate(`/noticedetail/${p.originalId || p.supportId}`)
+                }
               >
                 <div className="d-flex align-items-center gap-3">
                   {isAdmin && (
@@ -280,24 +365,31 @@ const Notice = () => {
                       <PinFill className="fs-5" />
                     </button>
                   )}
-                  <span className="badge rounded-pill px-3 board-badge popular">중요공지</span>
+                  <span className="badge rounded-pill px-3 board-badge popular">
+                    중요공지
+                  </span>
                   <span className="board-title d-flex align-items-center">
                     {p.title}
                     {p.isNew && (
-                    <span
-                      className="ms-2 fw-bold"
-                      style={{ fontSize: "0.9rem", color: "#3341F3" }}
-                    >
-                      N
-                    </span>
-                  )}
+                      <span
+                        className="ms-2 fw-bold"
+                        style={{ fontSize: "0.9rem", color: "#3341F3" }}
+                      >
+                        N
+                      </span>
+                    )}
                   </span>
                 </div>
                 <div className="text-secondary small d-flex justify-content-end align-items-center">
-                  <div className="d-flex align-items-center me-2" style={{ minWidth: "50px" }}>
-                    <Eye size={16} className="me-1" /> {p.viewCount}
+                  <div
+                    className="d-flex align-items-center me-2"
+                    style={{ minWidth: "50px" }}
+                  >
+                    <Eye size={16} className="me-1" /> {p.viewCount ?? 0}
                   </div>
-                  <div>{p.createdAt ? p.createdAt.slice(0, 10) : "-"}</div>
+                  <div>
+                    {p.createdAt ? String(p.createdAt).slice(0, 10) : "-"}
+                  </div>
                   {isAdmin && (
                     <button
                       className="btn-ghost btn-ghost-danger ms-3"
@@ -321,7 +413,9 @@ const Notice = () => {
             filtered
               .filter((p) => !p.originalId)
               .map((p) => {
-                const hasPinnedCopy = pinnedItems.some((c) => c.originalId === p.id);
+                const hasPinnedCopy = pinnedItems.some(
+                  (c) => c.originalId === p.id
+                );
                 return (
                   <button
                     key={p.id}
@@ -373,10 +467,17 @@ const Notice = () => {
                       </span>
                     </div>
                     <div className="text-secondary small d-flex justify-content-end align-items-center">
-                      <div className="d-flex align-items-center me-2" style={{ minWidth: "50px" }}>
+                      <div
+                        className="d-flex align-items-center me-2"
+                        style={{ minWidth: "50px" }}
+                      >
                         <Eye size={16} className="me-1" /> {p.view}
                       </div>
-                      <div>{p.created ? p.created.toISOString().slice(0, 10) : "-"}</div>
+                      <div>
+                        {p.created
+                          ? p.created.toISOString().slice(0, 10)
+                          : "-"}
+                      </div>
                       {isAdmin && (
                         <button
                           className="btn-ghost btn-ghost-danger ms-3"
@@ -403,8 +504,11 @@ const Notice = () => {
         {pageData && (
           <PageComponent
             pageData={{
-              current: pageData.number + 1,
-              pageNumList: Array.from({ length: pageData.totalPages }, (_, i) => i + 1),
+              current: (pageData.number ?? 0) + 1,
+              pageNumList: Array.from(
+                { length: pageData.totalPages ?? 0 },
+                (_, i) => i + 1
+              ),
             }}
             onPageChange={(p) => fetchList(p + 1)}
           />
@@ -414,13 +518,19 @@ const Notice = () => {
       {/* ====== 모바일 ====== */}
       <div className="d-block d-md-none">
         <div className="mbp-wrap">
-
           {/* 공지/광고 배너 (모바일) */}
           <div className="px-3 pt-2 d-block d-md-none">
             <div className="notice-banner">
-              <div key={bannerIdx} className="notice-anim d-flex w-100 align-items-center justify-content-between">
+              <div
+                key={bannerIdx}
+                className="notice-anim d-flex w-100 align-items-center justify-content-between"
+              >
                 <div className="notice-left">
-                  <span className={`notice-icon ${banners[bannerIdx].kind === "ad" ? "is-ad" : "is-notice"}`}>
+                  <span
+                    className={`notice-icon ${
+                      banners[bannerIdx].kind === "ad" ? "is-ad" : "is-notice"
+                    }`}
+                  >
                     <Megaphone size={16} />
                   </span>
                   <span className="notice-text">{banners[bannerIdx].text}</span>
@@ -428,7 +538,9 @@ const Notice = () => {
                 <div className="notice-right">
                   {banners[bannerIdx].kind === "ad" ? (
                     <>
-                      <span className="notice-brand">{banners[bannerIdx].brand}</span>
+                      <span className="notice-brand">
+                        {banners[bannerIdx].brand}
+                      </span>
                       <span className="notice-ad">광고</span>
                     </>
                   ) : (
@@ -498,7 +610,9 @@ const Notice = () => {
                 <article
                   className="mbp-card"
                   key={`pin-${m.supportId}`}
-                  onClick={() => navigate(`/noticedetail/${m.originalId || m.supportId}`)}
+                  onClick={() =>
+                    navigate(`/noticedetail/${m.originalId || m.supportId}`)
+                  }
                   role="button"
                 >
                   <div className="d-flex justify-content-between align-items-start">
@@ -518,15 +632,15 @@ const Notice = () => {
                       <span className="mbp-badge popular">중요공지</span>
                     </div>
                     {isAdmin && (
-                        <button
-                          className="btn-ghost btn-ghost-danger"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete(m.supportId);
-                          }}
-                        >
-                          삭제
-                        </button>
+                      <button
+                        className="btn-ghost btn-ghost-danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(m.supportId);
+                        }}
+                      >
+                        삭제
+                      </button>
                     )}
                   </div>
 
@@ -559,10 +673,7 @@ const Notice = () => {
                                 .slice(0, 5)}`
                             : "-"}
                         </span>
-                        <span
-                          className="fw-semibold"
-                          style={{ color: "#3341F3" }}
-                        >
+                        <span className="fw-semibold" style={{ color: "#3341F3" }}>
                           {m.authorAddress || "성남"}
                         </span>
                       </div>
@@ -579,8 +690,7 @@ const Notice = () => {
 
                   <p className="mbp-excerpt pt-1">
                     {m.content && m.content.length > 0
-                      ? m.content.slice(0, 70) +
-                        (m.content.length > 70 ? "..." : "")
+                      ? m.content.slice(0, 70) + (m.content.length > 70 ? "..." : "")
                       : "내용이 없습니다."}
                   </p>
                   <div className="mbp-divider"></div>
@@ -604,7 +714,9 @@ const Notice = () => {
             filtered
               .filter((m) => !m.pinnedCopy)
               .map((m) => {
-                const hasPinnedCopy = pinnedItems.some((c) => c.originalId === m.id);
+                const hasPinnedCopy = pinnedItems.some(
+                  (c) => c.originalId === m.id
+                );
                 return (
                   <article
                     className="mbp-card"
@@ -614,9 +726,8 @@ const Notice = () => {
                   >
                     <div className="d-flex justify-content-between align-items-start">
                       <div className="d-flex align-items-center gap-2">
-                        {isAdmin && (
-                          hasPinnedCopy ? (
-                            // 이미 복제글 있을 때 핀 누르면 상단 복제글 삭제
+                        {isAdmin &&
+                          (hasPinnedCopy ? (
                             <button
                               className="pin-btn"
                               onClick={(e) => {
@@ -631,7 +742,6 @@ const Notice = () => {
                               <PinFill className="fs-4" />
                             </button>
                           ) : (
-                            // 복제글 없을 때 핀 누르면 복제글 생성
                             <button
                               className="pin-btn"
                               onClick={(e) => {
@@ -642,8 +752,7 @@ const Notice = () => {
                             >
                               <Pin className="fs-4" />
                             </button>
-                          )
-                        )}
+                          ))}
                         <span className="mbp-badge">공지사항</span>
                       </div>
                       {isAdmin && (
@@ -659,10 +768,8 @@ const Notice = () => {
                       )}
                     </div>
 
-                    {/* 제목 + 프로필 (제목/날짜 라인과 정렬 맞춤) */}
                     <div className="d-flex justify-content-between align-items-stretch mt-2">
                       <div className="flex-grow-1">
-                        {/* 제목 라인 */}
                         <div className="d-flex justify-content-between align-items-center">
                           <h6 className="mbp-title-line fw-semibold text-truncate mb-1">
                             {m.title}
@@ -675,28 +782,27 @@ const Notice = () => {
                               </span>
                             )}
                           </h6>
-                          <span className="fw-semibold text-dark small">{m.author}</span>
+                          <span className="fw-semibold text-dark small">
+                            {m.author}
+                          </span>
                         </div>
 
-                        {/* 날짜 라인 */}
                         <div className="d-flex justify-content-between text-secondary small mt-1">
                           <span>
                             {m.created
-                              ? `${m.created.toISOString().slice(0, 10)} ${m.created
+                              ? `${m.created
+                                  .toISOString()
+                                  .slice(0, 10)} ${m.created
                                   .toTimeString()
                                   .slice(0, 5)}`
                               : "-"}
                           </span>
-                          <span
-                            className="fw-semibold"
-                            style={{ color: "#3341F3" }}
-                          >
+                          <span className="fw-semibold" style={{ color: "#3341F3" }}>
                             성남
                           </span>
                         </div>
                       </div>
 
-                      {/* 프로필 사진 (오른쪽 끝, 제목+날짜 높이만큼) */}
                       <div className="d-flex align-items-center ms-2">
                         <Avatar
                           src={m.authorProfileImage}
@@ -707,21 +813,19 @@ const Notice = () => {
                     </div>
 
                     <p className="mbp-excerpt pt-1">
-                      {m.excerpt && m.excerpt.length > 0
-                        ? m.excerpt
-                        : "내용이 없습니다."}
+                      {m.excerpt && m.excerpt.length > 0 ? m.excerpt : "내용이 없습니다."}
                     </p>
                     <div className="mbp-divider"></div>
                     <div className="d-flex justify-content-end align-items-center text-secondary me-1">
-                    <span className="d-flex align-items-center me-3">
-                      <Eye size={16} className="me-1" />
-                      {m.view}
-                    </span>
-                    <span className="d-flex align-items-center me-1">
-                      <HandThumbsUp size={16} className="me-1" />
-                      {m.like}
-                    </span>
-                  </div>
+                      <span className="d-flex align-items-center me-3">
+                        <Eye size={16} className="me-1" />
+                        {m.view}
+                      </span>
+                      <span className="d-flex align-items-center me-1">
+                        <HandThumbsUp size={16} className="me-1" />
+                        {m.like}
+                      </span>
+                    </div>
                   </article>
                 );
               })
@@ -735,8 +839,11 @@ const Notice = () => {
           {pageData && (
             <PageComponent
               pageData={{
-                current: pageData.number + 1,
-                pageNumList: Array.from({ length: pageData.totalPages }, (_, i) => i + 1),
+                current: (pageData.number ?? 0) + 1,
+                pageNumList: Array.from(
+                  { length: pageData.totalPages ?? 0 },
+                  (_, i) => i + 1
+                ),
               }}
               onPageChange={(p) => fetchList(p + 1)}
             />

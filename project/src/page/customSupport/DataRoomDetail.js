@@ -1,11 +1,59 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+// src/page/support/DataRoomDetail.jsx
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/BoardDetail.css";
-import { Eye, HandThumbsUp, Share, Folder, List } from "react-bootstrap-icons";
-import { getSupport, removeSupport, updateSupport, toggleSupportLike, getSupportLikeStatus } from "../../api/supportApi";
+import {
+  getSupport,
+  removeSupport,
+  updateSupport,
+  toggleSupportLike,
+  getSupportLikeStatus,
+} from "../../api/supportApi";
 import useCustomLogin from "../../hook/useCustomLogin";
+import { API_SERVER_HOST } from "../../config/api";
 import Avatar from "../board/Avatar";
+import { Eye, HandThumbsUp, Share, Folder, List } from "react-bootstrap-icons";
+
+/** ===== FAQ와 동일 컨벤션의 권한 유틸 ===== */
+function decodeJwt(token) {
+  try {
+    const b = token.split(".")[1];
+    const json = atob(b.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+function normalizeToList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === "string") {
+    return value.split(",").map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+function pickRolesFromAny(user) {
+  const bag = [];
+  bag.push(...normalizeToList(user?.roleNames));
+  bag.push(...normalizeToList(user?.roles));
+  bag.push(...normalizeToList(user?.authorities));
+  const token = user?.accessToken || user?.token;
+  if (token) {
+    const p = decodeJwt(token);
+    if (p) {
+      bag.push(...normalizeToList(p.roleNames));
+      bag.push(...normalizeToList(p.roles));
+      bag.push(...normalizeToList(p.authorities));
+    }
+  }
+  return Array.from(new Set(bag.flatMap((v) =>
+    typeof v === "string" ? v.split(",").map((s) => s.trim()).filter(Boolean) : v
+  ))).filter(Boolean);
+}
+function hasAdminRole(roleList) {
+  return roleList.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
+}
 
 const DataRoomDetail = () => {
   const { id: idParam } = useParams();
@@ -15,10 +63,13 @@ const DataRoomDetail = () => {
 
   const { loginState } = useCustomLogin();
   const user = loginState || {};
-  const roles = user?.roleNames || user?.roles || [];
-  const isAdmin =
-    Array.isArray(roles) && roles.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
+  const token = user?.accessToken || null;
 
+  // FAQ와 동일한 권한 판정
+  const rolesAll = useMemo(() => pickRolesFromAny(user), [user]);
+  const isAdmin = useMemo(() => hasAdminRole(rolesAll), [rolesAll]);
+
+  // 글 데이터
   const [post, setPost] = useState({
     title: "",
     content: "",
@@ -28,26 +79,22 @@ const DataRoomDetail = () => {
     name: "",
     fileName: "",
     fileUrl: "",
+    authorProfileImage: null,
   });
 
-  //첨부파일 다운로드 3000번으로 열리는거 문제
-  const apiBase = process.env.REACT_APP_API_BASE_URL || "http://localhost:8080";
-
+  // 첨부 URL (항상 API 서버 기준)
   const resolvedUrl = useMemo(() => {
-    // 1순위: fileName이 있으면 fileName으로 안전하게 만들기(권장)
     if (post.fileName) {
-      return `${apiBase}/uploads/support/${encodeURIComponent(post.fileName)}`;
+      return `${API_SERVER_HOST}/uploads/support/${encodeURIComponent(post.fileName)}`;
     }
-    // 2순위: fileUrl이 저장돼 있으면 그것도 보정
     if (post.fileUrl) {
-      // 절대 URL이면 그대로, 상대면 apiBase 붙이고 마지막 파일명만 인코딩
       if (post.fileUrl.startsWith("http")) return post.fileUrl;
       const segs = post.fileUrl.split("/");
       const last = segs.pop() || "";
-      return `${apiBase}${segs.join("/")}/${encodeURIComponent(last)}`;
+      return `${API_SERVER_HOST}${segs.join("/")}/${encodeURIComponent(last)}`;
     }
     return null;
-  }, [post.fileName, post.fileUrl, apiBase]);
+  }, [post.fileName, post.fileUrl]);
 
   const [liked, setLiked] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -61,23 +108,15 @@ const DataRoomDetail = () => {
     if (!post.createdAt) return { date: "", time: "" };
     const d = new Date(post.createdAt);
     return {
-      date: d.toLocaleDateString("ko-KR", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }),
-      time: d.toLocaleTimeString("ko-KR", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }),
+      date: d.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }),
+      time: d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }),
     };
   }, [post.createdAt]);
 
-  // 게시글 로드
+  /** ===== 게시글 로드 ===== */
   useEffect(() => {
     if (!id || isNaN(id)) {
-      console.warn("잘못된 ID로 접근:", idParam);
+      console.warn("[DataRoomDetail] 잘못된 ID:", idParam);
       setLoading(false);
       return;
     }
@@ -96,33 +135,42 @@ const DataRoomDetail = () => {
           name: data.name ?? "관리자",
           fileName: data.fileName ?? "",
           fileUrl: data.fileUrl ?? "",
+          authorProfileImage: data.authorProfileImage ?? null,
         });
         setEditTitle(data.title ?? "");
         setEditContent(data.content ?? "");
-
-        if (user?.userId) {
-          const status = await getSupportLikeStatus({
-            type,
-            id,
-            userId: user.userId,
-            token: user.accessToken,
-          });
-          setLiked(status?.liked ?? false);
-        } else {
-          setLiked(false);
-        }
       } catch (err) {
-        console.error("getSupport failed", err);
+        console.error("[DataRoomDetail] getSupport 실패:", err);
       } finally {
         if (!ignore) setLoading(false);
       }
     })();
-    return () => {
-      ignore = true;
-    };
-  }, [id, user?.userId]);
+    return () => { ignore = true; };
+  }, [id, idParam]);
 
-  // 수정모드
+  /** ===== 좋아요 상태 (FAQ 패턴: 상태값 있으면 사용, 없으면 비활성) ===== */
+  useEffect(() => {
+    (async () => {
+      if (!user?.userId || !token) {
+        setLiked(false);
+        return;
+      }
+      try {
+        const status = await getSupportLikeStatus({
+          type,
+          id,
+          userId: user.userId,
+          token,
+        });
+        setLiked(status?.liked ?? false);
+      } catch (e) {
+        console.warn("[DataRoomDetail] like status 실패:", e);
+        setLiked(false);
+      }
+    })();
+  }, [id, token, user?.userId]);
+
+  /** ===== 수정/삭제/좋아요 ===== */
   const handleEditStart = () => setEditMode(true);
   const handleEditCancel = () => {
     setEditMode(false);
@@ -130,8 +178,11 @@ const DataRoomDetail = () => {
     setEditContent(post.content);
   };
 
-  // 수정
   const handleEditSave = async () => {
+    if (!isAdmin) {
+      alert("관리자만 수정할 수 있습니다.");
+      return;
+    }
     const dto = {
       title: (editTitle || "").trim(),
       content: (editContent || "").trim(),
@@ -147,19 +198,18 @@ const DataRoomDetail = () => {
         type,
         id,
         dto,
-        adminId: user.userId,
+        adminId: user.userId,           // FAQ와 동일: 훅 값 사용
         token: user.accessToken,
       });
       alert("수정되었습니다.");
       setPost((prev) => ({ ...prev, ...dto }));
       setEditMode(false);
     } catch (e) {
-      console.error(e);
+      console.error("[DataRoomDetail] 수정 실패:", e);
       alert("수정 실패");
     }
   };
 
-  // 삭제
   const handleDelete = async () => {
     if (!isAdmin) return;
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
@@ -167,20 +217,19 @@ const DataRoomDetail = () => {
       await removeSupport({
         type,
         id,
-        adminId: user.userId,
+        adminId: user.userId,           // FAQ와 동일
         token: user.accessToken,
       });
       alert("삭제되었습니다.");
       navigate("/dataroom");
     } catch (e) {
-      console.error(e);
+      console.error("[DataRoomDetail] 삭제 실패:", e);
       alert("삭제 실패");
     }
   };
 
-  // 좋아요
   const handleLike = async () => {
-    if (!user?.userId) {
+    if (!user?.userId || !token) {
       alert("로그인이 필요합니다.");
       return;
     }
@@ -188,18 +237,18 @@ const DataRoomDetail = () => {
       const res = await toggleSupportLike({
         type,
         id,
-        userId: user.userId,
-        token: user.accessToken,
+        userId: user.userId,           // FAQ와 동일
+        token,
       });
       setLiked(res?.liked ?? false);
       setPost((prev) => ({ ...prev, likeCount: res?.likeCount ?? prev.likeCount }));
     } catch (err) {
-      console.error("좋아요 실패:", err);
+      console.error("[DataRoomDetail] 좋아요 실패:", err);
       alert("좋아요 처리 중 오류가 발생했습니다.");
     }
   };
 
-  // 공유
+  /** ===== 공유 ===== */
   const openShare = useCallback(async () => {
     const pageUrl = typeof window !== "undefined" ? window.location.href : "";
     const shareTitle = post.title || "자료실";
@@ -240,12 +289,8 @@ const DataRoomDetail = () => {
 
         {!editMode && isAdmin && (
           <div className="post-actions d-none d-md-flex">
-            <button className="btn-ghost" onClick={handleEditStart}>
-              수정
-            </button>
-            <button className="btn-ghost btn-ghost-danger" onClick={handleDelete}>
-              삭제
-            </button>
+            <button className="btn-ghost" onClick={handleEditStart}>수정</button>
+            <button className="btn-ghost btn-ghost-danger" onClick={handleDelete}>삭제</button>
           </div>
         )}
       </div>
@@ -253,19 +298,11 @@ const DataRoomDetail = () => {
       {/* 작성자 / 날짜 / 조회수 */}
       <div className="d-flex justify-content-between align-items-center post-meta mb-3">
         <div className="d-flex align-items-center">
-          <Avatar
-            src={post.authorProfileImage}
-            size={40}
-            className="me-2 border border-light shadow-sm"
-          />
+          <Avatar src={post.authorProfileImage} size={40} className="me-2 border border-light shadow-sm" />
           <span className="fw-semibold text-dark me-2">{post.name}</span>
-          <span>
-            {formatted.date} {formatted.time}
-          </span>
+          <span>{formatted.date} {formatted.time}</span>
         </div>
-        <div>
-          <Eye /> {post.viewCount ?? 0}
-        </div>
+        <div><Eye /> {post.viewCount ?? 0}</div>
       </div>
 
       <hr />
@@ -279,24 +316,20 @@ const DataRoomDetail = () => {
             style={{ cursor: "pointer" }}
           >
             <Folder size={16} />
-            첨부파일{" "}
-            <span className="text-primary fw-semibold">1</span>
+            첨부파일 <span className="text-primary fw-semibold">1</span>
           </div>
 
           {showAttachPopup && (
             <div className="attachment-popup shadow-sm border rounded bg-white p-3 mt-2">
-              <div
-                className="d-flex justify-content-between align-items-center"
-                style={{ minWidth: "220px" }}
-              >
+              <div className="d-flex justify-content-between align-items-center" style={{ minWidth: "220px" }}>
                 <a
-                  href={resolvedUrl}
+                  href={resolvedUrl || "#"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-truncate small fw-semibold text-dark text-decoration-none"
                   style={{ maxWidth: "140px" }}
                   title={post.fileName}
-                  download // ← 저장 대화상자 띄우고 싶으면 추가
+                  download
                 >
                   {post.fileName || "첨부파일"}
                 </a>
@@ -306,9 +339,8 @@ const DataRoomDetail = () => {
                 <button
                   className="btn btn-link btn-sm p-0 text-decoration-none text-secondary"
                   onClick={() => {
-                    const apiBase = process.env.REACT_APP_API_BASE_URL || "";
-                    const downloadUrl = `${apiBase}/project/support/${id}/download`;
-                    window.location.href = downloadUrl; // 브라우저가 바로 다운로드 처리
+                    const downloadUrl = `${API_SERVER_HOST}/project/support/${id}/download`;
+                    window.location.href = downloadUrl;
                   }}
                 >
                   내PC 저장
@@ -336,15 +368,11 @@ const DataRoomDetail = () => {
         )}
       </div>
 
-      {/* 수정모드 저장/취소 */}
+      {/* 수정모드 버튼 */}
       {editMode && (
         <div className="d-flex justify-content-end gap-3 mt-3 post-actions">
-          <button className="btn-ghost" onClick={handleEditSave}>
-            저장
-          </button>
-          <button className="btn-ghost btn-ghost-danger" onClick={handleEditCancel}>
-            취소
-          </button>
+          <button className="btn-ghost" onClick={handleEditSave}>저장</button>
+          <button className="btn-ghost btn-ghost-danger" onClick={handleEditCancel}>취소</button>
         </div>
       )}
 
@@ -353,24 +381,22 @@ const DataRoomDetail = () => {
         <div className="d-flex gap-3 mb-5 like-share">
           <button
             className={
-              "btn flex-fill py-2 " +
-              (liked ? "btn-primary text-white" : "btn-outline-primary")
+              "btn flex-fill py-2 " + (liked ? "btn-primary text-white" : "btn-outline-primary")
             }
             onClick={handleLike}
+            disabled={!user?.userId || !token} // FAQ 패턴: ID/토큰 없으면 비활성
+            title={!user?.userId || !token ? "로그인 후 이용하세요" : ""}
           >
             <HandThumbsUp /> 좋아요 {post.likeCount}
           </button>
 
-          <button
-            className="btn btn-outline-secondary flex-fill py-2"
-            onClick={openShare}
-          >
+          <button className="btn btn-outline-secondary flex-fill py-2" onClick={openShare}>
             <Share /> 공유
           </button>
         </div>
       )}
 
-      {/* '목록으로' 버튼 */}
+      {/* 목록으로 */}
       {!editMode && (
         <div className="post-nav mt-4 text-end">
           <div className="list-wrap">

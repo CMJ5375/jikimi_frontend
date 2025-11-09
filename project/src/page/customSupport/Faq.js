@@ -1,3 +1,4 @@
+// src/page/support/Faq.jsx  (파일 경로는 기존 그대로 쓰세요)
 import React, { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";
@@ -9,6 +10,7 @@ import { listSupport, removeSupport, updateSupport } from "../../api/supportApi"
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
 
+// ===== 상수/유틸 =====
 const CATEGORIES = [
   { name: "공지사항", path: "/notice" },
   { name: "FAQ", path: "/faq" },
@@ -35,13 +37,79 @@ const banners = [
   { kind: "notice", text: "사이트 점검 예정 안내 (11/10 02:00 ~ 04:00)" },
 ];
 
+// ===== 권한 유틸 =====
+function decodeJwt(token) {
+  try {
+    const b = token.split(".")[1];
+    const json = atob(b.replace(/-/g, "+").replace(/_/g, "/"));
+    // decodeURIComponent(escape(json))은 일부 환경에서 오류 날 수 있어 생략
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeToList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function pickRolesFromAny(user) {
+  const bag = [];
+
+  // 상태에 저장된 필드들 (roleNames: 원형, roles/authorities: ROLE_*)
+  bag.push(...normalizeToList(user?.roleNames));
+  bag.push(...normalizeToList(user?.roles));
+  bag.push(...normalizeToList(user?.authorities));
+
+  // 토큰 payload에도 있을 수 있음
+  const token = user?.accessToken || user?.token;
+  if (token) {
+    const p = decodeJwt(token);
+    if (p) {
+      bag.push(...normalizeToList(p.roleNames));
+      bag.push(...normalizeToList(p.roles));
+      bag.push(...normalizeToList(p.authorities));
+    }
+  }
+
+  // 최종 정규화
+  const uniq = Array.from(
+    new Set(
+      bag
+        .flatMap((v) =>
+          typeof v === "string"
+            ? v.split(",").map((s) => s.trim()).filter(Boolean)
+            : v
+        )
+        .filter(Boolean)
+    )
+  );
+
+  return uniq;
+}
+
+function hasAdminRole(roleList) {
+  return roleList.some((r) => r === "ADMIN" || r === "ROLE_ADMIN");
+}
+
+// ===== 컴포넌트 =====
 const Faq = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { loginState } = useCustomLogin();
   const user = loginState || {};
-  const roles = user?.roleNames || user?.roles || [];
-  const isAdmin = Array.isArray(roles) && roles.some((r) => r === "ROLE_ADMIN" || r === "ADMIN");
+
+  // 권한 계산 (강화된 방식)
+  const rolesAll = useMemo(() => pickRolesFromAny(user), [user]);
+  const isAdmin = useMemo(() => hasAdminRole(rolesAll), [rolesAll]);
 
   const [active, setActive] = useState("FAQ");
   const [q, setQ] = useState("");
@@ -77,9 +145,10 @@ const Faq = () => {
     }
   };
 
-  // URL 변경 시 다시 불러오기
+  // URL/탭 변경 시 다시 불러오기
   useEffect(() => {
     fetchList(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, location.pathname]);
 
   // 검색

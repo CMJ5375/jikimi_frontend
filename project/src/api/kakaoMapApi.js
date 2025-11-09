@@ -1,13 +1,11 @@
-// src/api/KakaoMapApi.js
-const kakao_js_key = `485d664e9dbeef94c4a676b73b34a111`;
+import { API_SERVER_HOST } from "../config/api";
+
+const kakao_js_key = process.env.REACT_APP_KAKAO_JS_KEY || "485d664e9dbeef94c4a676b73b34a111";
 const TAG = "[kakaoMapApi]";
 const okNum = (n) => typeof n === "number" && isFinite(n);
 
-// 기본 위치 - 성남 모란 두드림 IT학원
-const DEFAULT_LOCATION = {
-  lat: 37.432764,
-  lng: 127.129637,
-};
+// 기본 위치
+const DEFAULT_LOCATION = { lat: 37.432764, lng: 127.129637 };
 
 // Kakao Map SDK 로드 (중복 방지)
 export const loadKakaoMap = () =>
@@ -18,7 +16,6 @@ export const loadKakaoMap = () =>
         window.kakao.maps.load(() => resolve(window.kakao.maps));
         return;
       }
-
       console.debug(`${TAG} SDK 스크립트 삽입`);
       const script = document.createElement("script");
       script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${kakao_js_key}&autoload=false`;
@@ -27,9 +24,7 @@ export const loadKakaoMap = () =>
         console.debug(`${TAG} SDK onload → maps.load 호출`);
         window.kakao.maps.load(() => resolve(window.kakao.maps));
       };
-      script.onerror = (e) => {
-        console.error(`${TAG} SDK 로드 실패`, e);
-      };
+      script.onerror = (e) => console.error(`${TAG} SDK 로드 실패`, e);
       document.head.appendChild(script);
     } catch (e) {
       console.error(`${TAG} loadKakaoMap 예외`, e);
@@ -52,11 +47,7 @@ export const createMap = (containerId, center, level = 4) => {
       return null;
     }
 
-    const options = {
-      center: new window.kakao.maps.LatLng(lat, lng),
-      level,
-    };
-
+    const options = { center: new window.kakao.maps.LatLng(lat, lng), level };
     console.debug(`${TAG} createMap: 지도 생성`, { containerId, lat, lng, level });
     const map = new window.kakao.maps.Map(container, options);
     container._kakaoMapInstance = map;
@@ -98,7 +89,7 @@ export const addMarker = (map, position, title = "") => {
   }
 };
 
-// 상세페이지에서는 내 위치 마커 제외 & 중심을 시설로 설정
+// 상세페이지 렌더
 export const renderKakaoMap = async (containerId, center, locations = [], showCenterMarker = true) => {
   console.group(`${TAG} renderKakaoMap`);
   console.log("입력값 →", { containerId, center, locationsCount: locations?.length, showCenterMarker });
@@ -130,16 +121,14 @@ export const renderKakaoMap = async (containerId, center, locations = [], showCe
     }
 
     // 기존 마커 제거
-    if (map._markers) map._markers.forEach(m => m && m.setMap(null));
+    if (map._markers) map._markers.forEach((m) => m && m.setMap(null));
     map._markers = [];
 
-    // showCenterMarker=true일 때만 내 위치 마커 표시
     if (showCenterMarker) {
       const my = addMarker(map, { lat, lng }, "내 위치");
       if (my) map._markers.push(my);
     }
 
-    // 시설 마커 추가
     let added = 0;
     locations?.forEach((f) => {
       const flat = Number(f?.latitude);
@@ -151,15 +140,12 @@ export const renderKakaoMap = async (containerId, center, locations = [], showCe
       }
     });
 
-    // 상세페이지 (시설 1개 + 내 위치 마커 없음): 중심 고정
     if (!showCenterMarker && added === 1) {
       const f = locations[0];
       map.setCenter(new kakao.LatLng(f.latitude, f.longitude));
-      map.setLevel(3); // 확대
+      map.setLevel(3);
       console.debug(`${TAG} 단일 시설 중심 설정`);
-    }
-    // 목록페이지 (다수 마커): 범위 맞춤
-    else if (added > 0) {
+    } else if (added > 0) {
       const bounds = new kakao.LatLngBounds();
       if (showCenterMarker) bounds.extend(new kakao.LatLng(lat, lng));
       locations.forEach((f) => {
@@ -172,7 +158,6 @@ export const renderKakaoMap = async (containerId, center, locations = [], showCe
     }
 
     console.groupEnd();
-    console.log("지도데이터", center, locations);
     return map;
   } catch (e) {
     console.error(`${TAG} renderKakaoMap 예외`, e);
@@ -181,20 +166,18 @@ export const renderKakaoMap = async (containerId, center, locations = [], showCe
   }
 };
 
-// 기본 좌표 반환 (네비게이션/검색 기본 위치)
+// 기본 좌표 반환
 export function getDefaultPosition() {
   console.log("기본 위치(성남 두드림IT학원)로 설정되었습니다.");
   return Promise.resolve(DEFAULT_LOCATION);
 }
 
 // 백엔드에서 카카오 주소 받아오기
-export async function getAddressFromBackend(lat, lon) { 
+export async function getAddressFromBackend(lat, lon) {
   try {
-    // ※ 현재 프론트에 이미 쓰고 있는 엔드포인트 유지
-    const response = await fetch(
-      `http://localhost:8080/project/map/reverse?lat=${lat}&lon=${lon}`,
-      { method: "GET" }
-    );
+    const response = await fetch(`${API_SERVER_HOST}/project/map/reverse?lat=${lat}&lon=${lon}`, {
+      method: "GET",
+    });
     if (!response.ok) throw new Error(`서버 응답 오류: ${response.status}`);
 
     const data = await response.json();
@@ -205,12 +188,10 @@ export async function getAddressFromBackend(lat, lon) {
       const addr = doc.address;
 
       if (road) {
-        const fullRoad =
-          `${road.region_1depth_name} ${road.region_2depth_name} ${road.region_3depth_name} ${road.road_name} ${road.main_building_no || ""}`.trim();
+        const fullRoad = `${road.region_1depth_name} ${road.region_2depth_name} ${road.region_3depth_name} ${road.road_name} ${road.main_building_no || ""}`.trim();
         return fullRoad;
       } else if (addr) {
-        const fullAddr =
-          `${addr.region_1depth_name} ${addr.region_2depth_name} ${addr.region_3depth_name} ${addr.main_address_no || ""}`.trim();
+        const fullAddr = `${addr.region_1depth_name} ${addr.region_2depth_name} ${addr.region_3depth_name} ${addr.main_address_no || ""}`.trim();
         return fullAddr;
       }
     }

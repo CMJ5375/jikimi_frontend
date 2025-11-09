@@ -6,14 +6,14 @@ import { FaBookmark, FaCommentDots, FaStar, FaHeart, FaRegCommentDots, FaRegStar
 import { getFavorites, toggleFavorite } from "../../api/favoriteApi";
 import { fetchMyPosts } from "../../api/postApi";
 import { useNavigate } from "react-router-dom";
-import { API_SERVER_HOST, modifyUser, updateProfileApi } from "../../api/userApi";
+import { modifyUser, updateProfileApi } from "../../api/userApi";
 import { useSelector, useDispatch } from "react-redux";
 import { getCookie, setCookie } from "../../util/cookieUtil";
 import useCustomLogin from "../../hook/useCustomLogin";
 import PageComponent from "../../component/common/PageComponent";
 import MyCommentsPanel from "./MyCommentsPanel";
 import MyPostsPanel from "./MyPostsPanel";
-
+import { API_SERVER_HOST } from "../../config/api";
 //프로필 업로드하면 유지가 안되어서 수정차..
 const toAbsUrl = (u) => (!u ? u : u.startsWith("http") ? u : `${API_SERVER_HOST}${u}`);
 
@@ -161,12 +161,12 @@ const MyPage = () => {
 
         const hospitalData = await Promise.all(
           hospitalIds.map((id) =>
-            fetch(`http://localhost:8080/project/hospital/${id}`).then((res) => res.json())
-          )
+            fetch(`${API_SERVER_HOST}/project/hospital/${id}`).then((res) => res.json())
+           )
         );
         const pharmacyData = await Promise.all(
           pharmacyIds.map((id) =>
-            fetch(`http://localhost:8080/project/pharmacy/${id}`).then((res) => res.json())
+           fetch(`${API_SERVER_HOST}/project/pharmacy/${id}`).then((res) => res.json())
           )
         );
 
