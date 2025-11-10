@@ -178,7 +178,6 @@ export const renderKakaoMap = async (containerId, center, locations = [], showCe
 
 // 기본 좌표 반환 (네비게이션/검색 기본 위치)
 export function getDefaultPosition() {
-  console.log("기본 위치(성남 두드림IT학원)로 설정되었습니다.");
   return Promise.resolve(DEFAULT_LOCATION);
 }
 
