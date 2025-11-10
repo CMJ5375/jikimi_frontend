@@ -379,7 +379,7 @@ useEffect(() => {
             </h3>
           </Col>
           <Col xs={6} className="text-end">
-            <img src="/image/map.png" alt="지도" height="150" />
+            <img src="/image/map.png" alt="지도" className="img-fluid limited-img map-img" />
           </Col>
         </Row>
 
@@ -388,7 +388,7 @@ useEffect(() => {
           <Col xs={6}>
             <Card className="card-hospital-blue text-white" onClick={() => navigate("/")}>
               <Card.Body>
-                <img src="/image/hospitalBed.png" alt="병원" />
+                <img src="/image/hospitalBed.png" alt="병원" className="img-fluid d-block mx-auto h-auto limited-img" />
                 <div className="fw-semibold">병원</div>
               </Card.Body>
             </Card>
@@ -396,7 +396,7 @@ useEffect(() => {
           <Col xs={6}>
             <Card className="card-hospital-gray text-dark" onClick={() => navigate("/pharmacy")}>
               <Card.Body>
-                <img src="/image/pharmacy.png" alt="약국" />
+                <img src="/image/pharmacy.png" alt="약국" className="img-fluid d-block mx-auto h-auto limited-img" />
                 <div className="fw-semibold">약국</div>
               </Card.Body>
             </Card>

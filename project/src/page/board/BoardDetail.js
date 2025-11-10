@@ -485,7 +485,7 @@ const BoardDetail = () => {
 
       {/* 좋아요 & 공유 버튼 */}
       {!editMode && (
-        <div className="d-flex gap-3 mb-5 like-share">
+        <div className="d-flex gap-3 mb-5">
          <button
           className={
             "btn flex-fill py-2 " +

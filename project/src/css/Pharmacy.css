@@ -314,3 +314,17 @@
   padding: 1rem;
   border-radius: 8px;
 }
+
+/* 원본 이상 확대 방지 */
+.limited-img {
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  max-height: 180px;
+}
+
+/* 지도 전용: 높이 150px 초과 방지 */
+.map-img {
+  max-height: 150px;
+}
