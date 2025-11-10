@@ -1,17 +1,29 @@
 // src/util/jwtUtil.js
 import axios from "axios";
 import { getCookie, setCookie } from "./cookieUtil";
-import { API_SERVER_HOST } from "../config/api";
+import { API_SERVER_HOST, apiUrl } from "../config/api";
 
-// baseURL 고정
+// === axios 인스턴스 (JWT 전용) ===
 const jwtAxios = axios.create({
-  baseURL: API_SERVER_HOST,
+  baseURL: API_SERVER_HOST, // 반드시 공통 호스트 사용
+  timeout: 15000,
+});
+
+// http -> https 승격 (혹시 모를 실수 방지)
+jwtAxios.interceptors.request.use((config) => {
+  if (typeof config.url === "string" && /^http:\/\//i.test(config.url)) {
+    config.url = config.url.replace(/^http:\/\//i, "https://");
+  }
+  if (config.baseURL && /^http:\/\//i.test(config.baseURL)) {
+    config.baseURL = config.baseURL.replace(/^http:\/\//i, "https://");
+  }
+  return config;
 });
 
 // ==== Refresh 요청 (글로벌 axios 사용) ====
 async function refreshJWT(accessToken, refreshToken) {
   const header = { headers: { Authorization: `Bearer ${accessToken}` } };
-  const url = `${API_SERVER_HOST}/project/user/refresh?refreshToken=${refreshToken}`;
+  const url = apiUrl(`/project/user/refresh?refreshToken=${encodeURIComponent(refreshToken)}`);
   const res = await axios.get(url, header);
   return res.data; // { accessToken, refreshToken? }
 }
@@ -28,10 +40,17 @@ const publish = (newAccessBearer) => {
 // ==== 요청 인터셉터 ====
 jwtAxios.interceptors.request.use(
   (config) => {
-    const user = getCookie("member"); // ✅ 이제 항상 ‘객체’ 기준
+    // member 쿠키가 문자열일 수도 있으니 방어적으로 파싱
+    let user = getCookie("member");
+    if (user && typeof user === "string") {
+      try { user = JSON.parse(user); } catch { /* noop */ }
+    }
+
     if (!user) {
+      // jwtAxios는 인증 필요한 요청들만 써야 함 (공개 API는 publicAxios 사용)
       return Promise.reject({ response: { data: { error: "REQUIRE_LOGIN" } } });
     }
+
     if (user?.accessToken) {
       config.headers.Authorization = `Bearer ${user.accessToken}`;
     }
@@ -67,7 +86,10 @@ async function handleRefreshAndRetry(originalConfig) {
   }
   originalConfig._retry = true;
 
-  const user = getCookie("member"); // ✅ 객체
+  let user = getCookie("member");
+  if (user && typeof user === "string") {
+    try { user = JSON.parse(user); } catch { /* noop */ }
+  }
   if (!user?.refreshToken) {
     return Promise.reject({ message: "No refresh token" });
   }
@@ -90,7 +112,7 @@ async function handleRefreshAndRetry(originalConfig) {
       accessToken: result.accessToken,
       refreshToken: result.refreshToken ?? user.refreshToken,
     };
-    // ✅ 객체 그대로 저장
+    // 쿠키 유틸이 객체 저장을 지원한다고 전제
     setCookie("member", updated, 1);
 
     const bearer = `Bearer ${updated.accessToken}`;

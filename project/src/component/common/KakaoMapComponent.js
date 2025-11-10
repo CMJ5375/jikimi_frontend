@@ -1,28 +1,6 @@
 // src/component/common/KakaoMapComponent.jsx
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-
-function ensureKakaoReady() {
-  return new Promise((resolve) => {
-    const w = window;
-    if (w.kakao && w.kakao.maps && typeof w.kakao.maps.Map === "function") {
-      resolve();
-      return;
-    }
-    const tryLoad = () => {
-      if (w.kakao && w.kakao.maps) {
-        w.kakao.maps.load(() => resolve());
-      } else {
-        const t = setInterval(() => {
-          if (w.kakao && w.kakao.maps) {
-            clearInterval(t);
-            w.kakao.maps.load(() => resolve());
-          }
-        }, 100);
-      }
-    };
-    tryLoad();
-  });
-}
+import { loadKakaoMap } from "../../api/kakaoMapApi";
 
 export default function KakaoMapComponent({
   id,
@@ -51,81 +29,82 @@ export default function KakaoMapComponent({
   const resizeObsRef = useRef(null);
   const markerListRef = useRef([]);
 
-  // 최초 지도 생성
+  // 최초 지도 생성 (SDK 확실히 로드)
   useLayoutEffect(() => {
     let cancelled = false;
     const init = async () => {
-      await ensureKakaoReady();
-      if (cancelled) return;
+      try {
+        await loadKakaoMap(); // ✅ SDK 로드 (https, 중복방지)
+        if (cancelled) return;
 
-      const container = document.getElementById(cid);
-      if (!container) return;
-      containerRef.current = container;
+        const container = document.getElementById(cid);
+        if (!container) return;
+        containerRef.current = container;
 
-      const { kakao } = window;
-      const mapCenter = new kakao.maps.LatLng(initialCenter.lat, initialCenter.lng);
-      const map = new kakao.maps.Map(container, {
-        center: mapCenter,
-        level: 4,
-      });
-
-      // 줌 컨트롤 버튼 표시
-      const zoomControl = new kakao.maps.ZoomControl();
-      map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
-
-      mapRef.current = map;
-
-      // 내 위치 마커
-      if (showCenterMarker) {
-        const imageSrc = "/image/my-location-marker.png";
-        const imageSize = new kakao.maps.Size(28, 40);
-        const imageOption = { offset: new kakao.maps.Point(14, 40) };
-        const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
-
-        const marker = new kakao.maps.Marker({
-          position: mapCenter,
-          image: markerImage,
-          zIndex: 9999, // 항상 제일 위
+        const { kakao } = window;
+        const mapCenter = new kakao.maps.LatLng(initialCenter.lat, initialCenter.lng);
+        const map = new kakao.maps.Map(container, {
+          center: mapCenter,
+          level: 4,
         });
 
-        marker.setMap(map);
-        markerRef.current = marker;
+        // 줌 컨트롤 버튼 표시
+        const zoomControl = new kakao.maps.ZoomControl();
+        map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
 
-        const infoWindow = new kakao.maps.InfoWindow({
-          content: `<div style="padding:5px 10px;font-size:13px;">내 위치</div>`,
-        });
+        mapRef.current = map;
 
-        // 자동 표시 + 클릭 시 토글
-        infoWindow.open(map, marker);
-        let isOpen = true;
-        kakao.maps.event.addListener(marker, "click", () => {
-          if (isOpen) {
-            infoWindow.close();
-          } else {
-            infoWindow.open(map, marker);
-          }
-          isOpen = !isOpen;
-        });
-      }
+        // 내 위치 마커
+        if (showCenterMarker) {
+          const imageSrc = "/image/my-location-marker.png";
+          const imageSize = new kakao.maps.Size(28, 40);
+          const imageOption = { offset: new kakao.maps.Point(14, 40) };
+          const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
 
-      // 초기 레이아웃 보정
-      setTimeout(() => {
-        try {
-          map.relayout();
-          map.setCenter(mapCenter);
-        } catch {}
-      }, 0);
+          const marker = new kakao.maps.Marker({
+            position: mapCenter,
+            image: markerImage,
+            zIndex: 9999, // 항상 제일 위
+          });
 
-      // 리사이즈 감지
-      if ("ResizeObserver" in window) {
-        const ro = new ResizeObserver(() => {
+          marker.setMap(map);
+          markerRef.current = marker;
+
+          const infoWindow = new kakao.maps.InfoWindow({
+            content: `<div style="padding:5px 10px;font-size:13px;">내 위치</div>`,
+          });
+
+          // 자동 표시 + 클릭 시 토글
+          infoWindow.open(map, marker);
+          let isOpen = true;
+          kakao.maps.event.addListener(marker, "click", () => {
+            if (isOpen) infoWindow.close();
+            else infoWindow.open(map, marker);
+            isOpen = !isOpen;
+          });
+        }
+
+        // 초기 레이아웃 보정
+        setTimeout(() => {
           try {
             map.relayout();
             map.setCenter(mapCenter);
           } catch {}
-        });
-        ro.observe(container);
-        resizeObsRef.current = ro;
+        }, 0);
+
+        // 리사이즈 감지
+        if ("ResizeObserver" in window) {
+          const ro = new ResizeObserver(() => {
+            try {
+              map.relayout();
+              map.setCenter(mapCenter);
+            } catch {}
+          });
+          ro.observe(container);
+          resizeObsRef.current = ro;
+        }
+      } catch (err) {
+        console.error("[KakaoMapComponent] init error", err);
       }
     };
 
