@@ -437,18 +437,18 @@ const BoardDetail = () => {
 
       {/* 좋아요 & 공유 버튼 */}
       {!editMode && (
-        <div className="d-flex gap-3 mb-5 like-share">
-          <button
-            className={
-              "btn flex-fill py-2 " +
-              (post.likedUsernames?.includes(usernameForLike)
-                ? "btn-primary text-white"
-                : "btn-outline-primary")
-            }
-            onClick={handleLike}
-          >
-            <HandThumbsUp /> 좋아요 {post.likeCount}
-          </button>
+        <div className="d-flex gap-3 mb-5">
+         <button
+          className={
+            "btn flex-fill py-2 " +
+            (post.likedUsernames?.includes(usernameForLike)
+              ? "btn-primary text-white"
+              : "btn-outline-primary")
+          }
+          onClick={handleLike}
+        >
+          <HandThumbsUp /> 좋아요 {post.likeCount}
+        </button>
 
           <button
             className="btn btn-outline-secondary flex-fill py-2"

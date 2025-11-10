@@ -15,6 +15,7 @@ import useCustomLogin from "../../hook/useCustomLogin";
 import publicAxios from "../../util/publicAxios";
 import jwtAxios from "../../util/jwtUtil";
 import { getDefaultPosition, getAddressFromBackend } from "../../api/kakaoMapApi";
+import { getCurrentPosition } from "../../api/geolocationApi";
 import { openUtil } from "../../util/openUtil";
 import { pharmacyItemToBusinessHours } from "../../util/pharmacyAdapter";
 
@@ -115,6 +116,9 @@ const PharmacyMain = () => {
   const [searched, setSearched] = useState(false);
   const [currentAddress, setCurrentAddress] = useState("위치 확인 중...");
 
+  // 🔹 지도 중심(기본 좌표로 즉시 셋업 → currentPos 없어도 지도 뜸)
+  const [center, setCenter] = useState({ lat: 37.432764, lng: 127.129637 });
+
   const [openBatchMap, setOpenBatchMap] = useState({});
   const [frontOpenMap, setFrontOpenMap] = useState({});
 
@@ -124,7 +128,7 @@ const PharmacyMain = () => {
     currentPos,
     search,
     setFilters,
-    calculateDistance, // 함수 레퍼런스가 변동 가능하므로 deps 최소화 주의
+    calculateDistance,
   } = useFacilitySearch("pharmacy");
 
   const navigate = useNavigate();
@@ -133,11 +137,11 @@ const PharmacyMain = () => {
 
   const distanceList = ["500m", "1km", "5km", "10km"];
 
-  /* 현재 위치 → 주소 */
+  /* 현재 위치 → 주소 (기본 좌표로도 표시) */
   useEffect(() => {
     const fetchAddress = async () => {
       try {
-        const pos = await getDefaultPosition();
+        const pos = await getCurrentPosition();
         const address = await getAddressFromBackend(pos.lat, pos.lng);
         setCurrentAddress(address);
       } catch {
@@ -147,7 +151,14 @@ const PharmacyMain = () => {
     fetchAddress();
   }, []);
 
-  /* 즐겨찾기 모드 데이터 로드 (동시성 제한 + deps 최소화) */
+  /* currentPos가 들어오면 지도 중심 갱신 */
+  useEffect(() => {
+    if (currentPos?.lat && currentPos?.lng) {
+      setCenter({ lat: currentPos.lat, lng: currentPos.lng });
+    }
+  }, [currentPos?.lat, currentPos?.lng]);
+
+  /* 즐겨찾기 모드 데이터 로드 */
   useEffect(() => {
     let alive = true;
     const fetchFavorites = async () => {
@@ -188,8 +199,7 @@ const PharmacyMain = () => {
     };
     fetchFavorites();
     return () => { alive = false; };
-    // 의존성: 즐겨찾기 보기 토글/목록/로그인/좌표만 (calculateDistance는 제외)
-  }, [showFavoritesOnly, favorites, isLogin, currentPos]);
+  }, [showFavoritesOnly, favorites, isLogin, currentPos]); // calculateDistance는 제외
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -203,7 +213,7 @@ const PharmacyMain = () => {
     setFilters((prev) => ({ ...prev, onlyFavorites: next }));
   };
 
-  /* ✅ displayedResults를 useMemo로 고정해서 ref 변화를 막음 */
+  /* ✅ displayedResults 고정 */
   const displayedResults = useMemo(() => {
     if (showFavoritesOnly) {
       const start = pageData.current * pageData.size;
@@ -213,7 +223,7 @@ const PharmacyMain = () => {
     return results || [];
   }, [showFavoritesOnly, favoriteResults, pageData.current, pageData.size, results]);
 
-  /* open-batch 의존성을 IDs 키로 축약 (배열 참조 변화 방지) */
+  /* open-batch 의존성 키 */
   const ids = useMemo(
     () => displayedResults.map(getFacilityIdFromItem).filter(Boolean),
     [displayedResults]
@@ -247,13 +257,16 @@ const PharmacyMain = () => {
     [displayedResults]
   );
 
-  const showMap = mapLocations.length > 0 && !!currentPos?.lat;
+  // 🔹 지도는 위치가 1개 이상이면 항상 표시 (currentPos 없어도 기본 중심으로 표시)
+  const showMap = mapLocations.length > 0;
+
+  // 🔹 중심좌표 기반으로 key 생성 (currentPos 의존 제거 → 초기에도 렌더됨)
   const mapKey = useMemo(() => {
     const cur = showFavoritesOnly ? pageData.current : (searchPageData?.current || 0);
-    return `map-${showFavoritesOnly ? "fav" : "all"}-${cur}-${mapLocations.length}-${currentPos?.lat}-${currentPos?.lng}`;
-  }, [showFavoritesOnly, pageData.current, searchPageData?.current, mapLocations.length, currentPos?.lat, currentPos?.lng]);
+    return `map-${showFavoritesOnly ? "fav" : "all"}-${cur}-${mapLocations.length}-${center.lat}-${center.lng}`;
+  }, [showFavoritesOnly, pageData.current, searchPageData?.current, mapLocations.length, center.lat, center.lng]);
 
-  /* 배치 오픈 상태 요청: idsKey에만 의존 */
+  /* 배치 오픈 상태 요청 */
   useEffect(() => {
     if (!ids.length) {
       setOpenBatchMap({});
@@ -268,9 +281,9 @@ const PharmacyMain = () => {
         setOpenBatchMap({});
       }
     })();
-  }, [idsKey]); // ✅ 배열 대신 문자열 키
+  }, [idsKey]);
 
-  /* 프론트 폴백 계산: idsKey + openBatchMap 에만 의존 */
+  /* 프론트 폴백 계산 */
   useEffect(() => {
     (async () => {
       if (!ids.length) {
@@ -344,7 +357,7 @@ const PharmacyMain = () => {
       const nextMap = Object.fromEntries(results);
       setFrontOpenMap(nextMap);
     })();
-  }, [idsKey, openBatchMap]); // ✅ displayedResults 대신 idsKey 사용
+  }, [idsKey, openBatchMap]);
 
   const handlePageChange = (n) => {
     if (showFavoritesOnly) {
@@ -371,7 +384,7 @@ const PharmacyMain = () => {
             </h3>
           </Col>
           <Col xs={6} className="text-end">
-            <img src="/image/map.png" alt="지도" height="150" />
+            <img src="/image/map.png" alt="지도" className="img-fluid limited-img map-img" />
           </Col>
         </Row>
 
@@ -380,7 +393,7 @@ const PharmacyMain = () => {
           <Col xs={6}>
             <Card className="card-pharmacy-gray text-dark" onClick={() => navigate("/")}>
               <Card.Body>
-                <img src="/image/hospitalBed.png" alt="병원" />
+                <img src="/image/hospitalBed.png" alt="병원" className="img-fluid d-block mx-auto h-auto limited-img" />
                 <div className="fw-semibold">병원</div>
               </Card.Body>
             </Card>
@@ -388,7 +401,7 @@ const PharmacyMain = () => {
           <Col xs={6}>
             <Card className="card-pharmacy-blue text-white" onClick={() => navigate("/pharmacy")}>
               <Card.Body>
-                <img src="/image/pharmacy.png" alt="약국" />
+                <img src="/image/pharmacy.png" alt="약국" className="img-fluid d-block mx-auto h-auto limited-img" />
                 <div className="fw-semibold">약국</div>
               </Card.Body>
             </Card>
@@ -449,8 +462,8 @@ const PharmacyMain = () => {
           <KakaoMapComponent
             key={mapKey}
             id="pharmacy-map-main"
-            lat={currentPos.lat}
-            lng={currentPos.lng}
+            lat={center.lat} 
+            lng={center.lng}
             name="내 위치"
             height={400}
             showCenterMarker

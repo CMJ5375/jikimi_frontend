@@ -12,6 +12,7 @@ import useCustomLogin from "../../hook/useCustomLogin";
 import jwtAxios from "../../util/jwtUtil";
 import publicAxios from "../../util/publicAxios";
 import { getDefaultPosition, getAddressFromBackend } from "../../api/kakaoMapApi";
+import { getCurrentPosition } from "../../api/geolocationApi";
 import { getTodayKey, normalizeTokens } from "../../util/dayUtil";
 
 // HIRA 실시간
@@ -230,7 +231,7 @@ const HospitalMain = () => {
   useEffect(() => {
     const fetchAddress = async () => {
       try {
-        const pos = await getDefaultPosition();
+        const pos = await getCurrentPosition();
         const address = await getAddressFromBackend(pos.lat, pos.lng);
         setCurrentAddress(address);
       } catch (e) {
@@ -377,7 +378,7 @@ useEffect(() => {
             </h3>
           </Col>
           <Col xs={6} className="text-end">
-            <img src="/image/map.png" alt="지도" className="img-fluid" />
+            <img src="/image/map.png" alt="지도" className="img-fluid limited-img map-img" />
           </Col>
         </Row>
 
@@ -386,7 +387,7 @@ useEffect(() => {
           <Col xs={6}>
             <Card className="card-hospital-blue text-white" onClick={() => navigate("/")}>
               <Card.Body>
-                <img src="/image/hospitalBed.png" alt="병원" className="img-fluid d-block mx-auto h-auto" />
+                <img src="/image/hospitalBed.png" alt="병원" className="img-fluid d-block mx-auto h-auto limited-img" />
                 <div className="fw-semibold">병원</div>
               </Card.Body>
             </Card>
@@ -394,7 +395,7 @@ useEffect(() => {
           <Col xs={6}>
             <Card className="card-hospital-gray text-dark" onClick={() => navigate("/pharmacy")}>
               <Card.Body>
-                <img src="/image/pharmacy.png" alt="약국" className="img-fluid d-block mx-auto h-auto"/>
+                <img src="/image/pharmacy.png" alt="약국" className="img-fluid d-block mx-auto h-auto limited-img" />
                 <div className="fw-semibold">약국</div>
               </Card.Body>
             </Card>

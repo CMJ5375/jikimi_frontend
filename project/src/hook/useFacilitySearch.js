@@ -3,17 +3,7 @@ import { useState, useEffect } from "react";
 import { addDistanceAndSort, getDefaultPosition } from "../api/geolocationApi";
 import { openUtil } from "../util/openUtil";
 import axios from "axios";
-import { API_SERVER_HOST } from "../config/api"; // 'https://jikimi.duckdns.org'
-
-// 혼합콘텐츠/잘못된 baseURL 방지: 항상 https://jikimi.duckdns.org 로 보냄
-function buildHttpsUrl(path) {
-  const host = (API_SERVER_HOST || "").replace(/\/+$/, "");
-  // path는 '/project/...' 형태
-  let url = `${host}${path}`;
-  // 혹시 http로 시작하면 https로 승격
-  url = url.replace(/^http:\/\//i, "https://");
-  return url;
-}
+import { apiUrl } from "../config/api"; // ✅ 무조건 https + BASE 보장
 
 const isNil = (v) => v === null || v === undefined;
 
@@ -80,16 +70,16 @@ export default function useFacilitySearch(type) {
         params.lng = currentPos.lng;
       }
 
+      // ✅ 절대 HTTPS URL로 고정
       const path =
         type === "hospital"
           ? "/project/hospital/search"
           : "/project/pharmacy/search";
-      const absoluteUrl = buildHttpsUrl(path);
+      const url = apiUrl(path);
 
-      const res = await axios.get(absoluteUrl, {
+      const res = await axios.get(url, {
         params,
-        // 즐겨찾기 전용 API만 쿠키 필요하면 true, 아니면 false로 둬도 됨
-        withCredentials: !!f.onlyFavorites,
+        withCredentials: !!f.onlyFavorites, // 필요하면 true
       });
 
       const pageJson = res?.data ?? {};

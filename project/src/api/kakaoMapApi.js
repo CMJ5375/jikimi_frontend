@@ -1,37 +1,94 @@
-import { API_SERVER_HOST } from "../config/api";
+// src/api/KakaoMapApi.js
+import { apiUrl } from "../config/api";
 
-const kakao_js_key = process.env.REACT_APP_KAKAO_JS_KEY || "485d664e9dbeef94c4a676b73b34a111";
 const TAG = "[kakaoMapApi]";
+const SDK_ID = "kakao-maps-sdk";
+
+// .env 우선, 없으면 하드코드 키 사용
+const KAKAO_JS_KEY =
+  process.env.REACT_APP_KAKAO_JS_KEY || "833b650fdaeb02dc3ecc3abe1b82cdd7";
+
 const okNum = (n) => typeof n === "number" && isFinite(n);
 
-// 기본 위치
+// 기본 위치 - 성남 모란 두드림 IT학원
 const DEFAULT_LOCATION = { lat: 37.432764, lng: 127.129637 };
 
-// Kakao Map SDK 로드 (중복 방지)
+/**
+ * Kakao Map SDK 로드 (중복 방지 + https 강제 + 키 변경시 스크립트 교체)
+ */
 export const loadKakaoMap = () =>
-  new Promise((resolve) => {
+  new Promise((resolve, reject) => {
     try {
-      if (window.kakao && window.kakao.maps) {
-        console.debug(`${TAG} SDK 이미 로드됨 → maps.load 호출`);
+      // 이미 로드된 경우
+      if (window.kakao?.maps) {
         window.kakao.maps.load(() => resolve(window.kakao.maps));
         return;
       }
-      console.debug(`${TAG} SDK 스크립트 삽입`);
+
+      const desiredSrc = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(
+        KAKAO_JS_KEY
+      )}&autoload=false`;
+
+      // 기존 스크립트 존재 여부 확인
+      const exist = document.getElementById(SDK_ID);
+      if (exist) {
+        // 키가 바뀌어 src가 다르면 교체
+        if (!exist.src || !exist.src.startsWith(desiredSrc)) {
+          try {
+            exist.remove();
+            console.warn(`${TAG} 기존 SDK 태그 제거 후 재삽입 (키/URL 변경)`);
+          } catch {}
+        } else {
+          // 같은 스크립트면 load/error 이벤트만 걸어둠
+          exist.addEventListener("load", () => {
+            if (window.kakao?.maps) {
+              window.kakao.maps.load(() => resolve(window.kakao.maps));
+            } else {
+              reject(new Error("Kakao SDK loaded but kakao.maps missing"));
+            }
+          });
+          exist.addEventListener("error", (e) => {
+            console.error(`${TAG} SDK 로드 실패(중복)`, e);
+            reject(new Error("Kakao SDK load failed"));
+          });
+          return;
+        }
+      }
+
+      // 신규 삽입
       const script = document.createElement("script");
-      script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${kakao_js_key}&autoload=false`;
+      script.id = SDK_ID;
+      // https 강제 + 키/URL 로그
+      script.src = desiredSrc;
+      console.log(`${TAG} will load:`, script.src);
+
       script.async = true;
+      script.defer = true;
+
       script.onload = () => {
-        console.debug(`${TAG} SDK onload → maps.load 호출`);
+<<<<<<< HEAD
+        try {
+          window.kakao.maps.load(() => resolve(window.kakao.maps));
+        } catch (err) {
+          reject(err);
+        }
+=======
         window.kakao.maps.load(() => resolve(window.kakao.maps));
+>>>>>>> 65cf3917b0e9f8f83d4563eb2cc8f53d382f81a6
       };
-      script.onerror = (e) => console.error(`${TAG} SDK 로드 실패`, e);
+      script.onerror = (e) => {
+        console.error(`${TAG} SDK 로드 실패`, e);
+        reject(new Error("Kakao SDK load failed"));
+      };
+
       document.head.appendChild(script);
     } catch (e) {
       console.error(`${TAG} loadKakaoMap 예외`, e);
+      reject(e);
     }
   });
 
-// 지도 생성
+/** 지도 생성 */
 export const createMap = (containerId, center, level = 4) => {
   try {
     const container = document.getElementById(containerId);
@@ -48,7 +105,6 @@ export const createMap = (containerId, center, level = 4) => {
     }
 
     const options = { center: new window.kakao.maps.LatLng(lat, lng), level };
-    console.debug(`${TAG} createMap: 지도 생성`, { containerId, lat, lng, level });
     const map = new window.kakao.maps.Map(container, options);
     container._kakaoMapInstance = map;
     return map;
@@ -58,7 +114,7 @@ export const createMap = (containerId, center, level = 4) => {
   }
 };
 
-// 마커 추가
+/** 마커 추가 */
 export const addMarker = (map, position, title = "") => {
   try {
     const lat = Number(position?.lat);
@@ -89,10 +145,20 @@ export const addMarker = (map, position, title = "") => {
   }
 };
 
-// 상세페이지 렌더
-export const renderKakaoMap = async (containerId, center, locations = [], showCenterMarker = true) => {
+/** 상세/목록 공용 렌더 */
+export const renderKakaoMap = async (
+  containerId,
+  center,
+  locations = [],
+  showCenterMarker = true
+) => {
   console.group(`${TAG} renderKakaoMap`);
-  console.log("입력값 →", { containerId, center, locationsCount: locations?.length, showCenterMarker });
+  console.log("입력값 →", {
+    containerId,
+    center,
+    locationsCount: locations?.length,
+    showCenterMarker,
+  });
 
   try {
     const kakao = await loadKakaoMap();
@@ -120,15 +186,17 @@ export const renderKakaoMap = async (containerId, center, locations = [], showCe
       if (!map) return;
     }
 
-    // 기존 마커 제거
+    // 이전 마커 제거
     if (map._markers) map._markers.forEach((m) => m && m.setMap(null));
     map._markers = [];
 
+    // 내 위치 마커
     if (showCenterMarker) {
       const my = addMarker(map, { lat, lng }, "내 위치");
       if (my) map._markers.push(my);
     }
 
+    // 시설 마커
     let added = 0;
     locations?.forEach((f) => {
       const flat = Number(f?.latitude);
@@ -141,11 +209,13 @@ export const renderKakaoMap = async (containerId, center, locations = [], showCe
     });
 
     if (!showCenterMarker && added === 1) {
+      // 상세: 시설 1개
       const f = locations[0];
       map.setCenter(new kakao.LatLng(f.latitude, f.longitude));
       map.setLevel(3);
       console.debug(`${TAG} 단일 시설 중심 설정`);
     } else if (added > 0) {
+      // 목록: 범위 맞춤
       const bounds = new kakao.LatLngBounds();
       if (showCenterMarker) bounds.extend(new kakao.LatLng(lat, lng));
       locations.forEach((f) => {
@@ -154,7 +224,6 @@ export const renderKakaoMap = async (containerId, center, locations = [], showCe
         }
       });
       map.setBounds(bounds);
-      console.debug(`${TAG} setBounds 적용`);
     }
 
     console.groupEnd();
@@ -166,33 +235,32 @@ export const renderKakaoMap = async (containerId, center, locations = [], showCe
   }
 };
 
-// 기본 좌표 반환
+/** 기본 좌표 반환 */
 export function getDefaultPosition() {
   return Promise.resolve(DEFAULT_LOCATION);
 }
 
-// 백엔드에서 카카오 주소 받아오기
+/** 백엔드 역지오코딩 (혼합콘텐츠 방지: apiUrl 사용) */
 export async function getAddressFromBackend(lat, lon) {
   try {
-    const response = await fetch(`${API_SERVER_HOST}/project/map/reverse?lat=${lat}&lon=${lon}`, {
-      method: "GET",
-    });
+    const url = apiUrl(`/project/map/reverse?lat=${lat}&lon=${lon}`);
+    const response = await fetch(url, { method: "GET" });
     if (!response.ok) throw new Error(`서버 응답 오류: ${response.status}`);
 
     const data = await response.json();
+    const doc = data?.documents?.[0];
+    const road = doc?.road_address;
+    const addr = doc?.address;
 
-    if (data.documents && data.documents.length > 0) {
-      const doc = data.documents[0];
-      const road = doc.road_address;
-      const addr = doc.address;
-
-      if (road) {
-        const fullRoad = `${road.region_1depth_name} ${road.region_2depth_name} ${road.region_3depth_name} ${road.road_name} ${road.main_building_no || ""}`.trim();
-        return fullRoad;
-      } else if (addr) {
-        const fullAddr = `${addr.region_1depth_name} ${addr.region_2depth_name} ${addr.region_3depth_name} ${addr.main_address_no || ""}`.trim();
-        return fullAddr;
-      }
+    if (road) {
+      return `${road.region_1depth_name} ${road.region_2depth_name} ${road.region_3depth_name} ${road.road_name} ${
+        road.main_building_no || ""
+      }`.trim();
+    }
+    if (addr) {
+      return `${addr.region_1depth_name} ${addr.region_2depth_name} ${addr.region_3depth_name} ${
+        addr.main_address_no || ""
+      }`.trim();
     }
     return "주소 정보를 가져올 수 없습니다.";
   } catch (err) {

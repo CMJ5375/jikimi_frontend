@@ -28,7 +28,7 @@ const LoginMain = () => {
     }
 
     try {
-      // ✅ 실패 시 throw, 성공 시 data 반환
+      // 실패 시 throw, 성공 시 data 반환
       const data = await doLogin({ username: username.trim(), password });
 
       // 성공 시에만 진행

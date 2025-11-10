@@ -3,18 +3,20 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "../css/layout.css";
 import { GeoAltFill, Person, List } from "react-bootstrap-icons";
 import { Nav } from "react-bootstrap";
-import { useLocation, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import NavDropdown from "react-bootstrap/NavDropdown";
 import { useSelector } from "react-redux";
 import useCustomLogin from "../hook/useCustomLogin";
 import { getDefaultPosition, getAddressFromBackend } from "../api/kakaoMapApi";
+import { getCurrentPosition } from "../api/geolocationApi";
 
 const Navigation = () => {
   const loginState = useSelector(state => state.loginSlice)
   const {doLogout, moveToPath} = useCustomLogin()
   const [currentAddress, setCurrentAddress] = useState("현재 위치 확인 중...")
   const location = useLocation()
+  const navigate = useNavigate();
 
   const handleClickLogout = () => {
     doLogout()
@@ -28,7 +30,7 @@ const Navigation = () => {
   useEffect(() => {
     const fetchAddress = async () => {
       try {
-        const pos = await getDefaultPosition();
+        const pos = await getCurrentPosition();
         const address = await getAddressFromBackend(pos.lat, pos.lng);
         setCurrentAddress(address);
       } catch (e) {
@@ -38,6 +40,20 @@ const Navigation = () => {
     };
     fetchAddress();
   }, []);
+
+  // 모바일 메뉴 클릭 시 처리 함수
+  const handleMenuClick = (path) => {
+    const offcanvasEl = document.getElementById("mobileOffcanvas");
+    const bsOffcanvas = window.bootstrap?.Offcanvas.getInstance(offcanvasEl);
+    if (!loginState.username) {
+      // 로그인 안 된 경우
+      alert("로그인이 필요합니다.")
+      navigate("/login");
+    } else {
+      // 로그인 된 경우 메뉴 닫고 이동
+      navigate(path);
+    }
+  };
   
   // 안내바를 숨기고 싶은 경로들
   const hideBannerPaths = [""]; //경로 넣기
@@ -81,8 +97,35 @@ const Navigation = () => {
 
             {/* 메뉴 */}
             <Nav className="me-auto">
-              <Nav.Link href="/noticeboards">게시판</Nav.Link>
-              <Nav.Link href="/mypage">마이페이지</Nav.Link>
+              <Nav.Link
+                as="button"
+                className="btn btn-link nav-link"
+                onClick={() => {
+                  if (!loginState.username) {
+                    alert("로그인이 필요합니다.");
+                    navigate("/login");
+                  } else {
+                    navigate("/noticeboards");
+                  }
+                }}
+              >
+                게시판
+              </Nav.Link>
+
+              <Nav.Link
+                as="button"
+                className="btn btn-link nav-link"
+                onClick={() => {
+                  if (!loginState.username) {
+                    alert("로그인이 필요합니다.");
+                    navigate("/login");
+                  } else {
+                    navigate("/mypage");
+                  }
+                }}
+              >
+                마이페이지
+              </Nav.Link>
               <NavDropdown title={<span>고객지원</span>} id="basic-nav-dropdown">
                 <NavDropdown.Item href="/notice">공지사항</NavDropdown.Item>
                 <NavDropdown.Item href="/faq">FAQ</NavDropdown.Item>

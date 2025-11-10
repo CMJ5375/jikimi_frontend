@@ -6,7 +6,6 @@ const DEFAULT_LOCATION = {
 
 //기본 위치
 export function getDefaultPosition() {
-  console.log("기본 위치(모란 두드림IT학원)로 설정되었습니다.");
   return Promise.resolve(DEFAULT_LOCATION);
 }
 
@@ -22,7 +21,6 @@ export function getCurrentPosition() {
       (pos) => {
         const latitude = pos.coords.latitude;
         const longitude = pos.coords.longitude;
-        console.log(`내 위치 탐지 성공: 위도(${latitude.toFixed(6)}), 경도(${longitude.toFixed(6)})`);
         resolve({ lat: latitude, lng: longitude });
       },
       (err) => {
