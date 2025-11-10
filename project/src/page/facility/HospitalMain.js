@@ -13,6 +13,7 @@ import useCustomLogin from "../../hook/useCustomLogin";
 import jwtAxios from "../../util/jwtUtil";
 import publicAxios from "../../util/publicAxios";
 import { getDefaultPosition, getAddressFromBackend } from "../../api/kakaoMapApi";
+import { getCurrentPosition } from "../../api/geolocationApi";
 import { getTodayKey, normalizeTokens } from "../../util/dayUtil";
 
 // HIRA 실시간
@@ -231,7 +232,7 @@ const HospitalMain = () => {
   useEffect(() => {
     const fetchAddress = async () => {
       try {
-        const pos = await getDefaultPosition();
+        const pos = await getCurrentPosition();
         const address = await getAddressFromBackend(pos.lat, pos.lng);
         setCurrentAddress(address);
       } catch (e) {

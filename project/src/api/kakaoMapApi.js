@@ -9,22 +9,18 @@ const DEFAULT_LOCATION = {
   lng: 127.129637,
 };
 
-// Kakao Map SDK 로드 (중복 방지)
+// Kakao Map 로드
 export const loadKakaoMap = () =>
   new Promise((resolve) => {
     try {
       if (window.kakao && window.kakao.maps) {
-        console.debug(`${TAG} SDK 이미 로드됨 → maps.load 호출`);
         window.kakao.maps.load(() => resolve(window.kakao.maps));
         return;
       }
-
-      console.debug(`${TAG} SDK 스크립트 삽입`);
       const script = document.createElement("script");
       script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${kakao_js_key}&autoload=false`;
       script.async = true;
       script.onload = () => {
-        console.debug(`${TAG} SDK onload → maps.load 호출`);
         window.kakao.maps.load(() => resolve(window.kakao.maps));
       };
       script.onerror = (e) => {
@@ -168,7 +164,6 @@ export const renderKakaoMap = async (containerId, center, locations = [], showCe
         }
       });
       map.setBounds(bounds);
-      console.debug(`${TAG} setBounds 적용`);
     }
 
     console.groupEnd();
@@ -190,7 +185,6 @@ export function getDefaultPosition() {
 // 백엔드에서 카카오 주소 받아오기
 export async function getAddressFromBackend(lat, lon) { 
   try {
-    // ※ 현재 프론트에 이미 쓰고 있는 엔드포인트 유지
     const response = await fetch(
       `http://localhost:8080/project/map/reverse?lat=${lat}&lon=${lon}`,
       { method: "GET" }

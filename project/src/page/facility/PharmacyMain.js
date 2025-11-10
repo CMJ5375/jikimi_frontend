@@ -15,6 +15,7 @@ import useCustomLogin from "../../hook/useCustomLogin";
 import publicAxios from "../../util/publicAxios";
 import jwtAxios from "../../util/jwtUtil";
 import { getDefaultPosition, getAddressFromBackend } from "../../api/kakaoMapApi";
+import { getCurrentPosition } from "../../api/geolocationApi";
 import { openUtil } from "../../util/openUtil";
 import { pharmacyItemToBusinessHours } from "../../util/pharmacyAdapter";
 
@@ -137,7 +138,7 @@ const PharmacyMain = () => {
   useEffect(() => {
     const fetchAddress = async () => {
       try {
-        const pos = await getDefaultPosition();
+        const pos = await getCurrentPosition();
         const address = await getAddressFromBackend(pos.lat, pos.lng);
         setCurrentAddress(address);
       } catch {

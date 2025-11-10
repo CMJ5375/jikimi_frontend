@@ -25,16 +25,12 @@ const LoginMain = () => {
         alert("이메일과 패스워드를 다시 확인하세요")
       } else {
         alert("로그인 성공")
-        // ✅ 로그인 성공: 쿠키에 profileImage 포함해 저장
-        // 백엔드 응답 구조에 따라 data.profileImage 또는 data.user.profileImage 중 존재하는 걸 사용
         const profileImage =
           data?.profileImage ??
           data?.user?.profileImage ??
           null;
  
         setCookie("member", { ...data, profileImage }, 1); // 유효기간 1일(필요에 맞게 변경)
- 
-        alert("로그인 성공")
         moveToPath('/')
       }
     })
