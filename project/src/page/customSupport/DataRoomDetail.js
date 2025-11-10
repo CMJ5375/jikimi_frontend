@@ -288,7 +288,7 @@ const DataRoomDetail = () => {
         )}
 
         {!editMode && isAdmin && (
-          <div className="post-actions d-none d-md-flex">
+          <div className="post-actions d-flex">
             <button className="btn-ghost" onClick={handleEditStart}>수정</button>
             <button className="btn-ghost btn-ghost-danger" onClick={handleDelete}>삭제</button>
           </div>
@@ -384,8 +384,6 @@ const DataRoomDetail = () => {
               "btn flex-fill py-2 " + (liked ? "btn-primary text-white" : "btn-outline-primary")
             }
             onClick={handleLike}
-            disabled={!user?.userId || !token} // FAQ 패턴: ID/토큰 없으면 비활성
-            title={!user?.userId || !token ? "로그인 후 이용하세요" : ""}
           >
             <HandThumbsUp /> 좋아요 {post.likeCount}
           </button>

@@ -279,7 +279,7 @@ const NoticeDetail = () => {
         )}
 
         {!editMode && isAdmin && (
-          <div className="post-actions d-none d-md-flex">
+          <div className="post-actions d-flex">
             <button className="btn-ghost" onClick={handleEditStart}>
               수정
             </button>
