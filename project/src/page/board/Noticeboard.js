@@ -1,4 +1,3 @@
-// src/page/board/Noticeboard.js
 import { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/Noticeboard.css";

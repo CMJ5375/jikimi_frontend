@@ -173,22 +173,20 @@ const Navigation = () => {
           <div className="list-group list-group-flush">
             {/* 게시판 */}
             <div className="mt-2 mb-2">
-              <Link
-                to="/noticeboards"
+              <a href="/noticeboards"
                 className="fw-semibold text-dark text-decoration-none d-block px-0"
               >
                게시판
-              </Link>
+              </a>
             </div>
 
             {/* 마이페이지 */}
             <div className="mt-2 mb-2">
-              <Link
-                to="/mypage"
+              <a href="/mypage"
                 className="fw-semibold text-dark text-decoration-none d-block px-0"
               >
                 마이페이지
-              </Link>
+              </a>
             </div>
 
 
