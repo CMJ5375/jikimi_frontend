@@ -15,6 +15,7 @@ import useCustomLogin from "../../hook/useCustomLogin";
 import publicAxios from "../../util/publicAxios";
 import jwtAxios from "../../util/jwtUtil";
 import { getDefaultPosition, getAddressFromBackend } from "../../api/kakaoMapApi";
+import { getCurrentPosition } from "../../api/geolocationApi";
 import { openUtil } from "../../util/openUtil";
 import { pharmacyItemToBusinessHours } from "../../util/pharmacyAdapter";
 
@@ -140,8 +141,7 @@ const PharmacyMain = () => {
   useEffect(() => {
     const fetchAddress = async () => {
       try {
-        const pos = await getDefaultPosition();
-        setCenter({ lat: pos.lat, lng: pos.lng }); // 기본 좌표 즉시 사용
+        const pos = await getCurrentPosition();
         const address = await getAddressFromBackend(pos.lat, pos.lng);
         setCurrentAddress(address);
       } catch {
@@ -384,7 +384,7 @@ const PharmacyMain = () => {
             </h3>
           </Col>
           <Col xs={6} className="text-end">
-            <img src="/image/map.png" alt="지도" height="150" className="img-fluid"/>
+            <img src="/image/map.png" alt="지도" className="img-fluid limited-img map-img" />
           </Col>
         </Row>
 
@@ -393,7 +393,7 @@ const PharmacyMain = () => {
           <Col xs={6}>
             <Card className="card-pharmacy-gray text-dark" onClick={() => navigate("/")}>
               <Card.Body>
-                <img src="/image/hospitalBed.png" alt="병원" className="img-fluid"/>
+                <img src="/image/hospitalBed.png" alt="병원" className="img-fluid d-block mx-auto h-auto limited-img" />
                 <div className="fw-semibold">병원</div>
               </Card.Body>
             </Card>
@@ -401,7 +401,7 @@ const PharmacyMain = () => {
           <Col xs={6}>
             <Card className="card-pharmacy-blue text-white" onClick={() => navigate("/pharmacy")}>
               <Card.Body>
-                <img src="/image/pharmacy.png" alt="약국" className="img-fluid"/>
+                <img src="/image/pharmacy.png" alt="약국" className="img-fluid d-block mx-auto h-auto limited-img" />
                 <div className="fw-semibold">약국</div>
               </Card.Body>
             </Card>

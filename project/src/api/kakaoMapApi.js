@@ -66,11 +66,15 @@ export const loadKakaoMap = () =>
       script.defer = true;
 
       script.onload = () => {
+<<<<<<< HEAD
         try {
           window.kakao.maps.load(() => resolve(window.kakao.maps));
         } catch (err) {
           reject(err);
         }
+=======
+        window.kakao.maps.load(() => resolve(window.kakao.maps));
+>>>>>>> 65cf3917b0e9f8f83d4563eb2cc8f53d382f81a6
       };
       script.onerror = (e) => {
         console.error(`${TAG} SDK 로드 실패`, e);
@@ -220,7 +224,6 @@ export const renderKakaoMap = async (
         }
       });
       map.setBounds(bounds);
-      console.debug(`${TAG} setBounds 적용`);
     }
 
     console.groupEnd();
