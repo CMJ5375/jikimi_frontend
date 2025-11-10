@@ -56,48 +56,44 @@ const MyPage = () => {
 
   //프로필 저장 버튼 핸들러
   const onSaveProfile = async () => {
-    if (!loginInfo?.username) return alert("로그인 정보가 없습니다.");
+  if (!loginInfo?.username) return alert("로그인 정보가 없습니다.");
 
-    const form = new FormData();
-    // 텍스트 필드
-    if (user.name) form.append("name", user.name);
-    if (user.address) form.append("address", user.address);
-    if (user.age) form.append("age", user.age);
-    // 파일
-    if (file) form.append("image", file);
+  const form = new FormData();
+  if (user.name) form.append("name", user.name);
+  if (user.address) form.append("address", user.address);
+  if (user.age) form.append("age", user.age);
+  if (file) form.append("image", file); // ← 파일 필드명 반드시 image
 
-    try {
-      const res = await updateProfileApi(loginInfo.username, form);
-      alert("프로필이 저장되었습니다.");
+  try {
+    const res = await updateProfileApi(loginInfo.username, form);
+    alert("프로필이 저장되었습니다.");
 
-      // 서버가 최신 프로필 URL을 돌려준다고 가정 (예: res.profileImage)
-      if (res?.profileImage) {
-        setProfileUrl(`${toAbsUrl(res.profileImage)}?t=${Date.now()}`);
-        setPreview(null);
-        setFile(null);
-      }
-
-      // ✅ 쿠키(member) 갱신: 새로고침 후에도 유지되도록
-      const member = getCookie("member");
-      if (member) {
-        const next = {
-          ...member,
-          accessToken: res?.accessToken ?? member.accessToken,
-          refreshToken: res?.refreshToken ?? member.refreshToken,
-          profileImage: res?.profileImage ?? member.profileImage,
-          name: res?.name ?? member.name,
-          address: res?.address ?? member.address,
-          age: res?.age ?? member.age,
-        };
-        // 만료일은 프로젝트 기준으로 조정(여기선 1일 예시)
-        setCookie("member", next, 1);
-      }
-      
-    } catch (e) {
-      console.error(e);
-      alert("프로필 저장 중 오류가 발생했습니다.");
+    if (res?.profileImage) {
+      setProfileUrl(`${toAbsUrl(res.profileImage)}?t=${Date.now()}`);
+      setPreview(null);
+      setFile(null);
     }
-  };
+
+    const member = getCookie("member");
+    if (member) {
+      const next = {
+        ...member,
+        accessToken: res?.accessToken ?? member.accessToken,
+        refreshToken: res?.refreshToken ?? member.refreshToken,
+        profileImage: res?.profileImage ?? member.profileImage,
+        name: res?.name ?? member.name,
+        address: res?.address ?? member.address,
+        age: res?.age ?? member.age,
+        email: res?.email ?? member.email,
+      };
+      setCookie("member", next, 1);
+    }
+  } catch (e) {
+    console.error(e);
+    const msg = e?.response?.data?.message || e?.message || "프로필 저장 중 오류가 발생했습니다.";
+    alert(msg);
+  }
+};
 
   const handleChange = (e) => {
       const { name, value } = e.target;

@@ -4,8 +4,6 @@ import jwtAxios from '../util/jwtUtil'
 import { getCookie, setCookie } from '../util/cookieUtil'
 import { API_SERVER_HOST } from "../config/api";
 
-
-
 const host = `${API_SERVER_HOST}/project/user`
 
 /**
@@ -21,21 +19,22 @@ export const loginPost = async ({ username, password }) => {
   )
   return data
 }
+
 // 계정찾기(아이디 찾기) 전용 API Base
 const ACCOUNT_BASE = `${API_SERVER_HOST}/api/account`;
 
 /** 인증코드 발송 */
 export const sendCodeApi = (email) => {
-    return axios.post(`${ACCOUNT_BASE}/send-code`, { email }, {
-        headers: { "Content-Type": "application/json" }
-    }); // 성공 시 204 No Content
+  return axios.post(`${ACCOUNT_BASE}/send-code`, { email }, {
+    headers: { "Content-Type": "application/json" }
+  }); // 성공 시 204 No Content
 };
 
 /** 인증코드 검증 */
 export const verifyCodeApi = (email, code) => {
-    return axios.post(`${ACCOUNT_BASE}/verify-code`, { email, code }, {
-        headers: { "Content-Type": "application/json" }
-    }); // { verified: true|false }
+  return axios.post(`${ACCOUNT_BASE}/verify-code`, { email, code }, {
+    headers: { "Content-Type": "application/json" }
+  }); // { verified: true|false }
 };
 
 /** 이메일로 username(아이디) 조회 */
@@ -44,7 +43,8 @@ export const getUsernameApi = (email) => {
     params: { email }
   }); // { username: "..." }
 };
-//비밀번호 찾기 부분
+
+// 비밀번호 찾기 부분
 const PWD_BASE = `${API_SERVER_HOST}/api/password`;
 export const sendPwdCodeApi = (username, email) =>
   axios.post(`${PWD_BASE}/send-code`, { username, email }, {
@@ -60,13 +60,10 @@ export const resetPasswordApi = (username, email, code, newPassword) =>
   axios.post(`${PWD_BASE}/reset`, { username, email, code, newPassword }, {
     headers: { "Content-Type": "application/json" }
   }); // { reset: true }
+
 /**
- * 사용자 회원가입을 위한 POST 요청을 처리할 비동기 함수입니다.
- * 현재는 구현되어 있지 않으며, 향후 사용자 객체(user)를 받아 회원가입 로직을 추가해야 합니다.
- * @param {object} user - 회원가입에 필요한 사용자 정보를 담는 객체
+ * 사용자 정보 수정
  */
-
-
 export const modifyUser = async (user) => {
   const ageNum = user.age === "" || user.age == null ? null : Number(user.age);
   const payload = {
@@ -83,21 +80,48 @@ export const modifyUser = async (user) => {
   return data;
 };
 
-// 프로필
-export async function updateProfileApi(username, formData) {
-  const res = await fetch(`${API_SERVER_HOST}/project/user/profile/${username}`, {
-    method: "PATCH",
-    headers: {
-      // ⚠️ multipart 전송이므로 'Content-Type' 직접 지정 X (브라우저가 경계값 붙임)
-      Authorization: `Bearer ${getCookie("member")?.accessToken ?? ""}`,
-    },
-    body: formData,
-  });
+/**
+ * 프로필 업로드 (FormData: field name = "file")
+ * - 기존 로직 유지: 업로드 성공 시 쿠키(member) 갱신
+ * - fetch 기반 중복 블록 제거
+ */
+export async function updateProfileApi(username, formOrObjOrFile) {
+  let form;
 
-  if (!res.ok) throw new Error("프로필 업데이트 실패");
-  const data = await res.json();
+  if (formOrObjOrFile instanceof FormData) {
+    // MyPage에서 이미 FormData(name/address/age/image)를 만들어 넘기는 패턴
+    form = formOrObjOrFile;
+  } else if (
+    formOrObjOrFile instanceof File ||
+    (typeof Blob !== "undefined" && formOrObjOrFile instanceof Blob)
+  ) {
+    // 파일만 전달한 경우 (이전 방식 호환)
+    form = new FormData();
+    form.append("image", formOrObjOrFile);
+  } else if (formOrObjOrFile && typeof formOrObjOrFile === "object") {
+    // { name, address, age, file } 형태
+    const { name, address, age, file } = formOrObjOrFile;
+    form = new FormData();
+    if (name) form.append("name", name);
+    if (address) form.append("address", address);
+    if (age !== undefined && age !== null && `${age}` !== "") {
+      form.append("age", age);
+    }
+    if (file) form.append("image", file);
+  } else {
+    // 아무것도 없으면 빈 폼(서버가 필요한 것만 쓰도록)
+    form = new FormData();
+  }
 
-  // ✅ 쿠키 갱신: 새 access/refresh + 최신 profileImage 반영
+  const res = await jwtAxios.patch(
+    `/project/user/profile/${encodeURIComponent(username)}`,
+    form // Content-Type은 axios가 자동 지정
+  );
+
+  // 서버 응답(JSON) 안전 처리
+  const data = res?.data ?? {};
+
+  // ✅ 쿠키(member) 동기화 (백이 내려주는 키 사용)
   const prev = getCookie("member") || {};
   const next = {
     ...prev,
@@ -110,7 +134,7 @@ export async function updateProfileApi(username, formData) {
     accessToken: data.accessToken ?? prev.accessToken,
     refreshToken: data.refreshToken ?? prev.refreshToken,
   };
-  setCookie("member", next, 1); // 만료는 프로젝트 정책에 맞게
+  setCookie("member", next, 1);
 
-  return data; // { profileImage, accessToken ... }
+  return data;
 }

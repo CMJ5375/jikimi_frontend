@@ -1,3 +1,4 @@
+// src/page/board/BoardDetail.js
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -9,19 +10,14 @@ import { Eye, HandThumbsUp, Share, Folder } from "react-bootstrap-icons";
 import { getOne, deletePost, getList, updatePost, increaseLike } from "../../api/postApi";
 import { getCookie } from "../../util/cookieUtil";
 import Avatar from "../board/Avatar";
+import { API_SERVER_HOST } from "../../config/api";
 
-// ==== local helpers ====
-// fileUrl이 절대경로(S3)면 그대로, 상대경로면 현재 origin을 붙여 반환
-function resolveFileUrl(u) {
+// ===== helpers =====
+// API 서버 기준 절대 URL로 변환 (/files/.. 같이 상대경로가 오면 붙여줌)
+function toAbs(u) {
   if (!u) return "";
-  if (u.startsWith("http")) return u;
-  try {
-    // 상대 경로를 현재 origin 기준으로 절대화
-    const base = typeof window !== "undefined" ? window.location.origin : "";
-    return new URL(u, base).toString();
-  } catch {
-    return u;
-  }
+  if (u.startsWith("http://") || u.startsWith("https://")) return u;
+  return `${API_SERVER_HOST}${u}`;
 }
 
 // fileUrl에서 파일명만 추출
@@ -38,7 +34,7 @@ function getFileNameFromUrl(u) {
   }
 }
 
-// ==== localStorage helpers (좋아요 로컬 캐시용) ====
+// 좋아요 로컬 캐시
 const LS_LIKED_KEY = "LIKED_POSTS";
 function loadLikedMap() {
   try {
@@ -52,7 +48,7 @@ function saveLikedMap(map) {
   localStorage.setItem(LS_LIKED_KEY, JSON.stringify(map));
 }
 
-const BoardDetail = () => {
+export default function BoardDetail() {
   const { id: idParam } = useParams();
   const navigate = useNavigate();
   const id = Number(idParam || 0);
@@ -62,8 +58,7 @@ const BoardDetail = () => {
   let usernameForLike = null;
   if (rawCookie) {
     try {
-      const parsed =
-        typeof rawCookie === "string" ? JSON.parse(rawCookie) : rawCookie;
+      const parsed = typeof rawCookie === "string" ? JSON.parse(rawCookie) : rawCookie;
       usernameForLike = parsed?.username || null;
     } catch {}
   }
@@ -109,8 +104,7 @@ const BoardDetail = () => {
       return;
     }
     try {
-      const res = await increaseLike(id, usernameForLike);
-      // res: { likeCount, liked }
+      const res = await increaseLike(id, usernameForLike); // { likeCount, liked }
       setPost((prev) => {
         let updatedUsers = [...(prev.likedUsernames || [])];
         if (res.liked) {
@@ -118,7 +112,6 @@ const BoardDetail = () => {
         } else {
           updatedUsers = updatedUsers.filter((u) => u !== usernameForLike);
         }
-        // 로컬 캐시도 갱신(옵션)
         const map = loadLikedMap();
         if (res.liked) map[id] = true;
         else delete map[id];
@@ -139,15 +132,9 @@ const BoardDetail = () => {
   const openShare = useCallback(async () => {
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: shareTitle,
-          text: shareTitle,
-          url: pageUrl,
-        });
+        await navigator.share({ title: shareTitle, text: shareTitle, url: pageUrl });
         return;
-      } catch {
-        /* 취소 등 무시 */
-      }
+      } catch {}
     }
     setShowShare(true);
   }, [shareTitle, pageUrl]);
@@ -162,13 +149,13 @@ const BoardDetail = () => {
     };
   }, [post.createdAt]);
 
-  // 게시글 로드 (조회수 증가는 백엔드 GET에서 처리)
+  // 게시글 로드 (※ 조회수 증가는 컨트롤러 GET에서 이미 처리)
   useEffect(() => {
     let ignore = false;
     (async () => {
       setLoading(true);
       try {
-        const data = await getOne(id); // GET /api/posts/{id} 내에서 조회수 증가
+        const data = await getOne(id);
         if (ignore) return;
 
         setPost({
@@ -185,19 +172,17 @@ const BoardDetail = () => {
           likedUsernames: Array.isArray(data.likedUsernames) ? data.likedUsernames : [],
         });
 
-        // 첨부파일 세팅: fileUrl 그대로 사용 (S3 절대/상대 모두 호환)
+        // ✅ 첨부파일: DB에 저장된 /files/{postId}/{fileName} 를 API 절대 URL로 변환해서 사용
         if (data.fileUrl && data.fileUrl.trim() !== "") {
-          const url = resolveFileUrl(data.fileUrl);
-          setAttachments([{ url, fileName: getFileNameFromUrl(url) }]);
+          const abs = toAbs(data.fileUrl); // 예: https://api.example.org/files/35/Group.png
+          setAttachments([{ url: abs, fileName: getFileNameFromUrl(abs) }]);
         } else {
           setAttachments([]);
         }
 
-        // 수정 모드 초기값
         setEditTitle(data.title ?? "");
         setEditContent(data.content ?? "");
 
-        // 좋아요 여부 로컬 복원 (옵션)
         const likedMap = loadLikedMap();
         setLiked(!!likedMap[id]);
       } catch (err) {
@@ -211,7 +196,7 @@ const BoardDetail = () => {
     };
   }, [id]);
 
-  // 전체 글 개수 (다음글/이전글 계산용)
+  // 전체 글 개수 (다음/이전 계산용)
   useEffect(() => {
     (async () => {
       try {
@@ -265,120 +250,52 @@ const BoardDetail = () => {
     }
   };
 
-  // prev/next id (단순 가정: id-1 / id+1)
   const prevId = id > 1 ? id - 1 : null;
   const nextId = totalCount && id < totalCount ? id + 1 : null;
 
-  // 로그인 사용자 정보 (수정/삭제 권한)
- let loginUsername = null;
+  // 로그인 사용자 권한(작성자/관리자)
+  let loginUsername = null;
   let loginRolesRaw = [];
   const rawMember = getCookie("member");
 
-  // roles 표준화 유틸: 문자열/배열/객체배열 모두 처리
   function normalizeRoles(input) {
     const out = [];
-    const pushRole = (r) => {
+    const push = (r) => {
       if (!r) return;
       let s = String(r).toUpperCase().trim();
       if (s.startsWith("ROLE_")) s = s.slice(5);
       out.push(s);
     };
     if (!input) return out;
-
     if (Array.isArray(input)) {
       for (const item of input) {
-        if (typeof item === "string") pushRole(item);
+        if (typeof item === "string") push(item);
         else if (item && typeof item === "object") {
-          pushRole(item.roleName || item.name || item.authority || item.value);
+          push(item.roleName || item.name || item.authority || item.value);
         }
       }
     } else if (typeof input === "string") {
-      input.split(",").forEach((s) => pushRole(s));
+      input.split(",").forEach((s) => push(s));
     } else if (typeof input === "object") {
-      const maybe =
-        input.roleNames ||
-        input.roles ||
-        input.JMemberRoleList ||
-        input.authorities ||
-        [];
+      const maybe = input.roleNames || input.roles || input.JMemberRoleList || input.authorities || [];
       return normalizeRoles(maybe);
     }
     return out;
   }
 
-  // === JWT 디코딩 보조 함수들 ===
-  function base64UrlDecode(str) {
-    try {
-      // base64url → base64
-      const pad = (s) => s + "=".repeat((4 - (s.length % 4)) % 4);
-      const b64 = pad(str.replace(/-/g, "+").replace(/_/g, "/"));
-      return decodeURIComponent(
-        Array.prototype.map
-          .call(atob(b64), (c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-          .join("")
-      );
-    } catch {
-      return "";
-    }
-  }
-  function decodeJwtPayload(token) {
-    try {
-      const [, payload] = token.split(".");
-      if (!payload) return null;
-      const json = base64UrlDecode(payload);
-      return JSON.parse(json);
-    } catch {
-      return null;
-    }
-  }
-  function extractRolesFromJwtPayload(payload) {
-    if (!payload || typeof payload !== "object") return [];
-    // 다양한 키 방어적으로 처리
-    const candidates =
-      payload.roleNames ||
-      payload.roles ||
-      payload.authorities ||
-      payload.JMemberRoleList ||
-      [];
-    return normalizeRoles(candidates);
-  }
-
-  // 1) member 쿠키에서 username/roles 읽기
-  let parsedMember = null;
   if (rawMember) {
     try {
-      parsedMember = typeof rawMember === "string" ? JSON.parse(rawMember) : rawMember;
-      loginUsername = parsedMember?.username || null;
-      const anyRoles = parsedMember?.roles ?? parsedMember?.roleNames ?? parsedMember?.JMemberRoleList ?? [];
+      const parsed = typeof rawMember === "string" ? JSON.parse(rawMember) : rawMember;
+      loginUsername = parsed?.username || null;
+      const anyRoles = parsed?.roles ?? parsed?.roleNames ?? parsed?.JMemberRoleList ?? [];
       loginRolesRaw = normalizeRoles(anyRoles);
     } catch (err) {
       console.error("failed to parse member cookie", err);
     }
   }
 
-  // 2) JWT(액세스 토큰)에서도 roles 합치기
-  //    - member 쿠키 안에 accessToken이 있을 수도 있고
-  //    - 별도 'accessToken' 쿠키나 localStorage에 있을 수도 있음
-  const tokenFromMember = parsedMember?.accessToken || parsedMember?.token || null;
-  const tokenFromCookie = getCookie("accessToken");
-  const tokenFromStorage = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-
-  const accessToken = tokenFromMember || tokenFromCookie || tokenFromStorage || null;
-  if (accessToken) {
-    const payload = decodeJwtPayload(accessToken);
-    const jwtRoles = extractRolesFromJwtPayload(payload);
-    // username이 비어있으면 JWT의 sub/username 사용
-    if (!loginUsername) loginUsername = payload?.username || payload?.sub || null;
-    // roles 병합(중복 제거)
-    const merged = new Set([...(loginRolesRaw || []), ...jwtRoles]);
-    loginRolesRaw = Array.from(merged);
-  }
-
-  // 최종 권한 계산
-  const isOwner =
-    !!loginUsername && !!post.authorUsername && loginUsername === post.authorUsername;
-  const isAdmin = (loginRolesRaw || []).includes("ADMIN"); // ROLE_ 접두어 제거 후 검사
-
+  const isOwner = !!loginUsername && !!post.authorUsername && loginUsername === post.authorUsername;
+  const isAdmin = (loginRolesRaw || []).includes("ADMIN");
   const canDelete = isOwner || isAdmin;
   const canEdit = isOwner;
 
@@ -413,10 +330,7 @@ const BoardDetail = () => {
               </button>
             )}
             {canDelete && (
-              <button
-                className="btn-ghost btn-ghost-danger"
-                onClick={handleDelete}
-              >
+              <button className="btn-ghost btn-ghost-danger" onClick={handleDelete}>
                 삭제
               </button>
             )}
@@ -425,27 +339,19 @@ const BoardDetail = () => {
       </div>
 
       {/* 글 메타 */}
-      <div className="text-muted small mb-1">
-        게시글 {id} / 총 {totalCount}
-      </div>
+      <div className="text-muted small mb-1">게시글 {id} / 총 {totalCount}</div>
       <div className="d-flex justify-content-between align-items-center post-meta mb-3">
         <div className="d-flex align-items-center">
           <Avatar src={post.authorProfileImage} size={40} className="me-2" />
-          {post.authorName && (
-            <span className="fw-semibold text-dark me-2">{post.authorName}</span>
-          )}
-          <span>
-            {formatted.date} {formatted.time}
-          </span>
+          {post.authorName && <span className="fw-semibold text-dark me-2">{post.authorName}</span>}
+          <span>{formatted.date} {formatted.time}</span>
         </div>
-        <div>
-          <Eye /> {post.viewCount ?? 0}
-        </div>
+        <div><Eye /> {post.viewCount ?? 0}</div>
       </div>
 
       <hr />
 
-      {/* 첨부파일 */}
+      {/* 첨부파일 (FileController 대응) */}
       {attachments.length > 0 && (
         <div className="text-end position-relative mb-3">
           <div
@@ -454,30 +360,18 @@ const BoardDetail = () => {
             style={{ cursor: "pointer" }}
           >
             <Folder size={16} />
-            첨부파일{" "}
-            <span className="text-primary fw-semibold">
-              {attachments.length}
-            </span>
+            첨부파일 <span className="text-primary fw-semibold">{attachments.length}</span>
           </div>
 
           {showAttachPopup && (
             <div className="attachment-popup shadow-sm border rounded bg-white p-3 mt-2">
               {attachments.map((file, index) => (
-                <div
-                  key={index}
-                  className="d-flex justify-content-between align-items-center"
-                  style={{ minWidth: "220px" }}
-                >
-                  <span
-                    className="text-truncate small fw-semibold text-dark"
-                    style={{ maxWidth: "140px" }}
-                    title={file.fileName}
-                  >
+                <div key={index} className="d-flex justify-content-between align-items-center" style={{ minWidth: "220px" }}>
+                  <span className="text-truncate small fw-semibold text-dark" style={{ maxWidth: "140px" }} title={file.fileName}>
                     {file.fileName || "(이름 없음)"}
                   </span>
-
                   <span className="text-muted mx-2">|</span>
-
+                  {/* FileController가 다운로드 응답을 주므로 그냥 열기/다운로드 OK */}
                   <button
                     className="btn btn-link btn-sm p-0 text-decoration-none text-secondary"
                     onClick={() => window.open(file.url, "_blank")}
@@ -494,9 +388,7 @@ const BoardDetail = () => {
       {/* 본문 */}
       <div className="post-body">
         {!editMode ? (
-          <p className="post-content" style={{ whiteSpace: "pre-line" }}>
-            {post.content}
-          </p>
+          <p className="post-content" style={{ whiteSpace: "pre-line" }}>{post.content}</p>
         ) : (
           <textarea
             className="form-control"
@@ -511,37 +403,25 @@ const BoardDetail = () => {
       {/* 수정모드 저장/취소 */}
       {editMode && (
         <div className="d-flex justify-content-end gap-3 mt-3 post-actions">
-          <button className="btn-ghost" onClick={handleEditSave}>
-            저장
-          </button>
-          <button
-            className="btn-ghost btn-ghost-danger"
-            onClick={handleEditCancel}
-          >
-            취소
-          </button>
+          <button className="btn-ghost" onClick={handleEditSave}>저장</button>
+          <button className="btn-ghost btn-ghost-danger" onClick={handleEditCancel}>취소</button>
         </div>
       )}
 
-      {/* 좋아요 & 공유 버튼 */}
+      {/* 좋아요 & 공유 */}
       {!editMode && (
         <div className="d-flex gap-3 mb-5">
-         <button
-          className={
-            "btn flex-fill py-2 " +
-            (post.likedUsernames?.includes(usernameForLike)
-              ? "btn-primary text-white"
-              : "btn-outline-primary")
-          }
-          onClick={handleLike}
-        >
-          <HandThumbsUp /> 좋아요 {post.likeCount}
-        </button>
-
           <button
-            className="btn btn-outline-secondary flex-fill py-2"
-            onClick={openShare}
+            className={
+              "btn flex-fill py-2 " +
+              (post.likedUsernames?.includes(usernameForLike) ? "btn-primary text-white" : "btn-outline-primary")
+            }
+            onClick={handleLike}
           >
+            <HandThumbsUp /> 좋아요 {post.likeCount}
+          </button>
+
+          <button className="btn btn-outline-secondary flex-fill py-2" onClick={openShare}>
             <Share /> 공유
           </button>
         </div>
@@ -563,14 +443,7 @@ const BoardDetail = () => {
       )}
 
       {/* 공유 모달 */}
-      <ShareModal
-        show={showShare}
-        onClose={() => setShowShare(false)}
-        shareTitle={shareTitle}
-        pageUrl={pageUrl}
-      />
+      <ShareModal show={showShare} onClose={() => setShowShare(false)} shareTitle={shareTitle} pageUrl={pageUrl} />
     </div>
   );
-};
-
-export default BoardDetail;
+}
