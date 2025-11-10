@@ -97,8 +97,35 @@ const Navigation = () => {
 
             {/* 메뉴 */}
             <Nav className="me-auto">
-              <Nav.Link href="/noticeboards">게시판</Nav.Link>
-              <Nav.Link href="/mypage">마이페이지</Nav.Link>
+              <Nav.Link
+                as="button"
+                className="btn btn-link nav-link"
+                onClick={() => {
+                  if (!loginState.username) {
+                    alert("로그인이 필요합니다.");
+                    navigate("/login");
+                  } else {
+                    navigate("/noticeboards");
+                  }
+                }}
+              >
+                게시판
+              </Nav.Link>
+
+              <Nav.Link
+                as="button"
+                className="btn btn-link nav-link"
+                onClick={() => {
+                  if (!loginState.username) {
+                    alert("로그인이 필요합니다.");
+                    navigate("/login");
+                  } else {
+                    navigate("/mypage");
+                  }
+                }}
+              >
+                마이페이지
+              </Nav.Link>
               <NavDropdown title={<span>고객지원</span>} id="basic-nav-dropdown">
                 <NavDropdown.Item href="/notice">공지사항</NavDropdown.Item>
                 <NavDropdown.Item href="/faq">FAQ</NavDropdown.Item>
