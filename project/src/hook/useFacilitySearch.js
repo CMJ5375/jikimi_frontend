@@ -2,8 +2,8 @@
 import { useState, useEffect } from "react";
 import { addDistanceAndSort, getDefaultPosition } from "../api/geolocationApi";
 import { openUtil } from "../util/openUtil";
-import axios from "axios";
-import { apiUrl } from "../config/api"; // ✅ 무조건 https + BASE 보장
+import publicAxios from "../util/publicAxios";         // ✅ 공통 Axios 인스턴스
+import { apiUrl } from "../config/api";                // (필요시 절대 URL 생성용)
 
 const isNil = (v) => v === null || v === undefined;
 
@@ -70,17 +70,22 @@ export default function useFacilitySearch(type) {
         params.lng = currentPos.lng;
       }
 
-      // ✅ 절대 HTTPS URL로 고정
-      const path =
+      const endpoint =
         type === "hospital"
           ? "/project/hospital/search"
           : "/project/pharmacy/search";
-      const url = apiUrl(path);
 
-      const res = await axios.get(url, {
+      // ✅ 1) baseURL 방식 (권장): 혼합콘텐츠 자동 방지
+      const res = await publicAxios.get(endpoint, {
         params,
-        withCredentials: !!f.onlyFavorites, // 필요하면 true
+        withCredentials: !!f.onlyFavorites, // 즐겨찾기만 쿠키 필요한 경우 true
       });
+
+      // ✅ 2) (대안) 절대 URL로 호출하고 싶다면:
+      // const res = await publicAxios.get(apiUrl(endpoint), {
+      //   params,
+      //   withCredentials: !!f.onlyFavorites,
+      // });
 
       const pageJson = res?.data ?? {};
       const data = Array.isArray(pageJson.content) ? pageJson.content : [];

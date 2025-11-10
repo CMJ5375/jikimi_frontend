@@ -1,11 +1,10 @@
 import { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { getAccessToken, getUserWithAccessToken } from "../../api/kakaoApi";
 import { setCookie } from "../../util/cookieUtil";
 
 export default function KakaoLoginPage() {
   const { search } = useLocation();
-  const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
@@ -14,23 +13,25 @@ export default function KakaoLoginPage() {
         const code = params.get("code");
         if (!code) return; // 일반 로그인 화면 진입일 수 있음
 
-        // 1) 카카오에서 access_token 발급
+        // 1) 카카오 액세스토큰
         const kakaoAccessToken = await getAccessToken(code);
+        if (!kakaoAccessToken) throw new Error("No kakao access token");
 
-        // 2) 백엔드에 전달하여 우리 서비스 토큰/유저정보 수령
+        // 2) 백엔드 로그인(우리 서비스 토큰 수령)
         const user = await getUserWithAccessToken(kakaoAccessToken);
+        if (!user?.accessToken) throw new Error("No service access token");
 
-        // 3) member 쿠키 저장
+        // 3) member 쿠키 저장 (jwtUtil이 기대하는 형태)
         setCookie("member", user, 1);
 
-        // 4) 홈으로 이동
-        navigate("/", { replace: true });
+        // 4) ★ 전역 상태 강제 동기화: 새로고침(라우팅+상태 초기화)
+        window.location.replace("/");
       } catch (e) {
         console.error("카카오 로그인 실패:", e);
-        // 실패시에도 화면은 유지되게
+        // 실패 시 현재 페이지 유지 (원하면 /login 으로 보내도 됨)
       }
     })();
-  }, [search, navigate]);
+  }, [search]);
 
-  return null; // 별도 렌더링 요소 없이 처리만
+  return null;
 }

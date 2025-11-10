@@ -270,29 +270,117 @@ const BoardDetail = () => {
   const nextId = totalCount && id < totalCount ? id + 1 : null;
 
   // 로그인 사용자 정보 (수정/삭제 권한)
-  let loginUsername = null;
-  let loginRoles = [];
+ let loginUsername = null;
+  let loginRolesRaw = [];
   const rawMember = getCookie("member");
+
+  // roles 표준화 유틸: 문자열/배열/객체배열 모두 처리
+  function normalizeRoles(input) {
+    const out = [];
+    const pushRole = (r) => {
+      if (!r) return;
+      let s = String(r).toUpperCase().trim();
+      if (s.startsWith("ROLE_")) s = s.slice(5);
+      out.push(s);
+    };
+    if (!input) return out;
+
+    if (Array.isArray(input)) {
+      for (const item of input) {
+        if (typeof item === "string") pushRole(item);
+        else if (item && typeof item === "object") {
+          pushRole(item.roleName || item.name || item.authority || item.value);
+        }
+      }
+    } else if (typeof input === "string") {
+      input.split(",").forEach((s) => pushRole(s));
+    } else if (typeof input === "object") {
+      const maybe =
+        input.roleNames ||
+        input.roles ||
+        input.JMemberRoleList ||
+        input.authorities ||
+        [];
+      return normalizeRoles(maybe);
+    }
+    return out;
+  }
+
+  // === JWT 디코딩 보조 함수들 ===
+  function base64UrlDecode(str) {
+    try {
+      // base64url → base64
+      const pad = (s) => s + "=".repeat((4 - (s.length % 4)) % 4);
+      const b64 = pad(str.replace(/-/g, "+").replace(/_/g, "/"));
+      return decodeURIComponent(
+        Array.prototype.map
+          .call(atob(b64), (c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+    } catch {
+      return "";
+    }
+  }
+  function decodeJwtPayload(token) {
+    try {
+      const [, payload] = token.split(".");
+      if (!payload) return null;
+      const json = base64UrlDecode(payload);
+      return JSON.parse(json);
+    } catch {
+      return null;
+    }
+  }
+  function extractRolesFromJwtPayload(payload) {
+    if (!payload || typeof payload !== "object") return [];
+    // 다양한 키 방어적으로 처리
+    const candidates =
+      payload.roleNames ||
+      payload.roles ||
+      payload.authorities ||
+      payload.JMemberRoleList ||
+      [];
+    return normalizeRoles(candidates);
+  }
+
+  // 1) member 쿠키에서 username/roles 읽기
+  let parsedMember = null;
   if (rawMember) {
     try {
-      const parsed = typeof rawMember === "string" ? JSON.parse(rawMember) : rawMember;
-      loginUsername = parsed?.username || null;
-      loginRoles = parsed?.roles || parsed?.roleNames || [];
-      if (!Array.isArray(loginRoles)) loginRoles = [loginRoles].filter(Boolean);
-      console.log("DBG front auth:", "username=", loginUsername, "roles=", loginRoles);
+      parsedMember = typeof rawMember === "string" ? JSON.parse(rawMember) : rawMember;
+      loginUsername = parsedMember?.username || null;
+      const anyRoles = parsedMember?.roles ?? parsedMember?.roleNames ?? parsedMember?.JMemberRoleList ?? [];
+      loginRolesRaw = normalizeRoles(anyRoles);
     } catch (err) {
       console.error("failed to parse member cookie", err);
     }
   }
 
+  // 2) JWT(액세스 토큰)에서도 roles 합치기
+  //    - member 쿠키 안에 accessToken이 있을 수도 있고
+  //    - 별도 'accessToken' 쿠키나 localStorage에 있을 수도 있음
+  const tokenFromMember = parsedMember?.accessToken || parsedMember?.token || null;
+  const tokenFromCookie = getCookie("accessToken");
+  const tokenFromStorage = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+
+  const accessToken = tokenFromMember || tokenFromCookie || tokenFromStorage || null;
+  if (accessToken) {
+    const payload = decodeJwtPayload(accessToken);
+    const jwtRoles = extractRolesFromJwtPayload(payload);
+    // username이 비어있으면 JWT의 sub/username 사용
+    if (!loginUsername) loginUsername = payload?.username || payload?.sub || null;
+    // roles 병합(중복 제거)
+    const merged = new Set([...(loginRolesRaw || []), ...jwtRoles]);
+    loginRolesRaw = Array.from(merged);
+  }
+
+  // 최종 권한 계산
   const isOwner =
-    loginUsername && post.authorUsername && loginUsername === post.authorUsername;
-  const isAdmin =
-    Array.isArray(loginRoles) &&
-    (loginRoles.includes("ROLE_ADMIN") || loginRoles.includes("ADMIN"));
+    !!loginUsername && !!post.authorUsername && loginUsername === post.authorUsername;
+  const isAdmin = (loginRolesRaw || []).includes("ADMIN"); // ROLE_ 접두어 제거 후 검사
 
   const canDelete = isOwner || isAdmin;
-  const canEdit = isOwner || isAdmin; // 관리자는 수정 불가 규칙 유지
+  const canEdit = isOwner;
 
   if (loading) {
     return (

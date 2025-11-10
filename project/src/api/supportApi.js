@@ -1,6 +1,7 @@
 // src/api/supportApi.js
 import axios from "axios";
 import jwtAxios from "../util/jwtUtil";
+import publicAxios from "../util/publicAxios"; // ✅ 추가: HTTPS 강제 인터셉터 포함
 import { API_SERVER_HOST } from "../config/api";
 
 // 공통 Prefix (절대 URL)
@@ -17,34 +18,34 @@ export const buildFileDownloadUrl = (supportId, fileName) => {
 
 /** -------------------- 공개 API (인증 불필요) -------------------- */
 
-// 목록 조회(검색 포함)
+// 목록 조회(검색 포함)  ✅ axios → publicAxios (혼합콘텐츠 방지)
 export async function listSupport({ type, page = 1, size = 10, q = "" }) {
   const t = normType(type);
-  const res = await axios.get(`${SUP_PREFIX}/${t}/list`, {
+  const res = await publicAxios.get(`${SUP_PREFIX}/${t}/list`, {
     params: { page: page - 1, size, keyword: q || undefined },
   });
   return res.data;
 }
 
-// 단건 조회 (increaseView 플래그 가능)
+// 단건 조회 (increaseView 플래그 가능)  ✅ axios → publicAxios
 export async function getSupport({ type, id, increaseView = true }) {
   const t = normType(type);
-  const res = await axios.get(`${SUP_PREFIX}/${t}/${id}`, {
+  const res = await publicAxios.get(`${SUP_PREFIX}/${t}/${id}`, {
     params: { increaseView },
   });
   return res.data;
 }
 
-// 상단 고정 리스트
+// 상단 고정 리스트  ✅ axios → publicAxios
 export const listPinnedSupport = async ({ type }) => {
   const t = normType(type);
-  const res = await axios.get(`${SUP_PREFIX}/${t}/pinned`);
+  const res = await publicAxios.get(`${SUP_PREFIX}/${t}/pinned`);
   return res.data;
 };
 
 /** -------------------- 관리자/인증 필요 API -------------------- */
 
-// 생성(관리자) — 멀티파트
+// 생성(관리자) — 멀티파트 ＊기존 axios 사용 유지
 export async function createSupport({ type, formData, token, adminId }) {
   // adminId를 쿼리스트링으로도, form-data로도 같이 넣어줌 (컨트롤러 양쪽 수용)
   if (adminId && !formData.has("adminId")) {
@@ -105,7 +106,7 @@ export async function unpinSupport({ type, id, adminId, token }) {
   });
 }
 
-// 좋아요 토글
+// 좋아요 토글 (서버 계약 유지: POST /like + body{userId})
 export async function toggleSupportLike({ type, id, userId, token }) {
   const t = normType(type);
   const res = await jwtAxios.post(
@@ -118,7 +119,7 @@ export async function toggleSupportLike({ type, id, userId, token }) {
   return res.data;
 }
 
-// 좋아요 상태 조회
+// 좋아요 상태 조회 (GET, 필요 시 토큰 헤더 동봉)
 export async function getSupportLikeStatus({ type, id, userId, token }) {
   const t = normType(type);
   const res = await jwtAxios.get(`${SUP_PREFIX}/${t}/${id}/like/status`, {
