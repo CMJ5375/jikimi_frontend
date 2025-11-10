@@ -96,3 +96,28 @@
 .popup-trigger:hover {
   color: #000;
 }
+
+/* flex를 이용한 완전 균등 버튼 정렬 */
+.d-flex.gap-3.mb-5 {
+  display: flex;
+  gap: 12px;
+}
+
+.d-flex.gap-3.mb-5 .btn {
+  flex: 1 1 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 52px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1;
+  transition: all 0.25s ease;
+}
+
+/* 아이콘과 텍스트가 수평으로 완전히 중앙 정렬되도록 */
+.d-flex.gap-3.mb-5 .btn svg {
+  flex-shrink: 0;
+}

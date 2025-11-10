@@ -7,21 +7,18 @@ const okNum = (n) => typeof n === "number" && isFinite(n);
 // 기본 위치
 const DEFAULT_LOCATION = { lat: 37.432764, lng: 127.129637 };
 
-// Kakao Map SDK 로드 (중복 방지)
+// Kakao Map 로드
 export const loadKakaoMap = () =>
   new Promise((resolve) => {
     try {
       if (window.kakao && window.kakao.maps) {
-        console.debug(`${TAG} SDK 이미 로드됨 → maps.load 호출`);
         window.kakao.maps.load(() => resolve(window.kakao.maps));
         return;
       }
-      console.debug(`${TAG} SDK 스크립트 삽입`);
       const script = document.createElement("script");
       script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${kakao_js_key}&autoload=false`;
       script.async = true;
       script.onload = () => {
-        console.debug(`${TAG} SDK onload → maps.load 호출`);
         window.kakao.maps.load(() => resolve(window.kakao.maps));
       };
       script.onerror = (e) => console.error(`${TAG} SDK 로드 실패`, e);
@@ -154,7 +151,6 @@ export const renderKakaoMap = async (containerId, center, locations = [], showCe
         }
       });
       map.setBounds(bounds);
-      console.debug(`${TAG} setBounds 적용`);
     }
 
     console.groupEnd();
