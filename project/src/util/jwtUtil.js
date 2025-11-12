@@ -23,7 +23,9 @@ jwtAxios.interceptors.request.use((config) => {
 // ==== Refresh 요청 (글로벌 axios 사용) ====
 async function refreshJWT(accessToken, refreshToken) {
   const header = { headers: { Authorization: `Bearer ${accessToken}` } };
-  const url = apiUrl(`/project/user/refresh?refreshToken=${encodeURIComponent(refreshToken)}`);
+  const url = apiUrl(
+    `/project/user/refresh?refreshToken=${encodeURIComponent(refreshToken)}`
+  );
   const res = await axios.get(url, header);
   return res.data; // { accessToken, refreshToken? }
 }
@@ -43,7 +45,11 @@ jwtAxios.interceptors.request.use(
     // member 쿠키가 문자열일 수도 있으니 방어적으로 파싱
     let user = getCookie("member");
     if (user && typeof user === "string") {
-      try { user = JSON.parse(user); } catch { /* noop */ }
+      try {
+        user = JSON.parse(user);
+      } catch {
+        /* noop */
+      }
     }
 
     if (!user) {
@@ -52,6 +58,7 @@ jwtAxios.interceptors.request.use(
     }
 
     if (user?.accessToken) {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${user.accessToken}`;
     }
     return config;
@@ -88,7 +95,11 @@ async function handleRefreshAndRetry(originalConfig) {
 
   let user = getCookie("member");
   if (user && typeof user === "string") {
-    try { user = JSON.parse(user); } catch { /* noop */ }
+    try {
+      user = JSON.parse(user);
+    } catch {
+      /* noop */
+    }
   }
   if (!user?.refreshToken) {
     return Promise.reject({ message: "No refresh token" });
@@ -97,7 +108,20 @@ async function handleRefreshAndRetry(originalConfig) {
   if (isRefreshing) {
     return new Promise((resolve) => {
       subscribe((bearer) => {
-        originalConfig.headers.Authorization = bearer;
+
+        originalConfig.headers = {
+          ...(originalConfig.headers || {}),
+          Authorization: bearer,
+        };
+
+  
+        if (
+          typeof FormData !== "undefined" &&
+          originalConfig.data instanceof FormData
+        ) {
+          delete originalConfig.headers["Content-Type"];
+        }
+
         resolve(jwtAxios(originalConfig));
       });
     });
@@ -118,7 +142,20 @@ async function handleRefreshAndRetry(originalConfig) {
     const bearer = `Bearer ${updated.accessToken}`;
     publish(bearer);
 
-    originalConfig.headers.Authorization = bearer;
+    // ★ PATCH: 원 요청에 새 토큰 반영
+    originalConfig.headers = {
+      ...(originalConfig.headers || {}),
+      Authorization: bearer,
+    };
+
+    // ★ PATCH: 원 요청이 FormData였으면 Content-Type 제거
+    if (
+      typeof FormData !== "undefined" &&
+      originalConfig.data instanceof FormData
+    ) {
+      delete originalConfig.headers["Content-Type"];
+    }
+
     return jwtAxios(originalConfig);
   } finally {
     isRefreshing = false;

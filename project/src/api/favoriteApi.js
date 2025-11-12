@@ -15,7 +15,6 @@ export const getFavorites = async (type) => {
     });
     return Array.isArray(res.data) ? res.data.map(String) : [];
   } catch (err) {
-    console.error("getFavorites 실패:", err);
     return [];
   }
 };
@@ -29,7 +28,6 @@ export const isFavorite = async (type, targetId) => {
     });
     return !!res.data;
   } catch (err) {
-    console.error("isFavorite 실패:", err);
     return false;
   }
 };
@@ -42,7 +40,6 @@ export const addFavorite = async (type, targetId) => {
       params: { type: t },
     });
   } catch (err) {
-    console.error("addFavorite 실패:", err);
     throw err;
   }
 };
@@ -55,7 +52,6 @@ export const removeFavorite = async (type, targetId) => {
       params: { type: t },
     });
   } catch (err) {
-    console.error("removeFavorite 실패:", err);
   }
 };
 
@@ -80,7 +76,6 @@ export const toggleFavorite = async (type, targetId) => {
       return true;
     }
   } catch (err) {
-    console.error("toggleFavorite 실패:", err);
     return false;
   }
 };

@@ -6,6 +6,7 @@ import { X } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
 import { createPost } from "../../api/postApi";
 import { getCookie } from "../../util/cookieUtil";
+import { decodeToken } from "../../util/jwtUtil"; // ✅ 토큰에서 username/sub 읽기
 
 // 한글 라벨 ↔ Enum 코드
 const CATEGORY_OPTIONS = [
@@ -25,9 +26,9 @@ const BoardCreat = ({ onClose }) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
 
-  // 파일은 백엔드가 단일만 받으므로 첫 번째만 저장
-  const [files, setFiles] = useState([]);     // File[] (미리보기용으로 유지)
-  const [fileOne, setFileOne] = useState(null); // 실제 업로드용 단일 File
+  // 파일: 백엔드가 단일만 받으므로 첫 번째만 업로드 대상으로 사용
+  const [files, setFiles] = useState([]);       // 미리보기용
+  const [fileOne, setFileOne] = useState(null); // 실제 업로드용
 
   // 파일 선택
   const handleFiles = (e) => {
@@ -37,15 +38,13 @@ const BoardCreat = ({ onClose }) => {
       setFileOne(null);
       return;
     }
-    // 첫 번째만 업로드 대상으로 사용
     setFiles(list);
-    setFileOne(list[0]);
+    setFileOne(list[0]); // ✅ 첫 번째만 업로드
   };
 
   const removeFile = (idx) => {
     const next = files.filter((_, i) => i !== idx);
     setFiles(next);
-    // 업로드 대상이 사라졌다면 null
     if (idx === 0) setFileOne(next[0] ?? null);
     if (fileRef.current && next.length === 0) fileRef.current.value = "";
   };
@@ -58,13 +57,14 @@ const BoardCreat = ({ onClose }) => {
       return;
     }
 
-    // 로그인 쿠키에서 username
+    // 로그인 쿠키 가져오기
     const raw = getCookie("member");
     if (!raw) {
       alert("로그인 후 이용해주세요.");
       return;
     }
 
+    // 쿠키 파싱
     let parsed;
     try {
       parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
@@ -73,29 +73,42 @@ const BoardCreat = ({ onClose }) => {
       return;
     }
 
-    const username = parsed?.username;
-    if (!username) {
-      alert("로그인 정보가 올바르지 않습니다.");
+    // ✅ 토큰에서 username/sub 우선 추출 (서버 DB 사용자와 1:1 매칭 보장)
+    const accessToken = parsed?.accessToken || parsed?.token || null;
+    const payload = accessToken ? decodeToken(accessToken) : null;
+    const jwtUsername = payload?.username || payload?.sub || null;
+
+    // fallback: 쿠키의 username (가능하면 쓰지 않음)
+    const cookieUsername = parsed?.username || null;
+
+    const finalUsername = jwtUsername || cookieUsername;
+    if (!finalUsername) {
+      alert("로그인 정보가 올바르지 않습니다. 다시 로그인해주세요.");
       return;
     }
 
-    // createPost에 넘길 payload
-    // postApi.createPost는 내부에서 FormData 생성 시 file 1개만 append하도록 되어 있음
+    // 전송 페이로드 (파일은 1개만)
     const postPayload = {
       title,
       content,
       boardCategory,
-      authorUsername: username,
-      files: fileOne ? [fileOne] : [], // 첫 번째 파일만 서버로 전송
+      authorUsername: finalUsername, // ✅ 서버가 JUserRepository.findByUsername(...) 하는 값
+      files: fileOne ? [fileOne] : [],
     };
 
     try {
-      const newId = await createPost(postPayload);
+      const newId = await createPost(postPayload); // jwtAxios가 Authorization 부착/리프레시 처리
       alert("게시글이 등록되었습니다.");
       navigate(`/boarddetails/${newId}`);
     } catch (err) {
+      // 디버깅 도움: 서버 응답 메시지 노출
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "등록 중 오류가 발생했습니다.";
       console.error("createPost failed", err);
-      alert("등록 중 오류가 발생했습니다.");
+      alert(msg);
     }
   };
 
@@ -115,11 +128,6 @@ const BoardCreat = ({ onClose }) => {
           title="닫기"
         >
           <X />
-        </button>
-
-        {/* 등록 버튼: submit으로 고정 */}
-        <button type="submit" form="postCreateForm" className="btn btn-primary rounded-pill px-4">
-          등록
         </button>
       </div>
 
@@ -220,6 +228,12 @@ const BoardCreat = ({ onClose }) => {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="d-flex justify-content-end">
+          <button type="submit" form="postCreateForm" className="btn btn-primary rounded-pill px-4">
+            등록
+          </button>
         </div>
       </form>
     </div>

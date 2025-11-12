@@ -206,18 +206,10 @@ const HospitalDetail = () => {
               const sunS = picked.DUTYTIME7S ?? picked.dutyTime7s ?? picked.dutytime7s;
               const sunC = picked.DUTYTIME7C ?? picked.dutyTime7c ?? picked.dutytime7c;
 
-              if (DEBUG_HOURS) {
-                console.group("[HIRA RAW WEEKEND]");
-                console.log("name:", picked.dutyName || picked.DUTYNAME);
-                console.log("SAT raw:", { satS, satC });
-                console.log("SUN raw:", { sunS, sunC });
-                console.groupEnd();
-              }
 
               const temp = hiraItemToBusinessHours(picked);
               const wk = (arr) =>
                 (Array.isArray(arr) ? arr.filter(r => String(r.days).includes("SAT") || String(r.days).includes("SUN")) : []);
-              if (DEBUG_HOURS) console.log("[HIRA ADAPTED WEEKEND]", wk(temp));
               hHira = Array.isArray(temp) ? temp : [];
             }
           }
@@ -233,7 +225,7 @@ const HospitalDetail = () => {
             if (DEBUG_HOURS) {
               const hasSAT = hFacility.some(r => /SAT/.test(String(r.days)));
               const hasSUN = hFacility.some(r => /SUN/.test(String(r.days)));
-              console.log("[FACILITY WEEKEND]", { hasSAT, hasSUN, count: hFacility.length, sample: hFacility.slice(0, 3) });
+             
             }
           }
         } catch {}
@@ -246,7 +238,7 @@ const HospitalDetail = () => {
           if (DEBUG_HOURS) {
             const hasSAT = hHospital.some(r => /SAT/.test(String(r.days)));
             const hasSUN = hHospital.some(r => /SUN/.test(String(r.days)));
-            console.log("[HOSPITAL WEEKEND]", { hasSAT, hasSUN, count: hHospital.length, sample: hHospital.slice(0, 3) });
+            
           }
         } catch {}
 
@@ -262,32 +254,13 @@ const HospitalDetail = () => {
               .flat()
               .map(d => String(d))
               .join(",");
-          console.group("[HOURS DEBUG]");
-          console.log("HIRA days     :", getDays(hHira));
-          console.log("Facility days :", getDays(hFacility));
-          console.log("Hospital days :", getDays(hHospital));
-          console.log("Local days    :", getDays(hLocal));
-          console.groupEnd();
+      
         }
 
         // 병합 (우선순위: HIRA > facility > hospital > local)
         const merged = mergeHoursByDay(hHira, hFacility, hHospital, hLocal);
 
-        if (DEBUG_HOURS) {
-          const mergedDays = (Array.isArray(merged) ? merged : [])
-            .map(r => r?.days)
-            .flat()
-            .map(d => String(d))
-            .join(",");
-          console.group("[MERGE WEEKEND]");
-          console.log("Merged days   :", mergedDays);
-          const satRow = merged.find(r => String(r.days) === "SAT");
-          const sunRow = merged.find(r => String(r.days) === "SUN");
-          console.log("SAT:", satRow || "(없음)");
-          console.log("SUN:", sunRow || "(없음)");
-          console.groupEnd();
-        }
-
+      
         if (alive) setHoursResolved(merged);
       } finally {
         resolvingRef.current = false;
@@ -302,9 +275,7 @@ const HospitalDetail = () => {
   useEffect(() => {
     if (!DEBUG_HOURS) return;
     if (!Array.isArray(hoursSource) || hoursSource.length === 0) {
-      console.group("[WEEKEND DEBUG] hoursSource 비어있음");
-      console.log({ hoursSource });
-      console.groupEnd();
+
       return;
     }
 
@@ -318,32 +289,7 @@ const HospitalDetail = () => {
       const matched = hoursSource.filter((r) => expandDays(r?.days).includes(dayKey));
       const byDay = getHoursByDay(dayKey, hoursSource);
 
-      console.group(`[WEEKEND DEBUG] ${dayKey}`);
-      console.log("▶ hoursSource (요약):",
-        hoursSource.map((r, i) => ({
-          i,
-          daysRaw: r?.days,
-          daysExpanded: expandDays(r?.days),
-          openTime: r?.openTime,
-          closeTime: r?.closeTime,
-          closed: !!r?.closed,
-        }))
-      );
-      console.log("▶ dayKey 포함 레코드:",
-        matched.map((r, i) => ({
-          i,
-          daysRaw: r?.days,
-          daysExpanded: expandDays(r?.days),
-          openTime: r?.openTime,
-          closeTime: r?.closeTime,
-          closed: !!r?.closed,
-          invalidPair:
-            (!r?.openTime && !r?.closeTime) ||
-            (String(r?.openTime).trim() === "00:00" && String(r?.closeTime).trim() === "00:00"),
-        }))
-      );
-      console.log("▶ getHoursByDay 결과:", byDay);
-      console.groupEnd();
+
     };
 
     logDay("SAT");
