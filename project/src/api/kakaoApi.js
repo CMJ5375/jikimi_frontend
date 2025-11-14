@@ -6,7 +6,7 @@ import { API_SERVER_HOST } from "./userApi"
 // === 카카오 API 설정 정보 ===
 
 // 카카오 디벨로퍼스에서 발급받은 REST API 키
-const rest_api_key = `82ca008b766f817676784e0da82ce811`
+const rest_api_key = `` // 이거 본인의 API키로 변경
 // 카카오 로그인 성공 후 인가 코드를 받을 리디렉션 URI
 const redirect_uri = `http://localhost:3000/user/kakao`
 // 인가 코드(Authorization Code)를 요청하는 카카오 인증 서버 경로
