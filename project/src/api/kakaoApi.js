@@ -11,7 +11,7 @@ const ORIGIN = window.location.origin;
 // Kakao Developers REST API Key
 const REST_API_KEY = "b8a3046848c797ecc91af475c7037a0e";
 
-// ✅ SPA 404 방지: 실제 라우트(/user/kakao)로 설정
+// SPA 404 방지: 실제 라우트(/user/kakao)로 설정
 const REDIRECT_URI = `${ORIGIN}/user/kakao`;
 
 // Kakao OAuth Endpoints
@@ -20,15 +20,16 @@ const TOKEN_URL     = "https://kauth.kakao.com/oauth/token";
 
 /** 카카오 로그인 링크 */
 export const getKakaoLoginLink = () => {
-  const qs = new URLSearchParams({
+  const query = new URLSearchParams({
     client_id: REST_API_KEY,
     redirect_uri: REDIRECT_URI,
     response_type: "code",
-  });
-  return `${AUTH_CODE_URL}?${qs.toString()}`;
+  }).toString();
+
+  return `${AUTH_CODE_URL}?${query}`;
 };
 
-/** (옵션) 프론트에서 코드→토큰 교환 */
+/** 1) 프론트에서 code -> Kakao access_token 교환 */
 export const getAccessToken = async (authCode) => {
   const form = new URLSearchParams();
   form.set("grant_type", "authorization_code");
@@ -44,14 +45,16 @@ export const getAccessToken = async (authCode) => {
   return res?.data?.access_token;
 };
 
-/** 백엔드에 토큰 전달 → 로그인 처리 */
+/** 2) Kakao access_token을 백엔드에 넘겨서, 우리 JWT + 유저 정보 받기 */
 export const getUserWithAccessToken = async (accessToken) => {
-  const url = apiUrl(`/project/user/kakao?accessToken=${encodeURIComponent(accessToken)}`);
+  const url = `${API_SERVER_HOST}/project/user/kakao?accessToken=${encodeURIComponent(
+    accessToken
+  )}`;
   const res = await axios.get(url, {
     timeout: 10000,
     withCredentials: false,
   });
-  return res.data;
+  return res.data; // { username, name, email, accessToken, refreshToken, ... }
 };
 
 /** 유틸: 현재 URL에서 code 추출 */

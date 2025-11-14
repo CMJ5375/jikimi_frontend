@@ -1,37 +1,51 @@
+// src/page/JUser/KakaoLoginPage.js
 import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getAccessToken, getUserWithAccessToken } from "../../api/kakaoApi";
 import { setCookie } from "../../util/cookieUtil";
 
 export default function KakaoLoginPage() {
   const { search } = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
       try {
         const params = new URLSearchParams(search);
         const code = params.get("code");
-        if (!code) return; // 일반 로그인 화면 진입일 수 있음
 
-        // 1) 카카오 액세스토큰
+        if (!code) {
+          // code 없이 /user/kakao 들어온 경우 → 로그인 화면으로
+          navigate("/", { replace: true });
+          return;
+        }
+
+        // 1) 카카오 access_token 먼저 획득
         const kakaoAccessToken = await getAccessToken(code);
-        if (!kakaoAccessToken) throw new Error("No kakao access token");
+        if (!kakaoAccessToken) {
+          throw new Error("카카오 access_token 발급 실패");
+        }
 
-        // 2) 백엔드 로그인(우리 서비스 토큰 수령)
-        const user = await getUserWithAccessToken(kakaoAccessToken);
-        if (!user?.accessToken) throw new Error("No service access token");
+        // 2) Kakao access_token을 백엔드에 넘겨서
+        //    우리 서비스 유저 + JWT(accessToken, refreshToken) 받기
+        const data = await getUserWithAccessToken(kakaoAccessToken);
 
-        // 3) member 쿠키 저장 (jwtUtil이 기대하는 형태)
-        setCookie("member", user, 1);
+        // 3) 일반 로그인과 동일한 형태로 쿠키/로컬스토리지 저장
+        setCookie("member", data, 1);
+        if (data?.accessToken) {
+          localStorage.setItem("accessToken", data.accessToken);
+        }
+        if (data?.refreshToken) {
+          localStorage.setItem("refreshToken", data.refreshToken);
+        }
 
-        // 4) ★ 전역 상태 강제 동기화: 새로고침(라우팅+상태 초기화)
+        // 4) 전체 새로고침해서 jwtAxios 등 상태 초기화
         window.location.replace("/");
       } catch (e) {
         console.error("카카오 로그인 실패:", e);
-        // 실패 시 현재 페이지 유지 (원하면 /login 으로 보내도 됨)
       }
     })();
-  }, [search]);
+  }, [search, navigate]);
 
   return null;
 }

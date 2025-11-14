@@ -15,6 +15,7 @@ export const getFavorites = async (type) => {
     });
     return Array.isArray(res.data) ? res.data.map(String) : [];
   } catch (err) {
+    console.error("응답:", err.response?.data);
     return [];
   }
 };
@@ -28,6 +29,7 @@ export const isFavorite = async (type, targetId) => {
     });
     return !!res.data;
   } catch (err) {
+    console.error("응답:", err.response?.data);
     return false;
   }
 };
@@ -40,6 +42,7 @@ export const addFavorite = async (type, targetId) => {
       params: { type: t },
     });
   } catch (err) {
+    console.error("응답:", err.response?.data);
     throw err;
   }
 };
@@ -52,6 +55,7 @@ export const removeFavorite = async (type, targetId) => {
       params: { type: t },
     });
   } catch (err) {
+    console.error("응답:", err.response?.data);
   }
 };
 
