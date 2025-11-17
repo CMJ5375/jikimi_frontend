@@ -6,7 +6,7 @@ const SDK_ID = "kakao-maps-sdk";
 
 // .env 우선, 없으면 하드코드 키 사용
 const KAKAO_JS_KEY =
-  process.env.REACT_APP_KAKAO_JS_KEY || "833b650fdaeb02dc3ecc3abe1b82cdd7";
+  process.env.REACT_APP_KAKAO_JS_KEY || ""; //본인 앱키 사용
 
 const okNum = (n) => typeof n === "number" && isFinite(n);
 
