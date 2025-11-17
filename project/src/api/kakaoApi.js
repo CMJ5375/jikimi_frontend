@@ -9,7 +9,7 @@ import { API_SERVER_HOST, apiUrl } from "../config/api";
 const ORIGIN = window.location.origin;
 
 // Kakao Developers REST API Key
-const REST_API_KEY = "b8a3046848c797ecc91af475c7037a0e";
+const REST_API_KEY = "";//본인 REST API Key
 
 // SPA 404 방지: 실제 라우트(/user/kakao)로 설정
 const REDIRECT_URI = `${ORIGIN}/user/kakao`;
